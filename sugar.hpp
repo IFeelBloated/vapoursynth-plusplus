@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <string>
+#include <vector>
 #include <array>
 #include <type_traits>
 #include <algorithm>
@@ -65,31 +66,45 @@ public:
 		this->Step = static_cast<std::ptrdiff_t>(Step);
 	}
 	auto Begin() const {
-		return Iterator{ Startpoint, Step };
+		return Iterator{ .Cursor = Startpoint, .Step = Step };
 	}
 	auto End() const {
-		return Iterator{ Endpoint, Step };
+		return Iterator{ .Cursor = Endpoint, .Step = Step };
 	}
 };
 
 template<typename PixelType, typename PolicyType>
 struct Plane final {
-	static constexpr auto MaxHeight = 100000_size;
 	self(Width, 0_size);
 	self(Height, 0_size);
-	self(Canvas, std::array<PixelType*, MaxHeight>{});
+	self(Canvas, std::vector<PixelType*>{});
 	self(PaddingPolicy, PolicyType{});
 	struct Proxy final {
-		self(AccessToCanvas, static_cast<PixelType**>(nullptr));
-		self(Width, 0_size);
-		self(Height, 0_size);
+		self(State, static_cast<Plane*>(nullptr));
 		self(y, 0_ptrdiff);
-		self(PaddingPolicy, PolicyType{});
-		auto operator[](auto x) const {
-			if (x < 0 || y < 0 || x >= Width || y >= Height)
-				return PaddingPolicy(AccessToCanvas, Width, Height, y, x);
+		self(yOffset, 0_ptrdiff);
+		self(xOffset, 0_ptrdiff);
+		auto operator[](auto x) {
+			auto yAbsolute = y + yOffset;
+			auto xAbsolute = x + xOffset;
+			if (xAbsolute < 0 || yAbsolute < 0 || xAbsolute >= State->Width || yAbsolute >= State->Height)
+				return State->PaddingPolicy(State->Canvas.data(), State->Width, State->Height, yAbsolute, xAbsolute);
 			else
-				return AccessToCanvas[y][x];
+				return State->Canvas[yAbsolute][xAbsolute];
+		}
+	};
+	struct Offset final {
+		self(State, static_cast<Plane*>(nullptr));
+		self(yOffset, 0_ptrdiff);
+		self(xOffset, 0_ptrdiff);
+		auto operator[](auto y) {
+			return Proxy{ .State = State, .y = y, .yOffset = yOffset, .xOffset = xOffset };
+		}
+		auto GetCoordinates() {
+			return std::array{ yOffset, xOffset };
+		}
+		auto View(auto y, auto x) {
+			return Offset{ .State = State, .yOffset = yOffset + y, .xOffset = xOffset + x };
 		}
 	};
 	Plane(auto Pointer, auto Width, auto Height, auto PaddingPolicy) {
@@ -98,13 +113,16 @@ struct Plane final {
 		this->PaddingPolicy = PaddingPolicy;
 		auto Origin = reinterpret_cast<PixelType*>(Pointer);
 		for (auto y : Range{ Height })
-			Canvas[y] = Origin + y * Width;
+			Canvas.push_back(Origin + y * Width);
 	}
-	auto operator[](auto y) const {
+	auto operator[](auto y) {
 		if constexpr (std::is_const_v<PixelType>)
-			return Proxy{ const_cast<PixelType**>(Canvas.data()), Width, Height, y, PaddingPolicy };
+			return Proxy{ .State = this, .y = y };
 		else
 			return Canvas[y];
+	}
+	auto View(auto y, auto x) {
+		return Offset{ .State = this, .yOffset = y, .xOffset = x };
 	}
 };
 

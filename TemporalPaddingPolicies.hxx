@@ -5,7 +5,7 @@
 
 namespace PaddingPolicies::Temporal {
 	template<typename PixelType>
-	auto Zero = [](auto& VideoClip, auto Index, auto FrameContext, auto Core) {
+	constexpr auto Zero = [](auto& VideoClip, auto Index, auto FrameContext, auto Core) {
 		auto Format = VideoClip.Info->format;
 		auto Width = VideoClip.Info->width;
 		auto Height = VideoClip.Info->height;
@@ -17,13 +17,13 @@ namespace PaddingPolicies::Temporal {
 		return BlankFrame.Leak();
 	};
 
-	auto Repeat = [](auto& VideoClip, auto Index, auto FrameContext) {
+	constexpr auto Repeat = [](auto& VideoClip, auto Index, auto FrameContext) {
 		auto FrameCount = VideoClip.Info->numFrames;
 		Index = Min(Max(Index, 0), FrameCount - 1);
 		return VaporGlobals::API->getFrameFilter(Index, VideoClip.VideoNode, FrameContext);
 	};
 
-	auto Reflect = [](auto& VideoClip, auto Index, auto FrameContext) {
+	constexpr auto Reflect = [](auto& VideoClip, auto Index, auto FrameContext) {
 		auto FrameCount = VideoClip.Info->numFrames;
 		Index = ReflectCoordinate(Index, FrameCount);
 		return VaporGlobals::API->getFrameFilter(Index, VideoClip.VideoNode, FrameContext);

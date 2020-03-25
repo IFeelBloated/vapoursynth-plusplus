@@ -5,18 +5,18 @@
 
 template<typename PixelType>
 struct Frame final {
+	static constexpr auto DefaultPaddingPolicy = PaddingPolicies::Spatial::Repeat;
+	using DefaultPolicyType = std::decay_t<decltype(DefaultPaddingPolicy)>;
+	using DefaultPlaneType = Plane<PixelType, DefaultPolicyType>;
 	self(RawFrame, static_cast<VSFrameRef*>(nullptr));
-	self(Width, std::array{ 0, 0, 0 });
-	self(Height, std::array{ 0, 0, 0 });
+	self(Planes, std::array{ DefaultPlaneType{}, DefaultPlaneType{}, DefaultPlaneType{} });
 	self(Format, static_cast<const VSFormat*>(nullptr));
 	Frame() = default;
 	Frame(auto RawFrame) {
 		this->RawFrame = RawFrame;
 		this->Format = VaporGlobals::API->getFrameFormat(RawFrame);
-		for (auto Index : Range{ Format->numPlanes }) {
-			Width[Index] = VaporGlobals::API->getFrameWidth(RawFrame, Index);
-			Height[Index] = VaporGlobals::API->getFrameHeight(RawFrame, Index);
-		}
+		for (auto Index : Range{ Format->numPlanes })
+			Planes[Index] = GetPlane(Index, DefaultPaddingPolicy);
 	}
 	Frame(const Frame& OtherFrame) {
 		*this = OtherFrame;
@@ -28,8 +28,7 @@ struct Frame final {
 		if (this != &OtherFrame) {
 			this->~Frame();
 			RawFrame = PointerRemoveConstant(VaporGlobals::API->cloneFrameRef(OtherFrame.RawFrame));
-			Width = OtherFrame.Width;
-			Height = OtherFrame.Height;
+			Planes = OtherFrame.Planes;
 			Format = OtherFrame.Format;
 		}
 		return *this;
@@ -37,8 +36,7 @@ struct Frame final {
 	auto& operator=(Frame&& OtherFrame) {
 		if (this != &OtherFrame) {
 			std::swap(RawFrame, OtherFrame.RawFrame);
-			Width = std::move(OtherFrame.Width);
-			Height = std::move(OtherFrame.Height);
+			Planes = std::move(OtherFrame.Planes);
 			Format = OtherFrame.Format;
 		}
 		return *this;
@@ -48,16 +46,18 @@ struct Frame final {
 	}
 	auto GetPlane(auto Index, auto&& PaddingPolicy) {
 		using PolicyType = std::decay_t<decltype(PaddingPolicy)>;
+		auto Width = VaporGlobals::API->getFrameWidth(RawFrame, Index);
+		auto Height = VaporGlobals::API->getFrameHeight(RawFrame, Index);
 		auto GetPlanePointer = [&]() {
 			if constexpr (std::is_const_v<PixelType>)
 				return VaporGlobals::API->getReadPtr(RawFrame, Index);
 			else
 				return VaporGlobals::API->getWritePtr(RawFrame, Index);
 		};
-		return Plane<PixelType, PolicyType>{ GetPlanePointer(), Width[Index], Height[Index], Forward(PaddingPolicy) };
+		return Plane<PixelType, PolicyType>{ GetPlanePointer(), Width, Height, Forward(PaddingPolicy) };
 	}
-	auto operator[](auto Index) {
-		return GetPlane(Index, PaddingPolicies::Spatial::Repeat);
+	auto& operator[](auto Index) {
+		return Planes[Index];
 	}
 	auto Leak() {
 		auto LeakedFrame = RawFrame;

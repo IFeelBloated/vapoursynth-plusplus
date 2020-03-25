@@ -35,6 +35,7 @@ struct Plane final {
 			return Offset{ .State = State, .yOffset = yOffset + y, .xOffset = xOffset + x };
 		}
 	};
+	Plane() = default;
 	Plane(auto Pointer, auto Width, auto Height, auto&& PaddingPolicy) {
 		this->Width = Width;
 		this->Height = Height;

@@ -10,15 +10,13 @@ namespace PaddingPolicies::Temporal {
 		auto Width = VideoClip.Info->width;
 		auto Height = VideoClip.Info->height;
 		auto BlankFrame = Frame<PixelType>{ Core.AllocateFrame(Format, Width, Height, nullptr) };
-		for (auto c : Range{ BlankFrame.Format->numPlanes }) {
-			auto CurrentChannel = BlankFrame[c];
+		for (auto c : Range{ BlankFrame.Format->numPlanes })
 			for (auto y : Range{ BlankFrame.Height[c] })
 				for (auto x : Range{ BlankFrame.Width[c] })
-					CurrentChannel[y][x] = static_cast<PixelType>(0);
-		}
+					BlankFrame[c][y][x] = static_cast<PixelType>(0);
 		return BlankFrame.Leak();
 	};
-	
+
 	auto Repeat = [](auto& VideoClip, auto Index, auto FrameContext) {
 		auto FrameCount = VideoClip.Info->numFrames;
 		Index = Min(Max(Index, 0), FrameCount - 1);

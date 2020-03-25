@@ -3,6 +3,7 @@
 #include "TemporalPaddingPolicies.hxx"
 
 struct Clip final {
+	static constexpr auto DefaultPaddingPolicy = PaddingPolicies::Temporal::Repeat;
 	self(VideoNode, static_cast<VSNodeRef*>(nullptr));
 	self(Info, static_cast<const VSVideoInfo*>(nullptr));
 	template<typename ContainerType>
@@ -79,7 +80,7 @@ struct Clip final {
 	}
 	template<typename PixelType>
 	auto GetFrame(auto Index, auto FrameContext) {
-		return GetFrame<PixelType>(Index, PaddingPolicies::Temporal::Repeat, FrameContext);
+		return GetFrame<PixelType>(Index, DefaultPaddingPolicy, FrameContext);
 	}
 	template<typename PixelType>
 	auto GetFrames(auto Index, auto Radius, auto&& PaddingPolicy, auto FrameContext, auto&& ...AuxiliaryArguments) {
@@ -90,7 +91,7 @@ struct Clip final {
 	}
 	template<typename PixelType>
 	auto GetFrames(auto Index, auto Radius, auto FrameContext) {
-		return GetFrames<PixelType>(Index, Radius, PaddingPolicies::Temporal::Repeat, FrameContext);
+		return GetFrames<PixelType>(Index, Radius, DefaultPaddingPolicy, FrameContext);
 	}
 	auto IsSinglePrecision() {
 		return Info->format->sampleType == stFloat && Info->format->bitsPerSample == 32;

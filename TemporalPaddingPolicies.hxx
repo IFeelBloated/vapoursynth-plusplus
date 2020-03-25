@@ -9,7 +9,7 @@ namespace PaddingPolicies::Temporal {
 		auto Format = VideoClip.Info->format;
 		auto Width = VideoClip.Info->width;
 		auto Height = VideoClip.Info->height;
-		auto BlankFrame = Frame<PixelType>{ Core.AllocateFrame(Format, Width, Height, nullptr) };
+		auto BlankFrame = Frame<PixelType>{ Core.AllocateFrame(Format, Width, Height) };
 		for (auto c : Range{ BlankFrame.Format->numPlanes })
 			for (auto y : Range{ BlankFrame.Height[c] })
 				for (auto x : Range{ BlankFrame.Width[c] })

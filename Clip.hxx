@@ -93,6 +93,9 @@ struct Clip final {
 	auto GetFrames(auto Index, auto Radius, auto FrameContext) {
 		return GetFrames<PixelType>(Index, Radius, DefaultPaddingPolicy, FrameContext);
 	}
+	auto& GetMetadata() {
+		return *Info;
+	}
 	auto IsSinglePrecision() {
 		return Info->format->sampleType == stFloat && Info->format->bitsPerSample == 32;
 	}

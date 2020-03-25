@@ -7,7 +7,7 @@ namespace VaporInterface {
 	auto Initialize(auto, auto, auto InstanceData, auto Node, auto...) {
 		auto Data = reinterpret_cast<FilterType*>(*InstanceData);
 		auto [VideoInfo, NumberOfOutputs] = Data->ProvideMetadataForOutputs();
-		VaporGlobals::API->setVideoInfo(VideoInfo, NumberOfOutputs, Node);
+		VaporGlobals::API->setVideoInfo(&VideoInfo, NumberOfOutputs, Node);
 	}
 
 	template<typename FilterType>

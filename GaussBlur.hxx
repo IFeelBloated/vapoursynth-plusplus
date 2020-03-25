@@ -15,14 +15,14 @@ struct GaussBlur final {
 		return true;
 	}
 	auto ProvideMetadataForOutputs() {
-		return std::tuple{ InputClip.Info, 1 };
+		return std::tuple{ InputClip.GetMetadata(), 1 };
 	}
 	auto RequestReferenceFrames(auto Index, auto FrameContext) {
 		InputClip.RequestFrame(Index, FrameContext);
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
 		auto InputFrame = InputClip.GetFrame<const float>(Index, FrameContext);
-		auto ProcessedFrame = Frame<float>{ Core.AllocateFrame(InputFrame.Format, InputFrame[0].Width, InputFrame[0].Height, InputFrame) };
+		auto ProcessedFrame = Core.CreateNewFrameFrom(InputFrame);
 		auto GaussBlur = [](auto Center) {
 			auto Conv = Center[-1][-1] + Center[-1][0] * 2 + Center[-1][1] +
 				Center[0][-1] * 2 + Center[0][0] * 4 + Center[0][1] * 2 +

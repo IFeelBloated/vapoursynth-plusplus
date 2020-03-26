@@ -84,10 +84,11 @@ struct Clip final {
 	}
 	template<typename PixelType>
 	auto GetFrames(auto Index, auto Radius, auto&& PaddingPolicy, auto FrameContext, auto&& ...AuxiliaryArguments) {
-		auto Container = std::vector<Frame<PixelType>>{};
+		using ContainerType = std::vector<Frame<PixelType>>;
+		auto Container = ContainerType{};
 		for (auto Offset : Range{ Index - Radius, Index + Radius + 1 })
 			Container.push_back(GetFrame<PixelType>(Offset, PaddingPolicy, FrameContext, Forward(AuxiliaryArguments)...));
-		return Sequence{ .Container = std::move(Container), .Radius = Radius };
+		return Sequence<ContainerType>{.Container = std::move(Container), .Radius = Radius };
 	}
 	template<typename PixelType>
 	auto GetFrames(auto Index, auto Radius, auto FrameContext) {

@@ -88,7 +88,7 @@ struct Clip final {
 		auto Container = ContainerType{};
 		for (auto Offset : Range{ Index - Radius, Index + Radius + 1 })
 			Container.push_back(GetFrame<PixelType>(Offset, PaddingPolicy, FrameContext, Forward(AuxiliaryArguments)...));
-		return Sequence<ContainerType>{.Container = std::move(Container), .Radius = Radius };
+		return Sequence<ContainerType>{ .Container = std::move(Container), .Radius = Radius };
 	}
 	template<typename PixelType>
 	auto GetFrames(auto Index, auto Radius, auto FrameContext) {

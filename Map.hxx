@@ -26,6 +26,10 @@ struct FilterArguments final {
 			if (auto [Value, Error] = FetchValue(VaporGlobals::API->propGetInt, Name, 0); Error == false)
 				Parameter = !!Value;
 		}
+		else if constexpr (isinstance(Parameter, std::string)) {
+			if (auto [Value, Error] = FetchValue(VaporGlobals::API->propGetData, Name, 0); Error == false)
+				Parameter = std::string{ Value };
+		}
 	}
 };
 

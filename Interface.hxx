@@ -42,7 +42,7 @@ namespace VaporInterface {
 
 	template<typename FilterType>
 	auto RegisterFilter(auto Broker, auto Plugin) {
-		Broker(FilterType::Name, FilterType::PythonInterface, VaporInterface::Create<FilterType>, nullptr, Plugin);
+		Broker(FilterType::Name, FilterType::PythonInterface, Create<FilterType>, nullptr, Plugin);
 	}
 
 	auto RegisterPlugin(auto Broker, auto Plugin) {

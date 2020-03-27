@@ -33,6 +33,6 @@ struct GaussBlur final {
 			for (auto y : Range{ InputFrame[c].Height })
 				for (auto x : Range{ InputFrame[c].Width })
 					ProcessedFrame[c][y][x] = GaussBlur(InputFrame[c].View(y, x));
-		return ProcessedFrame;
+		return ProcessedFrame.Leak();
 	}
 };

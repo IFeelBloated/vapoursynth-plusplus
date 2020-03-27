@@ -39,6 +39,6 @@ struct TemporalMedian final {
 					std::nth_element(Samples.begin(), Samples.begin() + Radius, Samples.end());
 					ProcessedFrame[c][y][x] = Samples[Radius];
 				}
-		return ProcessedFrame;
+		return ProcessedFrame.Leak();
 	}
 };

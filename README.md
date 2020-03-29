@@ -1,2 +1,2 @@
 # vsFilterScript
-g++ -shared -std=c++20 -lstdc++ -static -O3 -o Filter.dll EntryPoint.cxx
+g++ -shared -std=c++20 -lstdc++ -static -Ofast -o Filter.dll EntryPoint.cxx

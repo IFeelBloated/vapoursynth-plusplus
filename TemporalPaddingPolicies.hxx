@@ -28,4 +28,6 @@ namespace PaddingPolicies::Temporal {
 		Index = ReflectCoordinate(Index, FrameCount);
 		return VaporGlobals::API->getFrameFilter(Index, VideoClip.VideoNode, FrameContext);
 	};
+
+	constexpr auto Default = Repeat;
 }

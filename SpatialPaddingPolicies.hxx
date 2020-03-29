@@ -28,4 +28,6 @@ namespace PaddingPolicies::Spatial {
 		y = ReflectCoordinate(y, Height);
 		return Canvas[y][x];
 	};
+
+	constexpr auto Default = Repeat;
 }

@@ -5,8 +5,7 @@
 
 template<typename PixelType>
 struct Frame final {
-	static constexpr auto DefaultPaddingPolicy = PaddingPolicies::Spatial::Repeat;
-	using DefaultPolicyType = std::decay_t<decltype(DefaultPaddingPolicy)>;
+	using DefaultPolicyType = std::decay_t<decltype(PaddingPolicies::Spatial::Default)>;
 	using DefaultPlaneType = Plane<PixelType, DefaultPolicyType>;
 	self(RawFrame, static_cast<VSFrameRef*>(nullptr));
 	self(Planes, std::array{ DefaultPlaneType{}, DefaultPlaneType{}, DefaultPlaneType{} });
@@ -16,7 +15,7 @@ struct Frame final {
 		this->RawFrame = RawFrame;
 		this->Format = VaporGlobals::API->getFrameFormat(RawFrame);
 		for (auto Index : Range{ Format->numPlanes })
-			Planes[Index] = GetPlane(Index, DefaultPaddingPolicy);
+			Planes[Index] = GetPlane(Index, PaddingPolicies::Spatial::Default);
 	}
 	Frame(const Frame& OtherFrame) {
 		*this = OtherFrame;

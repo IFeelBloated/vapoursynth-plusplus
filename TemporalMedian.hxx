@@ -3,19 +3,20 @@
 
 struct TemporalMedian final {
 	static constexpr auto Name = "TemporalMedian";
-	static constexpr auto PythonInterface = "clip:clip;radius:int:opt;";
+	static constexpr auto Parameters = "clip:clip;radius:int:opt;";
 	static constexpr auto Mode = VSFilterMode::fmParallel;
 	self(InputClip, Clip{});
 	self(Radius, 1);
-	auto Initialize(auto Arguments, auto Outputs) {
-		Arguments.Fetch(InputClip, "clip");
-		Arguments.Fetch(Radius, "radius");
+	auto Initialize(auto Arguments, auto Console) {
+		InputClip = Arguments["clip"];
+		if (Arguments["radius"].Exists())
+			Radius = Arguments["radius"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision()) {
-			Outputs.RaiseError(Name + ": only single precision floating point clips with constant format and dimensions supported."s);
+			Console.RaiseError(Name + ": only single precision floating point clips with constant format and dimensions supported."s);
 			return false;
 		}
 		if (Radius < 0) {
-			Outputs.RaiseError(Name + ": radius cannot be negative!"s);
+			Console.RaiseError(Name + ": radius cannot be negative!"s);
 			return false;
 		}
 		return true;

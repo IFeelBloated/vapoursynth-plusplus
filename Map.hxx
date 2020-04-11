@@ -1,39 +1,50 @@
 #pragma once
 #include "Clip.hxx"
 
-struct FilterArguments final {
+struct ArgumentList final {
 	self(InputMap, static_cast<const VSMap*>(nullptr));
-	auto FetchValue(auto Broker, auto&& Name, auto Index) {
-		auto ErrorState = 0;
-		auto Value = Broker(InputMap, ExposeCString(Name), Index, &ErrorState);
-		return std::tuple{ Value, ErrorState != 0 };
-	}
-	auto Fetch(auto& Parameter, auto&& Name) {
-		using ParameterType = std::decay_t<decltype(Parameter)>;
-		if constexpr (isinstance(Parameter, Clip)) {
-			if (auto [Value, Error] = FetchValue(VaporGlobals::API->propGetNode, Name, 0); Error == false)
-				Parameter = Clip{ Value };
+	struct Proxy final {
+		self(InputMap, static_cast<const VSMap*>(nullptr));
+		self(Parameter, "");
+		self(Index, 0_ptrdiff);
+		auto Size() {
+			return VaporGlobals::API->propNumElements(InputMap, Parameter);
 		}
-		else if constexpr (isinstance(Parameter, double) || isinstance(Parameter, float)) {
-			if (auto [Value, Error] = FetchValue(VaporGlobals::API->propGetFloat, Name, 0); Error == false)
-				Parameter = static_cast<ParameterType>(Value);
+		auto Exists() {
+			return Index < Size();
 		}
-		else if constexpr (isinstance(Parameter, std::int64_t) || isinstance(Parameter, int)) {
-			if (auto [Value, Error] = FetchValue(VaporGlobals::API->propGetInt, Name, 0); Error == false)
-				Parameter = static_cast<ParameterType>(Value);
+		auto& operator[](auto Index) {
+			this->Index = Index;
+			return *this;
 		}
-		else if constexpr (isinstance(Parameter, bool)) {
-			if (auto [Value, Error] = FetchValue(VaporGlobals::API->propGetInt, Name, 0); Error == false)
-				Parameter = !!Value;
+		operator Clip() {
+			return Clip{ VaporGlobals::API->propGetNode(InputMap, Parameter, Index, nullptr) };
 		}
-		else if constexpr (isinstance(Parameter, std::string)) {
-			if (auto [Value, Error] = FetchValue(VaporGlobals::API->propGetData, Name, 0); Error == false)
-				Parameter = std::string{ Value };
+		operator double() {
+			return VaporGlobals::API->propGetFloat(InputMap, Parameter, Index, nullptr);
 		}
+		operator float() {
+			return static_cast<float>(VaporGlobals::API->propGetFloat(InputMap, Parameter, Index, nullptr));
+		}
+		operator std::int64_t() {
+			return VaporGlobals::API->propGetInt(InputMap, Parameter, Index, nullptr);
+		}
+		operator int() {
+			return static_cast<int>(VaporGlobals::API->propGetInt(InputMap, Parameter, Index, nullptr));
+		}
+		operator bool() {
+			return !!VaporGlobals::API->propGetInt(InputMap, Parameter, Index, nullptr);
+		}
+		operator std::string() {
+			return std::string{ VaporGlobals::API->propGetData(InputMap, Parameter, Index, nullptr) };
+		}
+	};
+	auto operator[](auto&& Parameter) {
+		return Proxy{ .InputMap = InputMap, .Parameter = ExposeCString(Parameter) };
 	}
 };
 
-struct FilterOutputs final {
+struct Controller final {
 	self(OutputMap, static_cast<VSMap*>(nullptr));
 	auto RaiseError(auto&& ErrorMessage) {
 		VaporGlobals::API->setError(OutputMap, ExposeCString(ErrorMessage));

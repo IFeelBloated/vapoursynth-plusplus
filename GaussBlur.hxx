@@ -3,13 +3,13 @@
 
 struct GaussBlur final {
 	static constexpr auto Name = "GaussBlur";
-	static constexpr auto PythonInterface = "clip:clip;";
+	static constexpr auto Parameters = "clip:clip;";
 	static constexpr auto Mode = VSFilterMode::fmParallel;
 	self(InputClip, Clip{});
-	auto Initialize(auto Arguments, auto Outputs) {
-		Arguments.Fetch(InputClip, "clip");
+	auto Initialize(auto Arguments, auto Console) {
+		InputClip = Arguments["clip"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision()) {
-			Outputs.RaiseError(Name + ": only single precision floating point clips with constant format and dimensions supported."s);
+			Console.RaiseError(Name + ": only single precision floating point clips with constant format and dimensions supported."s);
 			return false;
 		}
 		return true;

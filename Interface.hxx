@@ -32,9 +32,7 @@ namespace VaporInterface {
 	auto Create(auto InputMap, auto OutputMap, auto, auto Core, auto API) {
 		VaporGlobals::API = API;
 		auto Data = new FilterType{};
-		auto Arguments = FilterArguments{ InputMap };
-		auto Outputs = FilterOutputs{ OutputMap };
-		if (auto InitializationStatus = Data->Initialize(Arguments, Outputs); InitializationStatus == false) {
+		if (auto InitializationStatus = Data->Initialize(ArgumentList{ InputMap }, Controller{ OutputMap }); InitializationStatus == false) {
 			delete Data;
 			return;
 		}
@@ -43,7 +41,7 @@ namespace VaporInterface {
 
 	template<typename FilterType>
 	auto RegisterFilter(auto Broker, auto Plugin) {
-		Broker(FilterType::Name, FilterType::PythonInterface, Create<FilterType>, nullptr, Plugin);
+		Broker(FilterType::Name, FilterType::Parameters, Create<FilterType>, nullptr, Plugin);
 	}
 
 	auto RegisterPlugin(auto Broker, auto Plugin) {

@@ -32,7 +32,9 @@ namespace VaporInterface {
 	auto Create(auto InputMap, auto OutputMap, auto, auto Core, auto API) {
 		VaporGlobals::API = API;
 		auto Data = new FilterType{};
-		if (auto InitializationStatus = Data->Initialize(ArgumentList{ InputMap }, Controller{ OutputMap }); InitializationStatus == false) {
+		auto Arguments = ArgumentList{ InputMap };
+		auto Console = Controller<FilterType>{ OutputMap };
+		if (auto InitializationStatus = Data->Initialize(Arguments, Console); InitializationStatus == false) {
 			delete Data;
 			return;
 		}

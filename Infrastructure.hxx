@@ -18,6 +18,9 @@
 #define Forward(Object) std::forward<decltype(Object)>(Object)
 #define Begin begin
 #define End end
+#define Size size
+#define Width width
+#define Height height
 
 using namespace std::literals;
 

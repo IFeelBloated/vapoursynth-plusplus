@@ -12,11 +12,11 @@ struct TemporalMedian final {
 		if (Arguments["radius"].Exists())
 			Radius = Arguments["radius"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision()) {
-			Console.RaiseError(Name + ": only single precision floating point clips with constant format and dimensions supported."s);
+			Console.RaiseError("only single precision floating point clips with constant format and dimensions supported.");
 			return false;
 		}
 		if (Radius < 0) {
-			Console.RaiseError(Name + ": radius cannot be negative!"s);
+			Console.RaiseError("radius cannot be negative!");
 			return false;
 		}
 		return true;

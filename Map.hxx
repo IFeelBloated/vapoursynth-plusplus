@@ -7,11 +7,31 @@ struct ArgumentList final {
 		self(InputMap, static_cast<const VSMap*>(nullptr));
 		self(Parameter, "");
 		self(Index, 0_ptrdiff);
+		struct Iterator final {
+			self(State, static_cast<Proxy*>(nullptr));
+			self(Index, 0_ptrdiff);
+			auto operator*() const {
+				return Proxy{ .InputMap = State->InputMap, .Parameter = State->Parameter, .Index = Index };
+			}
+			auto& operator++() {
+				++Index;
+				return *this;
+			}
+			auto operator!=(auto&& OtherIterator) const {
+				return Index != OtherIterator.Index;
+			}
+		};
 		auto Size() {
-			return VaporGlobals::API->propNumElements(InputMap, Parameter);
+			return std::max(VaporGlobals::API->propNumElements(InputMap, Parameter), 0);
 		}
 		auto Exists() {
 			return Index < Size();
+		}
+		auto Begin() {
+			return Iterator{ .State = this, .Index = 0 };
+		}
+		auto End() {
+			return Iterator{ .State = this, .Index = Size() };
 		}
 		auto& operator[](auto Index) {
 			this->Index = Index;
@@ -44,9 +64,12 @@ struct ArgumentList final {
 	}
 };
 
+template<typename FilterType>
 struct Controller final {
 	self(OutputMap, static_cast<VSMap*>(nullptr));
 	auto RaiseError(auto&& ErrorMessage) {
-		VaporGlobals::API->setError(OutputMap, ExposeCString(ErrorMessage));
+		auto Caption = FilterType::Name + ": "s;
+		auto DecoratedMessage = Caption + ErrorMessage;
+		VaporGlobals::API->setError(OutputMap, ExposeCString(DecoratedMessage));
 	}
 };

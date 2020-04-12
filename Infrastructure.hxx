@@ -19,6 +19,7 @@
 #define Begin begin
 #define End end
 #define Size size
+#define Erase erase
 #define Width width
 #define Height height
 

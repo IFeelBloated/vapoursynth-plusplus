@@ -10,12 +10,17 @@ struct Frame final {
 	self(RawFrame, static_cast<VSFrameRef*>(nullptr));
 	self(Planes, std::array{ DefaultPlaneType{}, DefaultPlaneType{}, DefaultPlaneType{} });
 	self(Format, static_cast<const VSFormat*>(nullptr));
+	self(PropertyMap, static_cast<VSMap*>(nullptr));
 	Frame() = default;
 	Frame(auto RawFrame) {
 		this->RawFrame = RawFrame;
 		this->Format = VaporGlobals::API->getFrameFormat(RawFrame);
 		for (auto Index : Range{ Format->numPlanes })
 			Planes[Index] = GetPlane(Index, PaddingPolicies::Spatial::Default);
+		if constexpr (std::is_const_v<PixelType>)
+			PropertyMap = PointerRemoveConstant(VaporGlobals::API->getFramePropsRO(RawFrame));
+		else
+			PropertyMap = VaporGlobals::API->getFramePropsRW(RawFrame);
 	}
 	Frame(const Frame& OtherFrame) {
 		*this = OtherFrame;
@@ -29,6 +34,7 @@ struct Frame final {
 			RawFrame = PointerRemoveConstant(VaporGlobals::API->cloneFrameRef(OtherFrame.RawFrame));
 			Planes = OtherFrame.Planes;
 			Format = OtherFrame.Format;
+			PropertyMap = OtherFrame.PropertyMap;
 		}
 		return *this;
 	}
@@ -37,6 +43,7 @@ struct Frame final {
 			std::swap(RawFrame, OtherFrame.RawFrame);
 			Planes = std::move(OtherFrame.Planes);
 			Format = OtherFrame.Format;
+			PropertyMap = OtherFrame.PropertyMap;
 		}
 		return *this;
 	}
@@ -55,8 +62,12 @@ struct Frame final {
 		};
 		return Plane<PixelType, PolicyType>{ GetPlanePointer(), Width, Height, Forward(PaddingPolicy) };
 	}
-	auto& operator[](auto Index) {
-		return Planes[Index];
+	auto GetProperty(auto&&);
+	decltype(auto) operator[](auto&& x) {
+		if constexpr (isinstance(x, const char*) || isinstance(x, char*) || isinstance(x, std::string) || isinstance(x, std::string_view))
+			return GetProperty(Forward(x));
+		else
+			return Planes[x];
 	}
 	auto Leak() {
 		auto LeakedFrame = RawFrame;

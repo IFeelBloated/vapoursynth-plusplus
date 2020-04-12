@@ -54,13 +54,14 @@ struct Frame final {
 		using PolicyType = std::decay_t<decltype(PaddingPolicy)>;
 		auto Width = VaporGlobals::API->getFrameWidth(RawFrame, Index);
 		auto Height = VaporGlobals::API->getFrameHeight(RawFrame, Index);
+		auto Stride = VaporGlobals::API->getStride(RawFrame, Index) / sizeof(PixelType);
 		auto GetPlanePointer = [&]() {
 			if constexpr (std::is_const_v<PixelType>)
 				return VaporGlobals::API->getReadPtr(RawFrame, Index);
 			else
 				return VaporGlobals::API->getWritePtr(RawFrame, Index);
 		};
-		return Plane<PixelType, PolicyType>{ GetPlanePointer(), Width, Height, Forward(PaddingPolicy) };
+		return Plane<PixelType, PolicyType>{ GetPlanePointer(), Width, Height, Stride, Forward(PaddingPolicy) };
 	}
 	auto GetProperty(auto&&);
 	decltype(auto) operator[](auto&& x) {

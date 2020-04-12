@@ -47,7 +47,7 @@ struct Buffer final {
 	}
 	auto AccessAsPlane(auto&& PaddingPolicy) {
 		using PolicyType = std::decay_t<decltype(PaddingPolicy)>;
-		return Plane<const PixelType, PolicyType>{ Canvas[0], Width, Height, Forward(PaddingPolicy) };
+		return Plane<const PixelType, PolicyType>{ Canvas[0], Width, Height, Width, Forward(PaddingPolicy) };
 	}
 	auto AccessAsPlane() {
 		return AccessAsPlane(PaddingPolicies::Spatial::Default);

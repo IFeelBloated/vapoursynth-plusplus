@@ -64,16 +64,38 @@ struct ReadonlyItem final {
 struct WritableItem final {
 	self(Map, static_cast<VSMap*>(nullptr));
 	self(Key, "");
+	auto Set(auto&& Value, auto AppendMode) {
+		if constexpr (isinstance(Value, double) || isinstance(Value, float))
+			return VaporGlobals::API->propSetFloat(Map, Key, Value, AppendMode) == 0;
+		else if constexpr (isinstance(Value, std::int64_t) || isinstance(Value, int) || isinstance(Value, bool))
+			return VaporGlobals::API->propSetInt(Map, Key, Value, AppendMode) == 0;
+		else if constexpr (isinstance(Value, char*) || isinstance(Value, const char*))
+			return VaporGlobals::API->propSetData(Map, Key, Value, -1, AppendMode) == 0;
+		else if constexpr (isinstance(Value, std::string) || isinstance(Value, std::string_view))
+			return VaporGlobals::API->propSetData(Map, Key, Value.data(), Value.size(), AppendMode) == 0;
+		else
+			return false;
+	}
 	auto Erase() {
-
+		return VaporGlobals::API->propDeleteKey(Map, Key) == 1;
 	}
-	auto& operator=(auto&&) {
+	auto& operator=(auto&& Value) {
+		if constexpr (isinstance(Value, WritableItem)) {
+			if (this != &Value) {
+				Map = Value.Map;
+				Key = Value.Key;
+			}
+		}
+		else
+			Set(Forward(Value), VSPropAppendMode::paReplace);
 		return *this;
 	}
-	auto& operator+=(auto&&) {
+	auto& operator+=(auto&& Value) {
+		Set(Forward(Value), VSPropAppendMode::paAppend);
 		return *this;
 	}
-	auto& operator|=(auto&&) {
+	auto& operator|=(auto&& Value) {
+		Set(Forward(Value), VSPropAppendMode::paTouch);
 		return *this;
 	}
 };

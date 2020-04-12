@@ -36,13 +36,13 @@ struct Plane final {
 		}
 	};
 	Plane() = default;
-	Plane(auto Pointer, auto Width, auto Height, auto&& PaddingPolicy) {
+	Plane(auto Pointer, auto Width, auto Height, auto Stride, auto&& PaddingPolicy) {
 		this->Width = Width;
 		this->Height = Height;
 		this->PaddingPolicy = Forward(PaddingPolicy);
 		auto Origin = reinterpret_cast<PixelType*>(Pointer);
 		for (auto y : Range{ Height })
-			Canvas.push_back(Origin + y * Width);
+			Canvas.push_back(Origin + y * Stride);
 	}
 	auto operator[](auto y) {
 		if constexpr (std::is_const_v<PixelType>)

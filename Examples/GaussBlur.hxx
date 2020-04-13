@@ -8,10 +8,8 @@ struct GaussBlur final {
 	self(InputClip, Clip{});
 	auto Initialize(auto Arguments, auto Console) {
 		InputClip = Arguments["clip"];
-		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision()) {
-			Console.RaiseError("only single precision floating point clips with constant format and dimensions supported.");
-			return false;
-		}
+		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
+			return Console.RaiseError("only single precision floating point clips with constant format and dimensions supported.");
 		return true;
 	}
 	auto RegisterMetadata(auto Core) {

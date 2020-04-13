@@ -4,7 +4,7 @@
 
 struct Clip final {
 	self(VideoNode, static_cast<VSNodeRef*>(nullptr));
-	self(Info, static_cast<const VSVideoInfo*>(nullptr));
+	self(Metadata, static_cast<const VSVideoInfo*>(nullptr));
 	template<typename ContainerType>
 	struct Sequence final {
 		self(Container, ContainerType{});
@@ -33,20 +33,20 @@ struct Clip final {
 	Clip() = default;
 	Clip(auto VideoNode) {
 		this->VideoNode = VideoNode;
-		this->Info = VaporGlobals::API->getVideoInfo(VideoNode);
+		this->Metadata = VaporGlobals::API->getVideoInfo(VideoNode);
 	}
 	auto& operator=(const Clip& OtherClip) {
 		if (this != &OtherClip) {
 			this->~Clip();
 			VideoNode = VaporGlobals::API->cloneNodeRef(OtherClip.VideoNode);
-			Info = OtherClip.Info;
+			Metadata = OtherClip.Metadata;
 		}
 		return *this;
 	}
 	auto& operator=(Clip&& OtherClip) {
 		if (this != &OtherClip) {
 			std::swap(VideoNode, OtherClip.VideoNode);
-			Info = OtherClip.Info;
+			Metadata = OtherClip.Metadata;
 		}
 		return *this;
 	}
@@ -60,7 +60,7 @@ struct Clip final {
 		VaporGlobals::API->freeNode(VideoNode);
 	}
 	auto RequestFrame(auto Index, auto FrameContext) {
-		if (Index >= 0 && Index < Info->numFrames)
+		if (Index >= 0 && Index < Metadata->numFrames)
 			VaporGlobals::API->requestFrameFilter(Index, VideoNode, FrameContext);
 	}
 	auto RequestFrames(auto Index, auto Radius, auto FrameContext) {
@@ -72,7 +72,7 @@ struct Clip final {
 		auto WrapAsFrame = [](auto RawFrame) {
 			return Frame<PixelType>{ PointerRemoveConstant(RawFrame) };
 		};
-		if (Index < 0 || Index >= Info->numFrames)
+		if (Index < 0 || Index >= Metadata->numFrames)
 			return WrapAsFrame(PaddingPolicy(*this, Index, FrameContext, Forward(AuxiliaryArguments)...));
 		else
 			return WrapAsFrame(VaporGlobals::API->getFrameFilter(Index, VideoNode, FrameContext));
@@ -94,27 +94,27 @@ struct Clip final {
 		return GetFrames<PixelType>(Index, Radius, PaddingPolicies::Temporal::Default, FrameContext);
 	}
 	auto& GetMetadata() {
-		return *Info;
+		return *Metadata;
 	}
 	auto IsSinglePrecision() {
-		return Info->Format->SampleType == VSSampleType::stFloat && Info->Format->BitsPerSample == 32;
+		return Metadata->Format->SampleType == VSSampleType::stFloat && Metadata->Format->BitsPerSample == 32;
 	}
 	auto WithConstantDimensions() {
-		return Info->Width != 0 && Info->Height != 0;
+		return Metadata->Width != 0 && Metadata->Height != 0;
 	}
 	auto WithConstantFormat() {
-		return Info->Format != nullptr;
+		return Metadata->Format != nullptr;
 	}
 	auto IsRGB() {
-		return Info->Format->ColorFamily == VSColorFamily::cmRGB;
+		return Metadata->Format->ColorFamily == VSColorFamily::cmRGB;
 	}
 	auto IsGray() {
-		return Info->Format->ColorFamily == VSColorFamily::cmGray;
+		return Metadata->Format->ColorFamily == VSColorFamily::cmGray;
 	}
 	auto IsYUV() {
-		return Info->Format->ColorFamily == VSColorFamily::cmYUV;
+		return Metadata->Format->ColorFamily == VSColorFamily::cmYUV;
 	}
 	auto Is444() {
-		return Info->Format->subSamplingW == 0 && Info->Format->subSamplingH == 0;
+		return Metadata->Format->subSamplingW == 0 && Metadata->Format->subSamplingH == 0;
 	}
 };

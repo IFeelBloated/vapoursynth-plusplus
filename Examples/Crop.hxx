@@ -22,20 +22,14 @@ struct Crop final {
 			Top = Arguments["top"];
 		if (Arguments["bottom"].Exists())
 			Bottom = Arguments["bottom"];
-		CroppedWidth = InputClip.Info->Width - Left - Right;
-		CroppedHeight = InputClip.Info->Height - Top - Bottom;
-		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.Is444()) {
-			Console.RaiseError("clips with subsampled format not supported.");
-			return false;
-		}
-		if (Left < 0 || Right < 0 || Top < 0 || Bottom < 0) {
-			Console.RaiseError("cannot crop negative measures!");
-			return false;
-		}
-		if (CroppedWidth <= 0 || CroppedHeight <= 0) {
-			Console.RaiseError("dimensions must be positive after cropping!");
-			return false;
-		}
+		CroppedWidth = InputClip.Metadata->Width - Left - Right;
+		CroppedHeight = InputClip.Metadata->Height - Top - Bottom;
+		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.Is444())
+			return Console.RaiseError("clips with subsampled format not supported.");
+		if (Left < 0 || Right < 0 || Top < 0 || Bottom < 0)
+			return Console.RaiseError("cannot crop negative measures!");
+		if (CroppedWidth <= 0 || CroppedHeight <= 0)
+			return Console.RaiseError("dimensions must be positive after cropping!");
 		return true;
 	}
 	auto RegisterMetadata(auto Core) {
@@ -60,7 +54,7 @@ struct Crop final {
 		};
 		if (InputClip.IsSinglePrecision())
 			return DrawGenericFrame(InputClip.GetFrame<const float>(Index, FrameContext));
-		else if (InputClip.Info->Format->BitsPerSample > 8)
+		else if (InputClip.Metadata->Format->BitsPerSample > 8)
 			return DrawGenericFrame(InputClip.GetFrame<const std::uint16_t>(Index, FrameContext));
 		else
 			return DrawGenericFrame(InputClip.GetFrame<const std::uint8_t>(Index, FrameContext));

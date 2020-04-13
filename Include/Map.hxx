@@ -120,6 +120,7 @@ struct Controller final {
 		auto Caption = FilterType::Name + ": "s;
 		auto DecoratedMessage = Caption + ErrorMessage;
 		VaporGlobals::API->setError(OutputMap, ExposeCString(DecoratedMessage));
+		return false;
 	}
 };
 

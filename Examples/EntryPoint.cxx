@@ -1,6 +1,7 @@
 #include "../Include/Interface.hxx"
 #include "GaussBlur.hxx"
 #include "TemporalMedian.hxx"
+#include "Crop.hxx"
 
 VS_EXTERNAL_API(auto) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin* plugin) {
 	VaporGlobals::Identifier = "com.vsfilterscript.test";
@@ -9,4 +10,5 @@ VS_EXTERNAL_API(auto) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegiste
 	VaporInterface::RegisterPlugin(configFunc, plugin);
 	VaporInterface::RegisterFilter<GaussBlur>(registerFunc, plugin);
 	VaporInterface::RegisterFilter<TemporalMedian>(registerFunc, plugin);
+	VaporInterface::RegisterFilter<Crop>(registerFunc, plugin);
 }

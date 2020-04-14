@@ -17,8 +17,8 @@ struct TemporalMedian final {
 			return Console.RaiseError("radius cannot be negative!");
 		return true;
 	}
-	auto RegisterMetadata(auto Core) {
-		return InputClip.GetMetadata();
+	auto RegisterVideoInfo(auto Core) {
+		return InputClip.ExposeVideoInfo();
 	}
 	auto RequestReferenceFrames(auto Index, auto FrameContext) {
 		InputClip.RequestFrames(Index, Radius, FrameContext);
@@ -28,7 +28,7 @@ struct TemporalMedian final {
 		auto ProcessedFrame = Core.CreateNewFrameFrom(InputFrames[0]);
 		auto Samples = std::vector<float>{};
 		Samples.resize(2 * Radius + 1);
-		for (auto c : Range{ ProcessedFrame.Format->numPlanes })
+		for (auto c : Range{ ProcessedFrame.PlaneCount })
 			for (auto y : Range{ ProcessedFrame[c].Height })
 				for (auto x : Range{ ProcessedFrame[c].Width }) {
 					for (auto t : Range{ -Radius, Radius + 1 })

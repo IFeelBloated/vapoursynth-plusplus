@@ -26,6 +26,10 @@
 #define SampleType sampleType
 #define BitsPerSample bitsPerSample
 #define ColorFamily colorFamily
+#define FrameCount numFrames
+#define PlaneCount numPlanes
+#define HorizontalSubsamplingFactor subSamplingW
+#define VerticalSubsamplingFactor subSamplingH
 
 using namespace std::literals;
 

@@ -1,10 +1,11 @@
 #pragma once
 #include "Globals.hxx"
 #include "Plane.hxx"
+#include "Format.hxx"
 #include "SpatialPaddingPolicies.hxx"
 
 template<typename PixelType>
-struct Frame final {
+struct Frame final : MaterializedFormat {
 	using DefaultPolicyType = std::decay_t<decltype(PaddingPolicies::Spatial::Default)>;
 	using DefaultPlaneType = Plane<PixelType, DefaultPolicyType>;
 	self(RawFrame, static_cast<VSFrameRef*>(nullptr));
@@ -15,7 +16,8 @@ struct Frame final {
 	Frame(auto RawFrame) {
 		this->RawFrame = RawFrame;
 		this->Format = VaporGlobals::API->getFrameFormat(RawFrame);
-		for (auto Index : Range{ Format->numPlanes })
+		SynchronizeFormat();
+		for (auto Index : Range{ PlaneCount })
 			Planes[Index] = GetPlane(Index, PaddingPolicies::Spatial::Default);
 		if constexpr (std::is_const_v<PixelType>)
 			PropertyMap = PointerRemoveConstant(VaporGlobals::API->getFramePropsRO(RawFrame));
@@ -35,6 +37,7 @@ struct Frame final {
 			Planes = OtherFrame.Planes;
 			Format = OtherFrame.Format;
 			PropertyMap = OtherFrame.PropertyMap;
+			SynchronizeFormat();
 		}
 		return *this;
 	}
@@ -44,11 +47,16 @@ struct Frame final {
 			Planes = std::move(OtherFrame.Planes);
 			Format = OtherFrame.Format;
 			PropertyMap = OtherFrame.PropertyMap;
+			SynchronizeFormat();
 		}
 		return *this;
 	}
 	~Frame() {
 		VaporGlobals::API->freeFrame(RawFrame);
+	}
+	auto SynchronizeFormat() {
+		auto& EnclosedFormat = static_cast<VSFormat&>(*this);
+		EnclosedFormat = *Format;
 	}
 	auto GetPlane(auto Index, auto&& PaddingPolicy) {
 		using PolicyType = std::decay_t<decltype(PaddingPolicy)>;

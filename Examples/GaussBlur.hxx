@@ -12,8 +12,8 @@ struct GaussBlur final {
 			return Console.RaiseError("only single precision floating point clips with constant format and dimensions supported.");
 		return true;
 	}
-	auto RegisterMetadata(auto Core) {
-		return InputClip.GetMetadata();
+	auto RegisterVideoInfo(auto Core) {
+		return InputClip.ExposeVideoInfo();
 	}
 	auto RequestReferenceFrames(auto Index, auto FrameContext) {
 		InputClip.RequestFrame(Index, FrameContext);
@@ -27,7 +27,7 @@ struct GaussBlur final {
 				Center[1][-1] + Center[1][0] * 2 + Center[1][1];
 			return Conv / 16;
 		};
-		for (auto c : Range{ InputFrame.Format->numPlanes })
+		for (auto c : Range{ InputFrame.PlaneCount })
 			for (auto y : Range{ InputFrame[c].Height })
 				for (auto x : Range{ InputFrame[c].Width })
 					ProcessedFrame[c][y][x] = GaussBlur(InputFrame[c].View(y, x));

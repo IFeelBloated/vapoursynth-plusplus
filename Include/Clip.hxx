@@ -2,9 +2,8 @@
 #include "Frame.hxx"
 #include "TemporalPaddingPolicies.hxx"
 
-struct Clip final {
+struct Clip final : VSVideoInfo, MaterializedFormat {
 	self(VideoNode, static_cast<VSNodeRef*>(nullptr));
-	self(Metadata, static_cast<const VSVideoInfo*>(nullptr));
 	template<typename ContainerType>
 	struct Sequence final {
 		self(Container, ContainerType{});
@@ -30,23 +29,37 @@ struct Clip final {
 			return Offset{ .State = this, .tOffset = t };
 		}
 	};
+	auto& ExposeVideoInfo() {
+		return static_cast<VSVideoInfo&>(*this);
+	}
+	auto& ExposeVideoInfo() const {
+		return static_cast<const VSVideoInfo&>(*this);
+	}
+	auto SynchronizeFormat() {
+		if (auto& EnclosedFormat = static_cast<VSFormat&>(*this); Format != nullptr)
+			EnclosedFormat = *Format;
+	}
 	Clip() = default;
-	Clip(auto VideoNode) {
-		this->VideoNode = VideoNode;
-		this->Metadata = VaporGlobals::API->getVideoInfo(VideoNode);
+	Clip(auto RawClip) {
+		auto& VideoInfo = ExposeVideoInfo();
+		VideoNode = RawClip;
+		VideoInfo = *VaporGlobals::API->getVideoInfo(RawClip);
+		SynchronizeFormat();
 	}
 	auto& operator=(const Clip& OtherClip) {
-		if (this != &OtherClip) {
+		if (auto& VideoInfo = ExposeVideoInfo(); this != &OtherClip) {
 			this->~Clip();
 			VideoNode = VaporGlobals::API->cloneNodeRef(OtherClip.VideoNode);
-			Metadata = OtherClip.Metadata;
+			VideoInfo = OtherClip.ExposeVideoInfo();
+			SynchronizeFormat();
 		}
 		return *this;
 	}
 	auto& operator=(Clip&& OtherClip) {
-		if (this != &OtherClip) {
+		if (auto& VideoInfo = ExposeVideoInfo(); this != &OtherClip) {
 			std::swap(VideoNode, OtherClip.VideoNode);
-			Metadata = OtherClip.Metadata;
+			VideoInfo = std::move(OtherClip.ExposeVideoInfo());
+			SynchronizeFormat();
 		}
 		return *this;
 	}
@@ -60,7 +73,7 @@ struct Clip final {
 		VaporGlobals::API->freeNode(VideoNode);
 	}
 	auto RequestFrame(auto Index, auto FrameContext) {
-		if (Index >= 0 && Index < Metadata->numFrames)
+		if (Index >= 0 && Index < FrameCount)
 			VaporGlobals::API->requestFrameFilter(Index, VideoNode, FrameContext);
 	}
 	auto RequestFrames(auto Index, auto Radius, auto FrameContext) {
@@ -72,7 +85,7 @@ struct Clip final {
 		auto WrapAsFrame = [](auto RawFrame) {
 			return Frame<PixelType>{ PointerRemoveConstant(RawFrame) };
 		};
-		if (Index < 0 || Index >= Metadata->numFrames)
+		if (Index < 0 || Index >= FrameCount)
 			return WrapAsFrame(PaddingPolicy(*this, Index, FrameContext, Forward(AuxiliaryArguments)...));
 		else
 			return WrapAsFrame(VaporGlobals::API->getFrameFilter(Index, VideoNode, FrameContext));
@@ -93,28 +106,10 @@ struct Clip final {
 	auto GetFrames(auto Index, auto Radius, auto FrameContext) {
 		return GetFrames<PixelType>(Index, Radius, PaddingPolicies::Temporal::Default, FrameContext);
 	}
-	auto& GetMetadata() {
-		return *Metadata;
-	}
-	auto IsSinglePrecision() {
-		return Metadata->Format->SampleType == VSSampleType::stFloat && Metadata->Format->BitsPerSample == 32;
-	}
 	auto WithConstantDimensions() {
-		return Metadata->Width != 0 && Metadata->Height != 0;
+		return Width != 0 && Height != 0;
 	}
 	auto WithConstantFormat() {
-		return Metadata->Format != nullptr;
-	}
-	auto IsRGB() {
-		return Metadata->Format->ColorFamily == VSColorFamily::cmRGB;
-	}
-	auto IsGray() {
-		return Metadata->Format->ColorFamily == VSColorFamily::cmGray;
-	}
-	auto IsYUV() {
-		return Metadata->Format->ColorFamily == VSColorFamily::cmYUV;
-	}
-	auto Is444() {
-		return Metadata->Format->subSamplingW == 0 && Metadata->Format->subSamplingH == 0;
+		return Format != nullptr;
 	}
 };

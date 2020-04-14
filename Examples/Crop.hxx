@@ -22,8 +22,8 @@ struct Crop final {
 			Top = Arguments["top"];
 		if (Arguments["bottom"].Exists())
 			Bottom = Arguments["bottom"];
-		CroppedWidth = InputClip.Metadata->Width - Left - Right;
-		CroppedHeight = InputClip.Metadata->Height - Top - Bottom;
+		CroppedWidth = InputClip.Width - Left - Right;
+		CroppedHeight = InputClip.Height - Top - Bottom;
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.Is444())
 			return Console.RaiseError("clips with subsampled format not supported.");
 		if (Left < 0 || Right < 0 || Top < 0 || Bottom < 0)
@@ -32,11 +32,11 @@ struct Crop final {
 			return Console.RaiseError("dimensions must be positive after cropping!");
 		return true;
 	}
-	auto RegisterMetadata(auto Core) {
-		auto Metadata = InputClip.GetMetadata();
-		Metadata.Width = CroppedWidth;
-		Metadata.Height = CroppedHeight;
-		return Metadata;
+	auto RegisterVideoInfo(auto Core) {
+		auto VideoInfo = InputClip.ExposeVideoInfo();
+		VideoInfo.Width = CroppedWidth;
+		VideoInfo.Height = CroppedHeight;
+		return VideoInfo;
 	}
 	auto RequestReferenceFrames(auto Index, auto FrameContext) {
 		InputClip.RequestFrame(Index, FrameContext);
@@ -46,7 +46,7 @@ struct Crop final {
 			using PixelType = std::decay_t<decltype(InputFrame[0][0][0])>;
 			auto ProcessedFrame = Frame<PixelType>{ Core.AllocateFrame(InputFrame.Format, CroppedWidth, CroppedHeight) };
 			Core.CopyFrameProperties(InputFrame, ProcessedFrame);
-			for (auto c : Range{ InputFrame.Format->numPlanes })
+			for (auto c : Range{ InputFrame.PlaneCount })
 				for (auto y : Range{ CroppedHeight })
 					for (auto x : Range{ CroppedWidth })
 						ProcessedFrame[c][y][x] = InputFrame[c][y + Top][x + Left];
@@ -54,7 +54,7 @@ struct Crop final {
 		};
 		if (InputClip.IsSinglePrecision())
 			return DrawGenericFrame(InputClip.GetFrame<const float>(Index, FrameContext));
-		else if (InputClip.Metadata->Format->BitsPerSample > 8)
+		else if (InputClip.BitsPerSample > 8)
 			return DrawGenericFrame(InputClip.GetFrame<const std::uint16_t>(Index, FrameContext));
 		else
 			return DrawGenericFrame(InputClip.GetFrame<const std::uint8_t>(Index, FrameContext));

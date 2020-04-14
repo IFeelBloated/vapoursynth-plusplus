@@ -7,7 +7,7 @@ namespace VaporInterface {
 	template<typename FilterType>
 	auto Initialize(auto, auto, auto InstanceData, auto Node, auto Core, auto...) {
 		auto Data = reinterpret_cast<FilterType*>(*InstanceData);
-		auto VideoInfo = Data->RegisterMetadata(VaporCore{ .Instance = Core });
+		auto VideoInfo = Data->RegisterVideoInfo(VaporCore{ .Instance = Core });
 		VaporGlobals::API->setVideoInfo(&VideoInfo, 1, Node);
 	}
 

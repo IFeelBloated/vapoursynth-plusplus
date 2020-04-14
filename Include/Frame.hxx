@@ -90,3 +90,18 @@ struct Frame final : MaterializedFormat {
 			return RawFrame;
 	}
 };
+
+template<typename FilterType>
+struct VaporFrameContext final {
+	self(Context, static_cast<VSFrameContext*>(nullptr));
+	auto RaiseError(auto&& ErrorMessage) {
+		auto NullFrame = static_cast<const VSFrameRef*>(nullptr);
+		auto Caption = FilterType::Name + ": "s;
+		auto DecoratedMessage = Caption + ErrorMessage;
+		VaporGlobals::API->setFilterError(ExposeCString(DecoratedMessage), Context);
+		return NullFrame;
+	}
+	operator auto() {
+		return Context;
+	}
+};

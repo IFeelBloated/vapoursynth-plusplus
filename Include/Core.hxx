@@ -21,4 +21,7 @@ struct VaporCore final {
 		auto AllocatedFrame = VaporGlobals::API->newVideoFrame(Format, Width, Height, Properties, Instance);
 		return Frame<PixelType>{ AllocatedFrame };
 	}
+	operator auto() {
+		return Instance;
+	}
 };

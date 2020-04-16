@@ -122,6 +122,9 @@ struct Controller final {
 		VaporGlobals::API->setError(OutputMap, ExposeCString(DecoratedMessage));
 		return false;
 	}
+	operator auto() {
+		return OutputMap;
+	}
 };
 
 template<typename PixelType>

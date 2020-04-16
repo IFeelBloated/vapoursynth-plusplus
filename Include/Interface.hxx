@@ -25,7 +25,7 @@ namespace VaporInterface {
 		if (ActivationReason == VSActivationReason::arInitial)
 			Data->RequestReferenceFrames(Index, FrameContext);
 		else if (ActivationReason == VSActivationReason::arAllFramesReady)
-			return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, VaporFrameContext<FilterType>{.Context = FrameContext });
+			return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, VaporFrameContext<FilterType>{ .Context = FrameContext });
 		return NullFrame;
 	}
 
@@ -42,6 +42,8 @@ namespace VaporInterface {
 			Data->Preprocess(VaporCore{ .Instance = Core }, Console);
 		if constexpr (VaporReflection::DefinedDrawFrame<FilterType>)
 			VaporGlobals::API->createFilter(InputMap, OutputMap, FilterType::Name, Initialize<FilterType>, Evaluate<FilterType>, Delete<FilterType>, FilterType::Mode, 0, Data, Core);
+		else
+			delete Data;
 	}
 
 	template<typename FilterType>

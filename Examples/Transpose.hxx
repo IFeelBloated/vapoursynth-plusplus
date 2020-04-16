@@ -20,5 +20,6 @@ struct Transpose final {
 		VaporGlobals::API->freeMap(Arguments);
 		VaporGlobals::API->freeMap(ResultMap);
 		VaporGlobals::API->propSetNode(Console, "clip", InputClip.VideoNode, VSPropAppendMode::paReplace);
+		this->~Transpose();
 	}
 };

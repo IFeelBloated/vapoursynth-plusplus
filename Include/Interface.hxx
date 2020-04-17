@@ -1,7 +1,5 @@
 #pragma once
-#include "Map.hxx"
 #include "Core.hxx"
-#include "Reflection.hxx"
 #include "Buffer.hxx"
 
 namespace VaporInterface {
@@ -38,9 +36,9 @@ namespace VaporInterface {
 			delete Data;
 			return;
 		}
-		if constexpr (VaporReflection::DefinedPreprocess<FilterType>)
+		if constexpr (hasattr(Data, Preprocess))
 			Data->Preprocess(VaporCore{ .Instance = Core }, Console);
-		if constexpr (VaporReflection::DefinedDrawFrame<FilterType>)
+		if constexpr (hasattr(Data, DrawFrame))
 			VaporGlobals::API->createFilter(InputMap, OutputMap, FilterType::Name, Initialize<FilterType>, Evaluate<FilterType>, Delete<FilterType>, FilterType::Mode, 0, Data, Core);
 		else
 			delete Data;

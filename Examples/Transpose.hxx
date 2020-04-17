@@ -12,13 +12,7 @@ struct Transpose final {
 		return true;
 	}
 	auto Preprocess(auto Core, auto Console) {
-		auto StandardFilter = VaporGlobals::API->getPluginByNs("std", Core);
-		auto Arguments = VaporGlobals::API->createMap();
-		VaporGlobals::API->propSetNode(Arguments, "clip", InputClip.VideoNode, VSPropAppendMode::paReplace);
-		auto ResultMap = VaporGlobals::API->invoke(StandardFilter, "Transpose", Arguments);
-		InputClip = Clip{ VaporGlobals::API->propGetNode(ResultMap, "clip", 0, nullptr) };
-		VaporGlobals::API->freeMap(Arguments);
-		VaporGlobals::API->freeMap(ResultMap);
-		VaporGlobals::API->propSetNode(Console, "clip", InputClip.VideoNode, VSPropAppendMode::paReplace);
+		InputClip = Core["std"]["Transpose"]("clip", InputClip);
+		Console.Receive(InputClip);
 	}
 };

@@ -1,5 +1,5 @@
 #pragma once
-#include "Frame.hxx"
+#include "Plugin.hxx"
 
 struct VaporCore final {
 	self(Instance, static_cast<VSCore*>(nullptr));
@@ -20,6 +20,9 @@ struct VaporCore final {
 		auto Properties = ReferenceFrame.RawFrame;
 		auto AllocatedFrame = VaporGlobals::API->newVideoFrame(Format, Width, Height, Properties, Instance);
 		return Frame<PixelType>{ AllocatedFrame };
+	}
+	auto operator[](auto&& Namespace) {
+		return VaporPlugin{ .Plugin = VaporGlobals::API->getPluginByNs(ExposeCString(Namespace), Instance) };
 	}
 	operator auto() {
 		return Instance;

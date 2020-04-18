@@ -5,6 +5,7 @@
 #include <tuple>
 #include <array>
 #include <type_traits>
+#include <functional>
 #include <algorithm>
 #include <utility>
 #include <new>
@@ -12,6 +13,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <cmath>
+#include <cstdlib>
 
 #define self(ClassMember, ...) std::decay_t<decltype(__VA_ARGS__)> ClassMember = __VA_ARGS__
 #define isinstance(Object, Type) std::is_same_v<std::decay_t<decltype(Object)>, Type>

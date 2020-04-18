@@ -106,6 +106,12 @@ struct Clip final : VSVideoInfo, MaterializedFormat {
 	auto GetFrames(auto Index, auto Radius, auto FrameContext) {
 		return GetFrames<PixelType>(Index, Radius, PaddingPolicies::Temporal::Default, FrameContext);
 	}
+	auto& PeekFrameFormat(auto Index, auto FrameContext) {
+		auto RawFrame = VaporGlobals::API->getFrameFilter(Index, VideoNode, FrameContext);
+		auto Format = VaporGlobals::API->getFrameFormat(RawFrame);
+		VaporGlobals::API->freeFrame(RawFrame);
+		return static_cast<MaterializedFormat&>(*Format);
+	}
 	auto WithConstantDimensions() {
 		return Width != 0 && Height != 0;
 	}

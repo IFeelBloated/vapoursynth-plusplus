@@ -1,12 +1,13 @@
 #pragma once
 #include "Range.hxx"
 
-template<typename PixelType, typename PolicyType>
+template<typename PixelType>
 struct Plane final {
+	using PolicyType = auto(PixelType**, std::size_t, std::size_t, std::ptrdiff_t, std::ptrdiff_t)->PixelType;
 	self(Width, 0_size);
 	self(Height, 0_size);
 	self(Canvas, std::vector<PixelType*>{});
-	self(PaddingPolicy, PolicyType{});
+	self(PaddingPolicy, std::function<PolicyType>{});
 	struct Proxy final {
 		self(State, static_cast<Plane*>(nullptr));
 		self(y, 0_ptrdiff);

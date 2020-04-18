@@ -10,9 +10,10 @@ struct Buffer final {
 	Buffer(auto Width, auto Height) {
 		this->Width = Width;
 		this->Height = Height;
-		auto Origin = new PixelType[Width * Height];
+		auto Stride = DetermineStride();
+		auto Origin = reinterpret_cast<PixelType*>(std::aligned_alloc(32, Stride * Height * sizeof(PixelType)));
 		for (auto y : Range{ Height })
-			Canvas.push_back(Origin + y * Width);
+			Canvas.push_back(Origin + y * Stride);
 	}
 	Buffer(const Buffer& OtherBuffer) {
 		*this = OtherBuffer;
@@ -26,7 +27,7 @@ struct Buffer final {
 				this->~Buffer();
 				new(this) Buffer{ OtherBuffer.Width, OtherBuffer.Height };
 			}
-			std::copy(OtherBuffer.Canvas[0], OtherBuffer.Canvas[0] + Width * Height, Canvas[0]);
+			std::copy(OtherBuffer.Canvas[0], OtherBuffer.Canvas[0] + DetermineStride() * Height, Canvas[0]);
 		}
 		return *this;
 	}
@@ -40,16 +41,18 @@ struct Buffer final {
 	}
 	~Buffer() {
 		if (Canvas.size() != 0)
-			delete[] Canvas[0];
+			std::free(Canvas[0]);
 	}
 	auto operator[](auto y) {
 		return Canvas[y];
 	}
-	auto AccessAsPlane(auto&& PaddingPolicy) {
-		using PolicyType = std::decay_t<decltype(PaddingPolicy)>;
-		return Plane<const PixelType, PolicyType>{ Canvas[0], Width, Height, Width, Forward(PaddingPolicy) };
+	auto DetermineStride() {
+		auto RowSize = Width * sizeof(PixelType);
+		if (RowSize % 32 != 0)
+			RowSize = (RowSize / 32 + 1) * 32;
+		return RowSize / sizeof(PixelType);
 	}
 	auto AccessAsPlane() {
-		return AccessAsPlane(PaddingPolicies::Spatial::Default);
+		return Plane<const PixelType>{ Canvas[0], Width, Height, DetermineStride(), PaddingPolicies::Spatial::Default };
 	}
 };

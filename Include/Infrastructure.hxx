@@ -17,22 +17,7 @@
 
 #define self(ClassMember, ...) std::decay_t<decltype(__VA_ARGS__)> ClassMember = __VA_ARGS__
 #define isinstance(Object, Type) std::is_same_v<std::decay_t<decltype(Object)>, Type>
-#define hasattr(Object, Attribute) \
-[]<typename Type>() consteval { \
-	auto AttributeDetected = []<typename ObjectType>(decltype(&ObjectType::Attribute)) consteval { \
-		return true; \
-	}; \
-	auto AttributeMissing = []<typename ObjectType>(...) consteval { \
-		return false; \
-	}; \
-	using DetectedType = decltype(AttributeDetected); \
-	using MissingType = decltype(AttributeMissing); \
-	struct AttributeDetector final : DetectedType, MissingType { \
-		using DetectedType::operator(); \
-		using MissingType::operator(); \
-	}; \
-	return AttributeDetector{}.template operator()<Type>(nullptr); \
-}.template operator()<std::decay_t<std::remove_pointer_t<decltype(Object)>>>()
+#define hasattr(Object, Attribute) requires { &std::decay_t<std::remove_pointer_t<decltype(Object)>>::Attribute; }
 #define Forward(Object) std::forward<decltype(Object)>(Object)
 #define Begin begin
 #define End end

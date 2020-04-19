@@ -4,7 +4,6 @@
 struct Rec601ToRGB final {
 	static constexpr auto Name = "Rec601ToRGB";
 	static constexpr auto Parameters = "clip:clip;";
-	static constexpr auto Mode = VSFilterMode::fmParallel;
 	self(InputClip, Clip{});
 	auto Initialize(auto Arguments, auto Console) {
 		InputClip = Arguments["clip"];

@@ -98,6 +98,7 @@ struct Clip final : VSVideoInfo, MaterializedFormat {
 	auto GetFrames(auto Index, auto Radius, auto&& PaddingPolicy, auto FrameContext, auto&& ...AuxiliaryArguments) {
 		using ContainerType = std::vector<Frame<PixelType>>;
 		auto Container = ContainerType{};
+		Container.reserve(2 * Radius + 1);
 		for (auto Offset : Range{ Index - Radius, Index + Radius + 1 })
 			Container.push_back(GetFrame<PixelType>(Offset, PaddingPolicy, FrameContext, Forward(AuxiliaryArguments)...));
 		return Sequence<ContainerType>{ .Container = std::move(Container), .Radius = Radius };

@@ -32,6 +32,12 @@ namespace VaporInterface {
 		auto Data = new FilterType{};
 		auto Arguments = ArgumentList{ InputMap };
 		auto Console = Controller<FilterType>{ OutputMap };
+		auto AssumedMultithreadingMode = VSFilterMode::fmParallel;
+		auto AssumedCacheFlag = 0;
+		if constexpr (hasattr(Data, MultithreadingMode))
+			AssumedMultithreadingMode = FilterType::MultithreadingMode;
+		if constexpr (hasattr(Data, CacheFlag))
+			AssumedCacheFlag = FilterType::CacheFlag;
 		if (auto InitializationStatus = Data->Initialize(Arguments, Console); InitializationStatus == false) {
 			delete Data;
 			return;
@@ -39,7 +45,7 @@ namespace VaporInterface {
 		if constexpr (hasattr(Data, Preprocess))
 			Data->Preprocess(VaporCore{ .Instance = Core }, Console);
 		if constexpr (hasattr(Data, DrawFrame))
-			VaporGlobals::API->createFilter(InputMap, OutputMap, FilterType::Name, Initialize<FilterType>, Evaluate<FilterType>, Delete<FilterType>, FilterType::Mode, 0, Data, Core);
+			VaporGlobals::API->createFilter(InputMap, OutputMap, FilterType::Name, Initialize<FilterType>, Evaluate<FilterType>, Delete<FilterType>, AssumedMultithreadingMode, AssumedCacheFlag, Data, Core);
 		else
 			delete Data;
 	}

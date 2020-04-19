@@ -12,8 +12,9 @@ struct Buffer final {
 		this->Height = Height;
 		auto Stride = DetermineStride();
 		auto Origin = reinterpret_cast<PixelType*>(std::aligned_alloc(32, Stride * Height * sizeof(PixelType)));
+		Canvas.resize(Height);
 		for (auto y : Range{ Height })
-			Canvas.push_back(Origin + y * Stride);
+			Canvas[y] = Origin + y * Stride;
 	}
 	Buffer(const Buffer& OtherBuffer) {
 		*this = OtherBuffer;

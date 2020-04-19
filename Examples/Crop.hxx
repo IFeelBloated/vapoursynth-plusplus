@@ -4,7 +4,6 @@
 struct Crop final {
 	static constexpr auto Name = "Crop";
 	static constexpr auto Parameters = "clip:clip;left:int:opt;right:int:opt;top:int:opt;bottom:int:opt;";
-	static constexpr auto Mode = VSFilterMode::fmParallel;
 	self(InputClip, Clip{});
 	self(Left, 0);
 	self(Top, 0);

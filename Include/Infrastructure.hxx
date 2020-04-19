@@ -16,7 +16,7 @@
 #include <cstdlib>
 
 #define self(ClassMember, ...) std::decay_t<decltype(__VA_ARGS__)> ClassMember = __VA_ARGS__
-#define isinstance(Object, Type) std::is_same_v<std::decay_t<decltype(Object)>, Type>
+#define isinstance(Object, Type) (std::is_same_v<std::decay_t<decltype(Object)>, Type> || std::is_base_of_v<Type, std::decay_t<decltype(Object)>>)
 #define hasattr(Object, Attribute) requires { &std::decay_t<std::remove_pointer_t<decltype(Object)>>::Attribute; }
 #define Forward(Object) std::forward<decltype(Object)>(Object)
 #define Begin begin

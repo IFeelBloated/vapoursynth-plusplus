@@ -4,7 +4,6 @@
 struct TemporalMedian final {
 	static constexpr auto Name = "TemporalMedian";
 	static constexpr auto Parameters = "clip:clip;radius:int:opt;";
-	static constexpr auto Mode = VSFilterMode::fmParallel;
 	self(InputClip, Clip{});
 	self(Radius, 1);
 	auto Initialize(auto Arguments, auto Console) {

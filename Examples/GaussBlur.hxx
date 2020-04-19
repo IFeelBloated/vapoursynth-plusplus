@@ -4,7 +4,6 @@
 struct GaussBlur final {
 	static constexpr auto Name = "GaussBlur";
 	static constexpr auto Parameters = "clip:clip;";
-	static constexpr auto Mode = VSFilterMode::fmParallel;
 	self(InputClip, Clip{});
 	auto Initialize(auto Arguments, auto Console) {
 		InputClip = Arguments["clip"];

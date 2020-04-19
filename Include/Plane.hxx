@@ -42,8 +42,9 @@ struct Plane final {
 		this->Height = Height;
 		this->PaddingPolicy = Forward(PaddingPolicy);
 		auto Origin = reinterpret_cast<PixelType*>(Pointer);
+		Canvas.resize(Height);
 		for (auto y : Range{ Height })
-			Canvas.push_back(Origin + y * Stride);
+			Canvas[y] = Origin + y * Stride;
 	}
 	auto operator[](auto y) {
 		if constexpr (std::is_const_v<PixelType>)

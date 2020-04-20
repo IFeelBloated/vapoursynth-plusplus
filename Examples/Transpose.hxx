@@ -7,12 +7,13 @@ struct Transpose final {
 	self(InputClip, Clip{});
 	auto Initialize(auto Arguments, auto Console) {
 		InputClip = Arguments["clip"];
-		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions())
-			return Console.RaiseError("only clips with constant format and dimensions supported.");
 		return true;
 	}
 	auto Preprocess(auto Core, auto Console) {
-		InputClip = Core["std"]["Transpose"]("clip", InputClip);
-		Console.Receive(InputClip);
+		auto TransposeFilter = Core["std"]["Transpose"];
+		if (auto EvaluatedClip = TransposeFilter("clip", InputClip); TransposeFilter.EvaluationFailed())
+			return Console.RaiseError(TransposeFilter.ErrorMessage);
+		else
+			return Console.Receive(EvaluatedClip);
 	}
 };

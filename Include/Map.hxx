@@ -123,7 +123,8 @@ struct Controller final {
 		return false;
 	}
 	auto Receive(auto&& VideoClip) {
-		return VaporGlobals::API->propSetNode(OutputMap, "clip", VideoClip.VideoNode, VSPropAppendMode::paAppend) == 0;
+		VaporGlobals::API->propSetNode(OutputMap, "clip", VideoClip.VideoNode, VSPropAppendMode::paAppend);
+		return true;
 	}
 	operator auto() {
 		return OutputMap;

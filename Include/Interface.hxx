@@ -11,6 +11,12 @@ namespace VaporInterface {
 	}
 
 	template<typename FilterType>
+	auto Delete(auto InstanceData, auto...) {
+		auto Data = reinterpret_cast<FilterType*>(InstanceData);
+		delete Data;
+	}
+
+	template<typename FilterType>
 	auto Evaluate(auto Index, auto ActivationReason, auto InstanceData, auto, auto FrameContext, auto Core, auto...) {
 		auto Data = reinterpret_cast<FilterType*>(*InstanceData);
 		auto NullFrame = static_cast<const VSFrameRef*>(nullptr);
@@ -23,11 +29,11 @@ namespace VaporInterface {
 
 	template<typename FilterType>
 	auto Create(auto InputMap, auto OutputMap, auto, auto Core, auto...) {
-		auto Data = new FilterType{};
+		auto Data = FilterType{};
 		auto Arguments = ArgumentList{ InputMap };
 		auto Console = Controller<FilterType>{ OutputMap };
 		auto CoreInstance = VaporCore{ .Instance = Core };
-		auto SelfInvoker = [=]() {
+		auto SelfInvoker = [&]() {
 			auto EvaluatedClip = Clip{};
 			auto AuxiliaryMap = VaporGlobals::API->createMap();
 			auto EvaluatedItems = VaporGlobals::API->createMap();
@@ -38,20 +44,19 @@ namespace VaporInterface {
 			if constexpr (hasattr(Data, CacheFlag))
 				AssumedCacheFlag = FilterType::CacheFlag;
 			if constexpr (hasattr(Data, DrawFrame)) {
-				VaporGlobals::API->createFilter(AuxiliaryMap, EvaluatedItems, FilterType::Name, Initialize<FilterType>, Evaluate<FilterType>, nullptr, AssumedMultithreadingMode, AssumedCacheFlag, Data, Core);
+				VaporGlobals::API->createFilter(AuxiliaryMap, EvaluatedItems, FilterType::Name, Initialize<FilterType>, Evaluate<FilterType>, Delete<FilterType>, AssumedMultithreadingMode, AssumedCacheFlag, new FilterType{ Data }, Core);
 				EvaluatedClip = VaporGlobals::API->propGetNode(EvaluatedItems, "clip", 0, nullptr);
 			}
 			VaporGlobals::API->freeMap(EvaluatedItems);
 			VaporGlobals::API->freeMap(AuxiliaryMap);
 			return EvaluatedClip;
 		};
-		if (auto InitializationStatus = Data->Initialize(Arguments, Console); InitializationStatus == false)
-			goto TERMINATION;
+		if (auto InitializationStatus = Data.Initialize(Arguments, Console); InitializationStatus == false)
+			return;
 		if constexpr (hasattr(Data, RegisterInvokingSequence))
-			Data->RegisterInvokingSequence(CoreInstance, SelfInvoker, Console);
+			Data.RegisterInvokingSequence(CoreInstance, SelfInvoker, Console);
 		else
 			Console.Receive(SelfInvoker());
-	TERMINATION: delete Data;
 	}
 
 	template<typename FilterType>

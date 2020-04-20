@@ -9,11 +9,11 @@ struct Transpose final {
 		InputClip = Arguments["clip"];
 		return true;
 	}
-	auto Preprocess(auto Core, auto Console) {
+	auto RegisterInvokingSequence(auto Core, auto&& SelfInvoker, auto Console) {
 		auto TransposeFilter = Core["std"]["Transpose"];
 		if (auto EvaluatedClip = TransposeFilter("clip", InputClip); TransposeFilter.EvaluationFailed())
-			return Console.RaiseError(TransposeFilter.ErrorMessage);
+			Console.RaiseError(TransposeFilter.ErrorMessage);
 		else
-			return Console.Receive(EvaluatedClip);
+			Console.Receive(EvaluatedClip);
 	}
 };

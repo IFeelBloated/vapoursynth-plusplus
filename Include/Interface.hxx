@@ -30,33 +30,38 @@ namespace VaporInterface {
 	template<typename FilterType>
 	auto Create(auto InputMap, auto OutputMap, auto, auto Core, auto...) {
 		auto Data = FilterType{};
-		auto Arguments = ArgumentList{ InputMap };
 		auto Console = Controller<FilterType>{ OutputMap };
-		auto CoreInstance = VaporCore{ .Instance = Core };
-		auto SelfInvoker = [&]() {
-			auto EvaluatedClip = Clip{};
+		auto SelfEvaluator = [&](auto EvaluatedMap, auto InstanceData) {
 			auto AuxiliaryMap = VaporGlobals::API->createMap();
-			auto EvaluatedItems = VaporGlobals::API->createMap();
 			auto AssumedMultithreadingMode = VSFilterMode::fmParallel;
 			auto AssumedCacheFlag = 0;
 			if constexpr (hasattr(Data, MultithreadingMode))
 				AssumedMultithreadingMode = FilterType::MultithreadingMode;
 			if constexpr (hasattr(Data, CacheFlag))
 				AssumedCacheFlag = FilterType::CacheFlag;
-			if constexpr (hasattr(Data, DrawFrame)) {
-				VaporGlobals::API->createFilter(AuxiliaryMap, EvaluatedItems, FilterType::Name, Initialize<FilterType>, Evaluate<FilterType>, Delete<FilterType>, AssumedMultithreadingMode, AssumedCacheFlag, new FilterType{ Data }, Core);
-				EvaluatedClip = VaporGlobals::API->propGetNode(EvaluatedItems, "clip", 0, nullptr);
-			}
-			VaporGlobals::API->freeMap(EvaluatedItems);
+			if constexpr (hasattr(Data, DrawFrame))
+				VaporGlobals::API->createFilter(AuxiliaryMap, EvaluatedMap, FilterType::Name, Initialize<FilterType>, Evaluate<FilterType>, Delete<FilterType>, AssumedMultithreadingMode, AssumedCacheFlag, InstanceData, Core);
 			VaporGlobals::API->freeMap(AuxiliaryMap);
-			return EvaluatedClip;
 		};
-		if (auto InitializationStatus = Data.Initialize(Arguments, Console); InitializationStatus == false)
+		auto SelfInvoker = [&](auto&& ...Arguments) {
+			auto InstanceData = new FilterType{};
+			auto ArgumentMap = VaporGlobals::API->createMap();
+			auto EvaluatedMap = VaporGlobals::API->createMap();
+			if constexpr (sizeof...(Arguments) != 0)
+				VaporPlugin::VaporFilter::ForwardArguments(ArgumentMap, Forward(Arguments)...);
+			InstanceData->Initialize(ArgumentList{ ArgumentMap }, Console);
+			SelfEvaluator(EvaluatedMap, InstanceData);
+			auto EvaluatedClip = VaporGlobals::API->propGetNode(EvaluatedMap, "clip", 0, nullptr);
+			VaporGlobals::API->freeMap(EvaluatedMap);
+			VaporGlobals::API->freeMap(ArgumentMap);
+			return Clip{ EvaluatedClip };
+		};
+		if (auto InitializationStatus = Data.Initialize(ArgumentList{ InputMap }, Console); InitializationStatus == false)
 			return;
 		if constexpr (hasattr(Data, RegisterInvokingSequence))
-			Data.RegisterInvokingSequence(CoreInstance, SelfInvoker, Console);
+			Data.RegisterInvokingSequence(VaporCore{ .Instance = Core }, SelfInvoker, Console);
 		else
-			Console.Receive(SelfInvoker());
+			SelfEvaluator(OutputMap, new FilterType{ std::move(Data) });
 	}
 
 	template<typename FilterType>

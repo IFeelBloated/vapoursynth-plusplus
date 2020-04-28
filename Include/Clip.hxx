@@ -119,4 +119,7 @@ struct Clip final : VSVideoInfo, MaterializedFormat {
 	auto WithConstantFormat() {
 		return Format != nullptr;
 	}
+	auto ContainsVideoReference() {
+		return VideoNode != nullptr;
+	}
 };

@@ -23,7 +23,7 @@ namespace VaporInterface {
 		if (ActivationReason == VSActivationReason::arInitial)
 			Data->RequestReferenceFrames(Index, FrameContext);
 		else if (ActivationReason == VSActivationReason::arAllFramesReady)
-			return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, VaporFrameContext<FilterType>{.Context = FrameContext });
+			return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, VaporFrameContext<FilterType>{ .Context = FrameContext });
 		return NullFrame;
 	}
 

@@ -10,7 +10,7 @@ struct VaporPlugin final {
 		self(FailureFlag, false);
 		static auto ForwardArguments(auto ArgumentMap, auto&& Parameter, auto&& Argument, auto&& ...ArgumentQueue) {
 			auto MaterializedParameter = WritableItem{ .Map = ArgumentMap, .Key = Forward(Parameter) };
-			if constexpr (hasattr(Argument, Begin) && !isinstance(Argument, std::string) && !isinstance(Argument, std::string_view))
+			if constexpr (requires { Argument.Begin(); } && !isinstance(Argument, std::string) && !isinstance(Argument, std::string_view))
 				for (auto&& x : Argument)
 					MaterializedParameter += x;
 			else

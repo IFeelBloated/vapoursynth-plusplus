@@ -23,7 +23,7 @@ namespace VaporInterface {
 		if (ActivationReason == VSActivationReason::arInitial)
 			Data->RequestReferenceFrames(Index, FrameContext);
 		else if (ActivationReason == VSActivationReason::arAllFramesReady)
-			return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, VaporFrameContext<FilterType>{ .Context = FrameContext });
+			return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, VaporFrameContext<FilterType>{.Context = FrameContext });
 		return NullFrame;
 	}
 
@@ -35,11 +35,11 @@ namespace VaporInterface {
 			auto AuxiliaryMap = VaporGlobals::API->createMap();
 			auto AssumedMultithreadingMode = VSFilterMode::fmParallel;
 			auto AssumedCacheFlag = 0;
-			if constexpr (hasattr(Data, MultithreadingMode))
+			if constexpr (requires { &FilterType::MultithreadingMode; })
 				AssumedMultithreadingMode = FilterType::MultithreadingMode;
-			if constexpr (hasattr(Data, CacheFlag))
+			if constexpr (requires { &FilterType::CacheFlag; })
 				AssumedCacheFlag = FilterType::CacheFlag;
-			if constexpr (hasattr(Data, DrawFrame))
+			if constexpr (requires { Data.DrawFrame(0, VaporCore{}, VaporFrameContext<FilterType>{}); })
 				VaporGlobals::API->createFilter(AuxiliaryMap, EvaluatedMap, FilterType::Name, Initialize<FilterType>, Evaluate<FilterType>, Delete<FilterType>, AssumedMultithreadingMode, AssumedCacheFlag, InstanceData, Core);
 			VaporGlobals::API->freeMap(AuxiliaryMap);
 		};
@@ -58,7 +58,7 @@ namespace VaporInterface {
 		};
 		if (auto InitializationStatus = Data.Initialize(ArgumentList{ InputMap }, Console); InitializationStatus == false)
 			return;
-		if constexpr (hasattr(Data, RegisterInvokingSequence))
+		if constexpr (requires { Data.RegisterInvokingSequence(VaporCore{}, SelfInvoker, Console); })
 			Data.RegisterInvokingSequence(VaporCore{ .Instance = Core }, SelfInvoker, Console);
 		else
 			SelfEvaluator(OutputMap, new FilterType{ std::move(Data) });

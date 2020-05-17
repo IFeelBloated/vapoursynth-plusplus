@@ -4,6 +4,9 @@
 #include "Format.hxx"
 #include "SpatialPaddingPolicies.hxx"
 
+template<typename ArbitraryType>
+concept VaporFrameCompatible = requires(ArbitraryType x) { VaporGlobals::API->freeFrame(x); };
+
 template<typename PixelType>
 struct Frame final : MaterializedFormat {
 	self(RawFrame, static_cast<VSFrameRef*>(nullptr));
@@ -11,28 +14,28 @@ struct Frame final : MaterializedFormat {
 	self(Format, static_cast<const VSFormat*>(nullptr));
 	self(PropertyMap, static_cast<VSMap*>(nullptr));
 	Frame() = default;
-	Frame(auto RawFrame) {
-		auto ConstructPlane = [&](auto Index) {
-			auto Width = VaporGlobals::API->getFrameWidth(RawFrame, Index);
-			auto Height = VaporGlobals::API->getFrameHeight(RawFrame, Index);
-			auto Stride = VaporGlobals::API->getStride(RawFrame, Index) / sizeof(PixelType);
+	Frame(VaporFrameCompatible auto&& RawFrame) {
+		auto ConstructPlane = [this](auto Index) {
+			auto Width = VaporGlobals::API->getFrameWidth(this->RawFrame, Index);
+			auto Height = VaporGlobals::API->getFrameHeight(this->RawFrame, Index);
+			auto Stride = VaporGlobals::API->getStride(this->RawFrame, Index) / sizeof(PixelType);
 			auto GetPlanePointer = [&]() {
 				if constexpr (std::is_const_v<PixelType>)
-					return VaporGlobals::API->getReadPtr(RawFrame, Index);
+					return VaporGlobals::API->getReadPtr(this->RawFrame, Index);
 				else
-					return VaporGlobals::API->getWritePtr(RawFrame, Index);
+					return VaporGlobals::API->getWritePtr(this->RawFrame, Index);
 			};
 			return Plane<PixelType>{ GetPlanePointer(), Width, Height, Stride, PaddingPolicies::Spatial::Default };
 		};
-		this->RawFrame = RawFrame;
-		this->Format = VaporGlobals::API->getFrameFormat(RawFrame);
+		this->RawFrame = Forward(RawFrame);
+		this->Format = VaporGlobals::API->getFrameFormat(this->RawFrame);
 		SynchronizeFormat();
 		for (auto Index : Range{ PlaneCount })
 			Planes[Index] = ConstructPlane(Index);
 		if constexpr (std::is_const_v<PixelType>)
-			PropertyMap = PointerRemoveConstant(VaporGlobals::API->getFramePropsRO(RawFrame));
+			PropertyMap = PointerRemoveConstant(VaporGlobals::API->getFramePropsRO(this->RawFrame));
 		else
-			PropertyMap = VaporGlobals::API->getFramePropsRW(RawFrame);
+			PropertyMap = VaporGlobals::API->getFramePropsRW(this->RawFrame);
 	}
 	Frame(const Frame& OtherFrame) {
 		*this = OtherFrame;

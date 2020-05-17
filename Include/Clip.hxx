@@ -2,6 +2,9 @@
 #include "Frame.hxx"
 #include "TemporalPaddingPolicies.hxx"
 
+template<typename ArbitraryType>
+concept VaporNodeCompatible = requires(ArbitraryType x) { VaporGlobals::API->freeNode(x); };
+
 struct Clip final : VSVideoInfo, MaterializedFormat {
 	self(VideoNode, static_cast<VSNodeRef*>(nullptr));
 	template<typename ContainerType>
@@ -40,10 +43,10 @@ struct Clip final : VSVideoInfo, MaterializedFormat {
 			EnclosedFormat = *Format;
 	}
 	Clip() = default;
-	Clip(auto RawClip) {
+	Clip(VaporNodeCompatible auto&& RawClip) {
 		auto& VideoInfo = ExposeVideoInfo();
-		VideoNode = RawClip;
-		VideoInfo = *VaporGlobals::API->getVideoInfo(RawClip);
+		VideoNode = Forward(RawClip);
+		VideoInfo = *VaporGlobals::API->getVideoInfo(VideoNode);
 		SynchronizeFormat();
 	}
 	auto& operator=(const Clip& OtherClip) {

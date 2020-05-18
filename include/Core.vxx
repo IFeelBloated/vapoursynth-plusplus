@@ -1,5 +1,5 @@
 #pragma once
-#include "Plugin.hxx"
+#include "Plugin.vxx"
 
 struct VaporCore final {
 	self(Instance, static_cast<VSCore*>(nullptr));

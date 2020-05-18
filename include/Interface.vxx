@@ -1,6 +1,6 @@
 #pragma once
-#include "Core.hxx"
-#include "Buffer.hxx"
+#include "Core.vxx"
+#include "Buffer.vxx"
 
 namespace VaporInterface {
 	template<typename FilterType>

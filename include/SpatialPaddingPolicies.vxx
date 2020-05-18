@@ -1,5 +1,5 @@
 #pragma once
-#include "Infrastructure.hxx"
+#include "Infrastructure.vxx"
 
 namespace PaddingPolicies {
 	auto ReflectCoordinate(auto x, auto Bound) {

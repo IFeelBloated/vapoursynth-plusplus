@@ -1,8 +1,8 @@
 #pragma once
-#include "Globals.hxx"
-#include "Plane.hxx"
-#include "Format.hxx"
-#include "SpatialPaddingPolicies.hxx"
+#include "Globals.vxx"
+#include "Plane.vxx"
+#include "Format.vxx"
+#include "SpatialPaddingPolicies.vxx"
 
 template<typename ArbitraryType>
 concept VaporFrameCompatible = requires(ArbitraryType x) { VaporGlobals::API->freeFrame(x); };

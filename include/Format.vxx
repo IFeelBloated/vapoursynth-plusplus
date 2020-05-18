@@ -1,6 +1,6 @@
 #pragma once
 #include "VapourSynth.h"
-#include "Infrastructure.hxx"
+#include "Infrastructure.vxx"
 
 struct MaterializedFormat : VSFormat {
 	auto IsSinglePrecision() {

@@ -1,5 +1,5 @@
 #pragma once
-#include "Frame.hxx"
+#include "Frame.vxx"
 
 template<typename PixelType>
 struct Buffer final {

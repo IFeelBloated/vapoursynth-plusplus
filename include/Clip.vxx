@@ -1,6 +1,6 @@
 #pragma once
-#include "Frame.hxx"
-#include "TemporalPaddingPolicies.hxx"
+#include "Frame.vxx"
+#include "TemporalPaddingPolicies.vxx"
 
 template<typename ArbitraryType>
 concept VaporNodeCompatible = requires(ArbitraryType x) { VaporGlobals::API->freeNode(x); };

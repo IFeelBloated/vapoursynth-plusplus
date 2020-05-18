@@ -1,5 +1,5 @@
 #pragma once
-#include "../Include/Interface.hxx"
+#include "Interface.vxx"
 
 struct nnedi3_rpow2 final {
     static constexpr auto Name = "nnedi3_rpow2";

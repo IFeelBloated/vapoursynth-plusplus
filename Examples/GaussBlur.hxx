@@ -1,5 +1,5 @@
 #pragma once
-#include "../Include/Interface.hxx"
+#include "Interface.vxx"
 
 struct GaussBlur final {
 	static constexpr auto Name = "GaussBlur";

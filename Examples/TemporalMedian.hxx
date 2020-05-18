@@ -1,5 +1,5 @@
 #pragma once
-#include "../Include/Interface.hxx"
+#include "Interface.vxx"
 
 struct TemporalMedian final {
 	static constexpr auto Name = "TemporalMedian";

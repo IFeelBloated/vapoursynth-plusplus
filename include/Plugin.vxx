@@ -1,5 +1,5 @@
 #pragma once
-#include "Map.hxx"
+#include "Map.vxx"
 
 struct VaporPlugin final {
 	self(Plugin, static_cast<VSPlugin*>(nullptr));

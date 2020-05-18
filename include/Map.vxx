@@ -1,5 +1,5 @@
 #pragma once
-#include "Clip.hxx"
+#include "Clip.vxx"
 
 struct ReadonlyItem final {
 	self(Map, static_cast<const VSMap*>(nullptr));

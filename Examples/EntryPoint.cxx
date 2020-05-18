@@ -1,4 +1,4 @@
-#include "../Include/Interface.hxx"
+#include "Interface.vxx"
 #include "GaussBlur.hxx"
 #include "TemporalMedian.hxx"
 #include "Crop.hxx"

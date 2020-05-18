@@ -1,7 +1,6 @@
 #pragma once
-#include "Globals.hxx"
-#include "SpatialPaddingPolicies.hxx"
-#include "Frame.hxx"
+#include "SpatialPaddingPolicies.vxx"
+#include "Frame.vxx"
 
 namespace PaddingPolicies::Temporal {
 	template<typename PixelType>

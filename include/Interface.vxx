@@ -48,7 +48,7 @@ namespace VaporInterface {
 			auto ArgumentMap = VaporGlobals::API->createMap();
 			auto EvaluatedMap = VaporGlobals::API->createMap();
 			if constexpr (sizeof...(Arguments) != 0)
-				VaporPlugin::VaporFilter::ForwardArguments(ArgumentMap, Forward(Arguments)...);
+				ForwardArguments(ArgumentMap, Forward(Arguments)...);
 			InstanceData->Initialize(ArgumentList{ ArgumentMap }, Console);
 			SelfEvaluator(EvaluatedMap, InstanceData);
 			auto EvaluatedClip = VaporGlobals::API->propGetNode(EvaluatedMap, "clip", 0, nullptr);

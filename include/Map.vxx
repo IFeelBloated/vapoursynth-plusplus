@@ -1,5 +1,6 @@
 #pragma once
 #include "Clip.vxx"
+#include "Function.vxx"
 
 struct ReadonlyItem final {
 	self(Map, static_cast<const VSMap*>(nullptr));
@@ -39,8 +40,14 @@ struct ReadonlyItem final {
 		this->Index = Index;
 		return *this;
 	}
+	auto& PeekFrameFormat() {
+		auto RawFrame = VaporGlobals::API->propGetFrame(Map, Key.data(), Index, nullptr);
+		auto Format = VaporGlobals::API->getFrameFormat(RawFrame);
+		VaporGlobals::API->freeFrame(RawFrame);
+		return static_cast<const MaterializedFormat&>(*Format);
+	}
 	operator Clip() {
-		return Clip{ VaporGlobals::API->propGetNode(Map, Key.data(), Index, nullptr) };
+		return { VaporGlobals::API->propGetNode(Map, Key.data(), Index, nullptr) };
 	}
 	operator double() {
 		return VaporGlobals::API->propGetFloat(Map, Key.data(), Index, nullptr);
@@ -58,7 +65,14 @@ struct ReadonlyItem final {
 		return !!VaporGlobals::API->propGetInt(Map, Key.data(), Index, nullptr);
 	}
 	operator std::string() {
-		return std::string{ VaporGlobals::API->propGetData(Map, Key.data(), Index, nullptr) };
+		return { VaporGlobals::API->propGetData(Map, Key.data(), Index, nullptr) };
+	}
+	template<typename PixelType>
+	operator Frame<PixelType>() {
+		return { PointerRemoveConstant(VaporGlobals::API->propGetFrame(Map, Key.data(), Index, nullptr)) };
+	}
+	operator Function() {
+		return { VaporGlobals::API->propGetFunc(Map, Key.data(), Index, nullptr) };
 	}
 };
 
@@ -76,6 +90,10 @@ struct WritableItem final {
 			return VaporGlobals::API->propSetData(Map, Key.data(), Value.data(), Value.size(), AppendMode) == 0;
 		else if constexpr (isinstance(Value, Clip))
 			return VaporGlobals::API->propSetNode(Map, Key.data(), Value.VideoNode, AppendMode) == 0;
+		else if constexpr (requires { &Value.RawFrame; })
+			return VaporGlobals::API->propSetFrame(Map, Key.data(), Value.RawFrame, AppendMode) == 0;
+		else if constexpr (isinstance(Value, Function))
+			return VaporGlobals::API->propSetFunc(Map, Key.data(), Value.FunctionHandle, AppendMode) == 0;
 		else
 			return false;
 	}
@@ -136,4 +154,40 @@ auto Frame<PixelType>::GetProperty(auto&& Key) {
 		return ReadonlyItem{ .Map = PropertyMap, .Key = Forward(Key) };
 	else
 		return WritableItem{ .Map = PropertyMap, .Key = Forward(Key) };
+}
+
+auto Function::SynchronizeEvaluatedMap(auto OtherEvaluatedMap)->void {
+	RefreshEvaluatedMap();
+	auto ResultItems = WritableItem{ .Map = EvaluatedMap, .Key = "val" };
+	auto ReferenceItems = ReadonlyItem{ .Map = OtherEvaluatedMap, .Key = "val" };
+	for (auto& x : ReferenceItems)
+		if (x.Type() == VSPropTypes::ptNode)
+			ResultItems += static_cast<Clip>(x);
+		else if (x.Type() == VSPropTypes::ptFloat)
+			ResultItems += static_cast<double>(x);
+		else if (x.Type() == VSPropTypes::ptInt)
+			ResultItems += static_cast<std::int64_t>(x);
+		else if (x.Type() == VSPropTypes::ptData)
+			ResultItems += static_cast<std::string>(x);
+		else if (x.Type() == VSPropTypes::ptFrame)
+			ResultItems += static_cast<Frame<char>>(x);
+		else if (x.Type() == VSPropTypes::ptFunction)
+			ResultItems += static_cast<Function>(x);
+	if (auto EvaluationState = VaporGlobals::API->getError(OtherEvaluatedMap); EvaluationState != nullptr)
+		VaporGlobals::API->setError(EvaluatedMap, EvaluationState);
+}
+
+auto Function::ExtractEvaluatedResult() {
+	return ReadonlyItem{ .Map = EvaluatedMap, .Key = "val" };
+}
+
+auto ForwardArguments(auto ArgumentMap, auto&& Parameter, auto&& Argument, auto&& ...ArgumentQueue) {
+	auto MaterializedParameter = WritableItem{ .Map = ArgumentMap, .Key = Forward(Parameter) };
+	if constexpr (requires { Argument.Begin(); } && !isinstance(Argument, std::string) && !isinstance(Argument, std::string_view))
+		for (auto&& x : Argument)
+			MaterializedParameter += x;
+	else
+		MaterializedParameter = Argument;
+	if constexpr (sizeof...(ArgumentQueue) != 0)
+		ForwardArguments(ArgumentMap, Forward(ArgumentQueue)...);
 }

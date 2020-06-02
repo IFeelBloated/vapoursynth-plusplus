@@ -114,7 +114,7 @@ struct Clip final : VSVideoInfo, MaterializedFormat {
 		auto RawFrame = VaporGlobals::API->getFrameFilter(Index, VideoNode, FrameContext);
 		auto Format = VaporGlobals::API->getFrameFormat(RawFrame);
 		VaporGlobals::API->freeFrame(RawFrame);
-		return static_cast<MaterializedFormat&>(*Format);
+		return static_cast<const MaterializedFormat&>(*Format);
 	}
 	auto WithConstantDimensions() {
 		return Width != 0 && Height != 0;

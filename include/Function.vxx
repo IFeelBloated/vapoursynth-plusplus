@@ -1,0 +1,74 @@
+#pragma once
+#include "Range.vxx"
+#include "Globals.vxx"
+
+auto ForwardArguments(auto, auto&&, auto&&, auto&&...);
+
+template<typename ArbitraryType>
+concept VaporFunctionCompatible = requires(ArbitraryType x) { VaporGlobals::API->freeFunc(x); };
+
+struct Function final {
+	self(FunctionHandle, static_cast<VSFuncRef*>(nullptr));
+	self(EvaluatedMap, static_cast<VSMap*>(nullptr));
+	self(ErrorMessage, ""s);
+	self(FailureFlag, false);
+	Function() = default;
+	Function(VaporFunctionCompatible auto&& RawFunction) {
+		FunctionHandle = Forward(RawFunction);
+	}
+	auto RefreshEvaluatedMap() {
+		if (EvaluatedMap != nullptr)
+			VaporGlobals::API->freeMap(EvaluatedMap);
+		EvaluatedMap = VaporGlobals::API->createMap();
+	}
+	auto SynchronizeEvaluatedMap(auto)->void;
+	auto& operator=(const Function& OtherFunction) {
+		if (this != &OtherFunction) {
+			VaporGlobals::API->freeFunc(FunctionHandle);
+			FunctionHandle = VaporGlobals::API->cloneFuncRef(OtherFunction.FunctionHandle);
+			SynchronizeEvaluatedMap(OtherFunction.EvaluatedMap);
+			ErrorMessage = OtherFunction.ErrorMessage;
+			FailureFlag = OtherFunction.FailureFlag;
+		}
+		return *this;
+	}
+	auto& operator=(Function&& OtherFunction) {
+		if (this != &OtherFunction) {
+			std::swap(FunctionHandle, OtherFunction.FunctionHandle);
+			std::swap(EvaluatedMap, OtherFunction.EvaluatedMap);
+			ErrorMessage = std::move(OtherFunction.ErrorMessage);
+			FailureFlag = OtherFunction.FailureFlag;
+		}
+		return *this;
+	}
+	Function(const Function& OtherFunction) {
+		*this = OtherFunction;
+	}
+	Function(Function&& OtherFunction) {
+		*this = std::move(OtherFunction);
+	}
+	~Function() {
+		if (EvaluatedMap != nullptr)
+			VaporGlobals::API->freeMap(EvaluatedMap);
+		VaporGlobals::API->freeFunc(FunctionHandle);
+	}
+	auto ExtractEvaluatedResult();
+	auto operator()(auto&& ...Arguments) {
+		auto ArgumentMap = VaporGlobals::API->createMap();
+		RefreshEvaluatedMap();
+		if constexpr (sizeof...(Arguments) != 0)
+			ForwardArguments(ArgumentMap, Forward(Arguments)...);
+		VaporGlobals::API->callFunc(FunctionHandle, ArgumentMap, EvaluatedMap, nullptr, nullptr);
+		if (auto EvaluationState = VaporGlobals::API->getError(EvaluatedMap); EvaluationState != nullptr) {
+			ErrorMessage = EvaluationState;
+			FailureFlag = true;
+		}
+		else
+			FailureFlag = false;
+		VaporGlobals::API->freeMap(ArgumentMap);
+		return ExtractEvaluatedResult();
+	}
+	auto EvaluationFailed() {
+		return FailureFlag;
+	}
+};

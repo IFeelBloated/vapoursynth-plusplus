@@ -8,16 +8,6 @@ struct VaporPlugin final {
 		self(Name, ""s);
 		self(ErrorMessage, ""s);
 		self(FailureFlag, false);
-		static auto ForwardArguments(auto ArgumentMap, auto&& Parameter, auto&& Argument, auto&& ...ArgumentQueue) {
-			auto MaterializedParameter = WritableItem{ .Map = ArgumentMap, .Key = Forward(Parameter) };
-			if constexpr (requires { Argument.Begin(); } && !isinstance(Argument, std::string) && !isinstance(Argument, std::string_view))
-				for (auto&& x : Argument)
-					MaterializedParameter += x;
-			else
-				MaterializedParameter = Argument;
-			if constexpr (sizeof...(ArgumentQueue) != 0)
-				ForwardArguments(ArgumentMap, Forward(ArgumentQueue)...);
-		}
 		auto operator()(auto&& ...Arguments) {
 			auto ArgumentMap = VaporGlobals::API->createMap();
 			auto EvaluatedClip = Clip{};
@@ -28,8 +18,10 @@ struct VaporPlugin final {
 				ErrorMessage = EvaluationState;
 				FailureFlag = true;
 			}
-			else
+			else {
 				EvaluatedClip = VaporGlobals::API->propGetNode(EvaluatedItems, "clip", 0, nullptr);
+				FailureFlag = false;
+			}
 			VaporGlobals::API->freeMap(EvaluatedItems);
 			VaporGlobals::API->freeMap(ArgumentMap);
 			return EvaluatedClip;

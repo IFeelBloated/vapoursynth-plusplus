@@ -25,6 +25,6 @@ struct ModifyFrame final {
 		if (auto EvaluatedFrame = Evaluator("src", InputFrame); Evaluator.EvaluationFailed())
 			return FrameContext.RaiseError(Evaluator.ErrorMessage);
 		else
-			return static_cast<Frame<float>>(EvaluatedFrame).Leak();
+			return static_cast<Frame<const float>>(EvaluatedFrame).Leak();
 	}
 };

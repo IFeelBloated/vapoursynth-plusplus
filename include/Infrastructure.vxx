@@ -25,6 +25,7 @@
 #define Width width
 #define Height height
 #define Format format
+#define ID id
 #define SampleType sampleType
 #define BitsPerSample bitsPerSample
 #define ColorFamily colorFamily

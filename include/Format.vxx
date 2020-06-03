@@ -3,19 +3,25 @@
 #include "Infrastructure.vxx"
 
 struct MaterializedFormat : VSFormat {
-	auto IsSinglePrecision() {
+	auto IsSinglePrecision() const {
 		return SampleType == VSSampleType::stFloat && BitsPerSample == 32;
 	}
-	auto IsRGB() {
+	auto IsRGB() const {
 		return ColorFamily == VSColorFamily::cmRGB;
 	}
-	auto IsGray() {
+	auto IsGray() const {
 		return ColorFamily == VSColorFamily::cmGray;
 	}
-	auto IsYUV() {
+	auto IsYUV() const {
 		return ColorFamily == VSColorFamily::cmYUV;
 	}
-	auto Is444() {
+	auto Is444() const {
 		return HorizontalSubsamplingFactor == 0 && VerticalSubsamplingFactor == 0;
+	}
+	auto operator<=>(auto&& OtherFormat) const {
+		return ID <=> OtherFormat.ID;
+	}
+	auto operator==(auto&& OtherFormat) const {
+		return ID == OtherFormat.ID;
 	}
 };

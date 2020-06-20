@@ -19,6 +19,7 @@ headers = [
     'include/Core.vxx',
     'include/Format.vxx',
     'include/Frame.vxx',
+    'include/Function.vxx',
     'include/Globals.vxx',
     'include/Infrastructure.vxx',
     'include/Interface.vxx',
@@ -34,6 +35,8 @@ examples = [
     'Examples/Crop.hxx',
     'Examples/EntryPoint.cxx',
     'Examples/GaussBlur.hxx',
+    'Examples/ModifyFrame.hxx',
+    'Examples/ModifyFrameExample.vpy',
     'Examples/nnedi3_rpow2.hxx',
     'Examples/Rec601ToRGB.hxx',
     'Examples/TemporalMedian.hxx'

@@ -7,7 +7,10 @@ struct VaporCore final {
 		return VaporGlobals::API->getFormatPreset(FormatID, Instance);
 	}
 	auto AllocateFrame(auto Format, auto Width, auto Height) {
-		return VaporGlobals::API->newVideoFrame(Format, Width, Height, nullptr, Instance);
+		if constexpr (isinstance(Format, const VSFormat*) || isinstance(Format, VSFormat*))
+			return VaporGlobals::API->newVideoFrame(Format, Width, Height, nullptr, Instance);
+		else
+			return VaporGlobals::API->newVideoFrame(FetchFormat(Format), Width, Height, nullptr, Instance);
 	}
 	auto CopyFrameProperties(auto&& Source, auto&& Destination) {
 		VaporGlobals::API->copyFrameProps(Source, Destination, Instance);

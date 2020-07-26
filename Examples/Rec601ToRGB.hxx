@@ -21,7 +21,7 @@ struct Rec601ToRGB final {
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
 		auto InputFrame = InputClip.GetFrame<const float>(Index, FrameContext);
-		auto ProcessedFrame = Frame<float>{ Core.AllocateFrame(Core.FetchFormat(VSPresetFormat::pfRGBS), InputClip.Width, InputClip.Height) };
+		auto ProcessedFrame = Frame<float>{ Core.AllocateFrame(VSPresetFormat::pfRGBS, InputClip.Width, InputClip.Height) };
 		if (InputFrame["_Matrix"].Exists() == false)
 			return FrameContext.RaiseError("_Matrix property not found!");
 		if (InputFrame["_ColorRange"].Exists() == false)

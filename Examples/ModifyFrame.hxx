@@ -9,9 +9,9 @@ struct ModifyFrame final {
 	self(Evaluator, Function{});
 	auto Initialize(auto Arguments, auto Console) {
 		InputClip = Arguments["clip"];
+		Evaluator = Arguments["evaluator"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
 			return Console.RaiseError("only single precision floating point clips with constant format and dimensions supported.");
-		Evaluator = Arguments["evaluator"];
 		return true;
 	}
 	auto RegisterVideoInfo(auto Core) {

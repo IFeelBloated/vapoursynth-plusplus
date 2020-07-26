@@ -7,7 +7,10 @@ namespace VaporInterface {
 	auto Initialize(auto, auto, auto InstanceData, auto Node, auto Core, auto...) {
 		auto Data = reinterpret_cast<FilterType*>(*InstanceData);
 		auto VideoInfo = Data->RegisterVideoInfo(VaporCore{ .Instance = Core });
-		VaporGlobals::API->setVideoInfo(&VideoInfo, 1, Node);
+		if constexpr (requires { VideoInfo.Size(); })
+			VaporGlobals::API->setVideoInfo(VideoInfo.data(), VideoInfo.Size(), Node);
+		else
+			VaporGlobals::API->setVideoInfo(&VideoInfo, 1, Node);
 	}
 
 	template<typename FilterType>
@@ -20,10 +23,14 @@ namespace VaporInterface {
 	auto Evaluate(auto Index, auto ActivationReason, auto InstanceData, auto, auto FrameContext, auto Core, auto...) {
 		auto Data = reinterpret_cast<FilterType*>(*InstanceData);
 		auto NullFrame = static_cast<const VSFrameRef*>(nullptr);
+		auto EvaluatedFrame = Data->DrawFrame(Index, VaporCore{ .Instance = Core }, VaporFrameContext<FilterType>{.Context = FrameContext });
 		if (ActivationReason == VSActivationReason::arInitial)
-			Data->RequestReferenceFrames(Index, FrameContext);
+			if constexpr (requires { Data->RequestReferenceFrames(0, FrameContext); })
+				Data->RequestReferenceFrames(Index, FrameContext);
+			else
+				return EvaluatedFrame;
 		else if (ActivationReason == VSActivationReason::arAllFramesReady)
-			return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, VaporFrameContext<FilterType>{ .Context = FrameContext });
+			return EvaluatedFrame;
 		return NullFrame;
 	}
 

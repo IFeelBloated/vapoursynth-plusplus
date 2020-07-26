@@ -101,6 +101,9 @@ struct VaporFrameContext final {
 		VaporGlobals::API->setFilterError(ExposeCString(DecoratedMessage), Context);
 		return NullFrame;
 	}
+	auto RevealOutputIndex() {
+		return VaporGlobals::API->getOutputIndex(Context);
+	}
 	operator auto() {
 		return Context;
 	}

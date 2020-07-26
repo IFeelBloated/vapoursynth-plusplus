@@ -140,8 +140,14 @@ struct Controller final {
 		VaporGlobals::API->setError(OutputMap, ExposeCString(DecoratedMessage));
 		return false;
 	}
-	auto Receive(auto&& VideoClip) {
-		return VaporGlobals::API->propSetNode(OutputMap, "clip", VideoClip.VideoNode, VSPropAppendMode::paAppend) == 0;
+	auto Receive(auto&& VideoOutput) {
+		auto OutputSequence = WritableItem{ .Map = OutputMap, .Key = "clip" };
+		if constexpr (requires { VideoOutput.Size(); })
+			for (auto&& x : VideoOutput)
+				OutputSequence += x;
+		else
+			OutputSequence = VideoOutput;
+		return true;
 	}
 	operator auto() {
 		return OutputMap;

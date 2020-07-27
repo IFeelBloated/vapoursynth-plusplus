@@ -187,6 +187,19 @@ auto Function::ExtractEvaluatedResult() {
 	return ReadonlyItem{ .Map = EvaluatedMap, .Key = "val" };
 }
 
+template<auto ContainsMultipleClips>
+auto ExtractEvaluatedClips(auto EvaluatedMap) {
+	auto ClipSequence = ReadonlyItem{ .Map = EvaluatedMap, .Key = "clip" };
+	if constexpr (ContainsMultipleClips) {
+		auto EvaluatedClips = std::vector<Clip>{};
+		for (auto&& x : ClipSequence)
+			EvaluatedClips.push_back(x);
+		return EvaluatedClips;
+	}
+	else
+		return static_cast<Clip>(ClipSequence);
+}
+
 auto ForwardArguments(auto ArgumentMap, auto&& Parameter, auto&& Argument, auto&& ...ArgumentQueue) {
 	auto MaterializedParameter = WritableItem{ .Map = ArgumentMap, .Key = Forward(Parameter) };
 	if constexpr (requires { Argument.Begin(); } && !isinstance(Argument, std::string) && !isinstance(Argument, std::string_view))

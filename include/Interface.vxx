@@ -53,26 +53,14 @@ namespace VaporInterface {
 			auto InstanceData = new FilterType{};
 			auto ArgumentMap = VaporGlobals::API->createMap();
 			auto EvaluatedMap = VaporGlobals::API->createMap();
-			auto ExtractEvaluatedResults = [&]() {
-				constexpr auto ContainsMultipleClips = requires { Data.RegisterVideoInfo(VaporCore{}).Size(); };
-				auto ClipSequence = ReadonlyItem{ .Map = EvaluatedMap, .Key = "clip" };
-				if constexpr (ContainsMultipleClips) {
-					auto EvaluatedResults = std::vector<Clip>{};
-					for (auto&& x : ClipSequence)
-						EvaluatedResults.push_back(x);
-					return EvaluatedResults;
-				}
-				else
-					return static_cast<Clip>(ClipSequence);
-			};
 			if constexpr (sizeof...(Arguments) != 0)
 				ForwardArguments(ArgumentMap, Forward(Arguments)...);
 			InstanceData->Initialize(ArgumentList{ ArgumentMap }, Console);
 			SelfEvaluator(EvaluatedMap, InstanceData);
-			auto EvaluatedResults = ExtractEvaluatedResults();
+			auto EvaluatedClips = ExtractEvaluatedClips<requires { Data.RegisterVideoInfo(VaporCore{}).Size(); }>(EvaluatedMap);
 			VaporGlobals::API->freeMap(EvaluatedMap);
 			VaporGlobals::API->freeMap(ArgumentMap);
-			return EvaluatedResults;
+			return EvaluatedClips;
 		};
 		if (auto InitializationStatus = Data.Initialize(ArgumentList{ InputMap }, Console); InitializationStatus == false)
 			return;

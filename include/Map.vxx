@@ -149,6 +149,9 @@ struct Controller final {
 			OutputSequence = VideoOutput;
 		return true;
 	}
+	auto Receive(auto&& ...VideoOutputs) {
+		return Receive(std::array{ Forward(VideoOutputs)... });
+	}
 	operator auto() {
 		return OutputMap;
 	}
@@ -187,15 +190,22 @@ auto Function::ExtractEvaluatedResult() {
 	return ReadonlyItem{ .Map = EvaluatedMap, .Key = "val" };
 }
 
-template<auto ContainsMultipleClips>
+template<auto ContainsMultipleClips, auto NumberOfClips>
 auto ExtractEvaluatedClips(auto EvaluatedMap) {
 	auto ClipSequence = ReadonlyItem{ .Map = EvaluatedMap, .Key = "clip" };
-	if constexpr (ContainsMultipleClips) {
-		auto EvaluatedClips = std::vector<Clip>{};
-		for (auto&& x : ClipSequence)
-			EvaluatedClips.push_back(x);
-		return EvaluatedClips;
-	}
+	if constexpr (ContainsMultipleClips)
+		if constexpr (NumberOfClips == IndefiniteSize) {
+			auto EvaluatedClips = std::vector<Clip>{};
+			for (auto&& x : ClipSequence)
+				EvaluatedClips.push_back(x);
+			return EvaluatedClips;
+		}
+		else {
+			auto EvaluatedClips = std::array<Clip, NumberOfClips>{};
+			for (auto x : Range{ Min(NumberOfClips, ClipSequence.Size()) })
+				EvaluatedClips[x] = ClipSequence[x];
+			return EvaluatedClips;
+		}
 	else
 		return static_cast<Clip>(ClipSequence);
 }

@@ -8,7 +8,14 @@ namespace VaporInterface {
 		auto Data = reinterpret_cast<FilterType*>(*InstanceData);
 		auto VideoInfo = Data->RegisterVideoInfo(VaporCore{ .Instance = Core });
 		if constexpr (requires { VideoInfo.Size(); })
-			VaporGlobals::API->setVideoInfo(VideoInfo.data(), VideoInfo.Size(), Node);
+			if constexpr (requires { VideoInfo.data(); })
+				VaporGlobals::API->setVideoInfo(VideoInfo.data(), VideoInfo.Size(), Node);
+			else {
+				auto AggregatedVideoInfo = std::vector<VSVideoInfo>{};
+				for (auto&& x : VideoInfo)
+					AggregatedVideoInfo.push_back(x);
+				VaporGlobals::API->setVideoInfo(AggregatedVideoInfo.data(), VideoInfo.Size(), Node);
+			}
 		else
 			VaporGlobals::API->setVideoInfo(&VideoInfo, 1, Node);
 	}
@@ -53,11 +60,23 @@ namespace VaporInterface {
 			auto InstanceData = new FilterType{};
 			auto ArgumentMap = VaporGlobals::API->createMap();
 			auto EvaluatedMap = VaporGlobals::API->createMap();
+			auto MaterializeEvaluatedClips = [&]() {
+				if constexpr (requires { InstanceData->RegisterVideoInfo(VaporCore{}); }) {
+					using VideoInfoType = decltype(InstanceData->RegisterVideoInfo(VaporCore{}));
+					auto VideoInfoPrototype = VideoInfoType{};
+					if constexpr (WithConstexprSize(VideoInfoPrototype))
+						return ExtractEvaluatedClips<true, VideoInfoPrototype.Size()>(EvaluatedMap);
+					else
+						return ExtractEvaluatedClips<requires { VideoInfoPrototype.Size(); }, IndefiniteSize>(EvaluatedMap);
+				}
+				else
+					return ExtractEvaluatedClips<true, IndefiniteSize>(EvaluatedMap);
+			};
 			if constexpr (sizeof...(Arguments) != 0)
 				ForwardArguments(ArgumentMap, Forward(Arguments)...);
 			InstanceData->Initialize(ArgumentList{ ArgumentMap }, Console);
 			SelfEvaluator(EvaluatedMap, InstanceData);
-			auto EvaluatedClips = ExtractEvaluatedClips<requires { Data.RegisterVideoInfo(VaporCore{}).Size(); }>(EvaluatedMap);
+			auto EvaluatedClips = MaterializeEvaluatedClips();
 			VaporGlobals::API->freeMap(EvaluatedMap);
 			VaporGlobals::API->freeMap(ArgumentMap);
 			return EvaluatedClips;

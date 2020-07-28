@@ -18,6 +18,7 @@
 #define self(ClassMember, ...) std::decay_t<decltype(__VA_ARGS__)> ClassMember = __VA_ARGS__
 #define isinstance(Object, Type) (std::is_same_v<std::decay_t<decltype(Object)>, Type> || std::is_base_of_v<Type, std::decay_t<decltype(Object)>>)
 #define Forward(Object) std::forward<decltype(Object)>(Object)
+#define ConfigureForMultipleOutputs(...) template ConfigureForMultipleOutputsInternal __VA_OPT__(<) __VA_ARGS__ __VA_OPT__(>)()
 #define Begin begin
 #define End end
 #define Size size
@@ -85,4 +86,17 @@ auto ExposeCString(auto&& String) {
 		return String;
 	else
 		return String.data();
+}
+
+constexpr auto IndefiniteSize = -1_ptrdiff;
+
+template<auto>
+auto WithConstexprSizeHelper() {}
+
+consteval auto WithConstexprSize(auto&& Container) {
+	using ContainerType = std::decay_t<decltype(Container)>;
+	if constexpr (requires { WithConstexprSizeHelper<ContainerType{}.Size()>(); })
+		return true;
+	else
+		return false;
 }

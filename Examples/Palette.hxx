@@ -25,7 +25,7 @@ struct Palette final {
 			.Width = Width, .Height = Height,
 			.FrameCount = 1
 		};
-		return std::vector{ Shades.size(), VideoInfo };
+		return std::vector{ Shades.Size(), VideoInfo };
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
 		auto ProcessedFrame = Frame<float>{ Core.AllocateFrame(VSPresetFormat::pfGrayS, Width, Height) };

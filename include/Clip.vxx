@@ -83,32 +83,32 @@ struct Clip final : VSVideoInfo, MaterializedFormat {
 		for (auto Offset : Range{ Index - Radius, Index + Radius + 1 })
 			RequestFrame(Offset, FrameContext);
 	}
-	template<typename PixelType>
+	template<typename PixelType, auto DirectAccess = false>
 	auto GetFrame(auto Index, auto&& PaddingPolicy, auto FrameContext, auto&& ...AuxiliaryArguments) {
 		auto WrapAsFrame = [](auto RawFrame) {
-			return Frame<PixelType>{ PointerRemoveConstant(RawFrame) };
+			return Frame<PixelType, DirectAccess>{ PointerRemoveConstant(RawFrame) };
 		};
 		if (Index < 0 || Index >= FrameCount)
 			return WrapAsFrame(PaddingPolicy(*this, Index, FrameContext, Forward(AuxiliaryArguments)...));
 		else
 			return WrapAsFrame(VaporGlobals::API->getFrameFilter(Index, VideoNode, FrameContext));
 	}
-	template<typename PixelType>
+	template<typename PixelType, auto DirectAccess = false>
 	auto GetFrame(auto Index, auto FrameContext) {
-		return GetFrame<PixelType>(Index, PaddingPolicies::Temporal::Default, FrameContext);
+		return GetFrame<PixelType, DirectAccess>(Index, PaddingPolicies::Temporal::Default, FrameContext);
 	}
-	template<typename PixelType>
+	template<typename PixelType, auto DirectAccess = false>
 	auto GetFrames(auto Index, auto Radius, auto&& PaddingPolicy, auto FrameContext, auto&& ...AuxiliaryArguments) {
-		using ContainerType = std::vector<Frame<PixelType>>;
+		using ContainerType = std::vector<Frame<PixelType, DirectAccess>>;
 		auto Container = ContainerType{};
 		Container.reserve(2 * Radius + 1);
 		for (auto Offset : Range{ Index - Radius, Index + Radius + 1 })
-			Container.push_back(GetFrame<PixelType>(Offset, PaddingPolicy, FrameContext, Forward(AuxiliaryArguments)...));
+			Container.push_back(GetFrame<PixelType, DirectAccess>(Offset, PaddingPolicy, FrameContext, Forward(AuxiliaryArguments)...));
 		return Sequence<ContainerType>{ .Container = std::move(Container), .Radius = Radius };
 	}
-	template<typename PixelType>
+	template<typename PixelType, auto DirectAccess = false>
 	auto GetFrames(auto Index, auto Radius, auto FrameContext) {
-		return GetFrames<PixelType>(Index, Radius, PaddingPolicies::Temporal::Default, FrameContext);
+		return GetFrames<PixelType, DirectAccess>(Index, Radius, PaddingPolicies::Temporal::Default, FrameContext);
 	}
 	auto& PeekFrameFormat(auto Index, auto FrameContext) {
 		auto RawFrame = VaporGlobals::API->getFrameFilter(Index, VideoNode, FrameContext);

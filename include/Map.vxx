@@ -67,8 +67,8 @@ struct ReadonlyItem final {
 	operator std::string() {
 		return { VaporGlobals::API->propGetData(Map, Key.data(), Index, nullptr) };
 	}
-	template<typename PixelType>
-	operator Frame<PixelType>() {
+	template<typename PixelType, auto DirectAccess = false>
+	operator Frame<PixelType, DirectAccess>() {
 		return { PointerRemoveConstant(VaporGlobals::API->propGetFrame(Map, Key.data(), Index, nullptr)) };
 	}
 	operator Function() {
@@ -157,8 +157,8 @@ struct Controller final {
 	}
 };
 
-template<typename PixelType>
-auto Frame<PixelType>::GetProperty(auto&& Key) {
+template<typename PixelType, auto DirectAccess>
+auto Frame<PixelType, DirectAccess>::GetProperty(auto&& Key) {
 	if constexpr (std::is_const_v<PixelType>)
 		return ReadonlyItem{ .Map = PropertyMap, .Key = Forward(Key) };
 	else
@@ -194,7 +194,7 @@ template<auto ContainsMultipleClips, auto NumberOfClips>
 auto ExtractEvaluatedClips(auto EvaluatedMap) {
 	auto ClipSequence = ReadonlyItem{ .Map = EvaluatedMap, .Key = "clip" };
 	if constexpr (ContainsMultipleClips)
-		if constexpr (NumberOfClips == IndefiniteSize) {
+		if constexpr (NumberOfClips == IndeterminateSize) {
 			auto EvaluatedClips = std::vector<Clip>{};
 			for (auto&& x : ClipSequence)
 				EvaluatedClips.push_back(x);

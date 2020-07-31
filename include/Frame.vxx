@@ -7,10 +7,11 @@
 template<typename ArbitraryType>
 concept VaporFrameCompatible = requires(ArbitraryType x) { VaporGlobals::API->freeFrame(x); };
 
-template<typename PixelType>
+template<typename PixelType, auto DirectAccess = false>
 struct Frame final : MaterializedFormat {
+	using PlaneType = Plane<PixelType, DirectAccess>;
 	self(RawFrame, static_cast<VSFrameRef*>(nullptr));
-	self(Planes, std::array{ Plane<PixelType>{}, Plane<PixelType>{}, Plane<PixelType>{} });
+	self(Planes, std::array{ PlaneType{}, PlaneType{}, PlaneType{} });
 	self(Format, static_cast<const VSFormat*>(nullptr));
 	self(PropertyMap, static_cast<VSMap*>(nullptr));
 	Frame() = default;
@@ -25,7 +26,7 @@ struct Frame final : MaterializedFormat {
 				else
 					return VaporGlobals::API->getWritePtr(this->RawFrame, Index);
 			};
-			return Plane<PixelType>{ GetPlanePointer(), Width, Height, Stride, PaddingPolicies::Spatial::Default };
+			return PlaneType{ GetPlanePointer(), Width, Height, Stride, PaddingPolicies::Spatial::Default };
 		};
 		this->RawFrame = Forward(RawFrame);
 		this->Format = VaporGlobals::API->getFrameFormat(this->RawFrame);

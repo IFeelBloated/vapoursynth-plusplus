@@ -3,7 +3,7 @@
 
 struct VaporPlugin final {
 	self(Plugin, static_cast<VSPlugin*>(nullptr));
-	template<auto HasMultipleOutputs = false, auto NumberOfOutputs = IndefiniteSize>
+	template<auto HasMultipleOutputs = false, auto NumberOfOutputs = IndeterminateSize>
 	struct VaporFilter final {
 		self(Plugin, static_cast<VSPlugin*>(nullptr));
 		self(Name, ""s);
@@ -11,7 +11,7 @@ struct VaporPlugin final {
 		self(FailureFlag, false);
 		auto CreateOutputPrototype() {
 			if constexpr (HasMultipleOutputs)
-				if constexpr (NumberOfOutputs == IndefiniteSize)
+				if constexpr (NumberOfOutputs == IndeterminateSize)
 					return std::vector<Clip>{};
 				else
 					return std::array<Clip, NumberOfOutputs>{};
@@ -39,11 +39,11 @@ struct VaporPlugin final {
 		auto EvaluationFailed() {
 			return FailureFlag;
 		}
-		template<auto NumberOfClips = IndefiniteSize>
+		template<auto NumberOfClips = IndeterminateSize>
 		auto ConfigureForMultipleOutputsInternal() & {
 			return VaporFilter<true, NumberOfClips>{ .Plugin = Plugin, .Name = Name, .ErrorMessage = ErrorMessage, .FailureFlag = FailureFlag };
 		}
-		template<auto NumberOfClips = IndefiniteSize>
+		template<auto NumberOfClips = IndeterminateSize>
 		auto ConfigureForMultipleOutputsInternal() && {
 			return VaporFilter<true, NumberOfClips>{ .Plugin = Plugin, .Name = std::move(Name), .ErrorMessage = std::move(ErrorMessage), .FailureFlag = FailureFlag };
 		}

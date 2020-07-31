@@ -14,7 +14,6 @@ incdir = include_directories('include')
 test_plug = ['Examples/EntryPoint.cxx']
 
 headers = [
-    'include/Buffer.vxx',
     'include/Clip.vxx',
     'include/Core.vxx',
     'include/Format.vxx',
@@ -34,10 +33,12 @@ headers = [
 examples = [
     'Examples/Crop.hxx',
     'Examples/EntryPoint.cxx',
+    'Examples/GaussBlurFast.hxx',
     'Examples/GaussBlur.hxx',
-    'Examples/ModifyFrame.hxx',
     'Examples/ModifyFrameExample.vpy',
+    'Examples/ModifyFrame.hxx',
     'Examples/nnedi3_rpow2.hxx',
+    'Examples/Palette.hxx',
     'Examples/Rec601ToRGB.hxx',
     'Examples/TemporalMedian.hxx'
 ]

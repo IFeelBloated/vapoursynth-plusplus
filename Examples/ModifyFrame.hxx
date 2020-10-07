@@ -22,9 +22,12 @@ struct ModifyFrame final {
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
 		auto InputFrame = InputClip.GetFrame<const float>(Index, FrameContext);
-		if (auto EvaluatedFrame = Evaluator("src", InputFrame); Evaluator.EvaluationFailed())
-			return FrameContext.RaiseError(Evaluator.ErrorMessage);
-		else
-			return static_cast<Frame<const float>>(EvaluatedFrame).Leak();
+		try {
+			auto EvaluatedFrame = static_cast<Frame<const float>>(Evaluator("src", InputFrame));
+			return EvaluatedFrame.Leak();
+		}
+		catch (RuntimeError& ErrorMessage) {
+			return FrameContext.RaiseError(ErrorMessage);
+		}
 	}
 };

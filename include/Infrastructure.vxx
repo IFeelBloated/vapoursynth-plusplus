@@ -38,6 +38,7 @@
 #define VerticalSubsamplingFactor subSamplingH
 
 using namespace std::literals;
+using RuntimeError = std::string;
 
 constexpr auto operator""_size(unsigned long long Value) {
 	return static_cast<std::size_t>(Value);

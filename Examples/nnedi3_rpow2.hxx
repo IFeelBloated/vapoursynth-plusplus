@@ -39,17 +39,17 @@ struct nnedi3_rpow2 final {
         return true;
     }
     auto RegisterInvokingSequence(auto Core, auto&& SelfInvoker, auto Console) {
-        auto NNEDI3 = Core["nnedi3"]["nnedi3"];
-        auto Transpose = Core["std"]["Transpose"];
         for (auto x : Range{ LogarithmizeRFactor() }) {
             auto Field = x == 0 ? 1 : 0;
-            if (auto EvaluatedClip = NNEDI3("clip", InputClip, "field", Field, "dh", true, "nsize", NSize, "nns", NNS, "qual", Qual, "etype", EType, "pscrn", PSCRN); NNEDI3.EvaluationFailed())
-                return Console.RaiseError(NNEDI3.ErrorMessage);
-            else
-                InputClip = EvaluatedClip;
-            InputClip = Transpose("clip", InputClip);
-            InputClip = NNEDI3("clip", InputClip, "field", Field, "dh", true, "nsize", NSize, "nns", NNS, "qual", Qual, "etype", EType, "pscrn", PSCRN);
-            InputClip = Transpose("clip", InputClip);
+            try {
+                InputClip = Core["nnedi3"]["nnedi3"]("clip", InputClip, "field", Field, "dh", true, "nsize", NSize, "nns", NNS, "qual", Qual, "etype", EType, "pscrn", PSCRN);
+            }
+            catch (RuntimeError& ErrorMessage) {
+                return Console.RaiseError(ErrorMessage);
+            }
+            InputClip = Core["std"]["Transpose"]("clip", InputClip);
+            InputClip = Core["nnedi3"]["nnedi3"]("clip", InputClip, "field", Field, "dh", true, "nsize", NSize, "nns", NNS, "qual", Qual, "etype", EType, "pscrn", PSCRN);
+            InputClip = Core["std"]["Transpose"]("clip", InputClip);
         }
         return Console.Receive(InputClip);
     }

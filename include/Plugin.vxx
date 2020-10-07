@@ -7,8 +7,6 @@ struct VaporPlugin final {
 	struct VaporFilter final {
 		self(Plugin, static_cast<VSPlugin*>(nullptr));
 		self(Name, ""s);
-		self(ErrorMessage, ""s);
-		self(FailureFlag, false);
 		auto CreateOutputPrototype() {
 			if constexpr (HasMultipleOutputs)
 				if constexpr (NumberOfOutputs == IndeterminateSize)
@@ -24,28 +22,20 @@ struct VaporPlugin final {
 			if constexpr (sizeof...(Arguments) != 0)
 				ForwardArguments(ArgumentMap, Forward(Arguments)...);
 			auto EvaluatedItems = VaporGlobals::API->invoke(Plugin, Name.data(), ArgumentMap);
-			if (auto EvaluationState = VaporGlobals::API->getError(EvaluatedItems); EvaluationState != nullptr) {
-				ErrorMessage = EvaluationState;
-				FailureFlag = true;
-			}
-			else {
-				EvaluatedClips = ExtractEvaluatedClips<HasMultipleOutputs, NumberOfOutputs>(EvaluatedItems);
-				FailureFlag = false;
-			}
+			if (auto EvaluationState = VaporGlobals::API->getError(EvaluatedItems); EvaluationState != nullptr)
+				throw RuntimeError{ EvaluationState };
+			EvaluatedClips = ExtractEvaluatedClips<HasMultipleOutputs, NumberOfOutputs>(EvaluatedItems);
 			VaporGlobals::API->freeMap(EvaluatedItems);
 			VaporGlobals::API->freeMap(ArgumentMap);
 			return EvaluatedClips;
 		}
-		auto EvaluationFailed() {
-			return FailureFlag;
-		}
 		template<auto NumberOfClips = IndeterminateSize>
 		auto ConfigureForMultipleOutputsInternal() & {
-			return VaporFilter<true, NumberOfClips>{ .Plugin = Plugin, .Name = Name, .ErrorMessage = ErrorMessage, .FailureFlag = FailureFlag };
+			return VaporFilter<true, NumberOfClips>{ .Plugin = Plugin, .Name = Name };
 		}
 		template<auto NumberOfClips = IndeterminateSize>
 		auto ConfigureForMultipleOutputsInternal() && {
-			return VaporFilter<true, NumberOfClips>{ .Plugin = Plugin, .Name = std::move(Name), .ErrorMessage = std::move(ErrorMessage), .FailureFlag = FailureFlag };
+			return VaporFilter<true, NumberOfClips>{ .Plugin = Plugin, .Name = std::move(Name) };
 		}
 	};
 	auto operator[](auto&& FilterName) {

@@ -32,7 +32,7 @@ struct VaporCore final {
 	auto operator[](auto&& Namespace) {
 		auto Plugin = VaporGlobals::API->getPluginByNs(ExposeCString(Namespace), Instance);
 		if (Plugin == nullptr)
-			throw RuntimeError{ "No attribute with the name "s + Namespace + " exists. Missing plugin?" };
+			throw "No attribute with the name "s + Namespace + " exists. Missing plugin?";
 		return VaporPlugin{ .Plugin = Plugin };
 	}
 	operator auto() {

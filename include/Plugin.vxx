@@ -22,19 +22,23 @@ struct VaporPlugin final {
 			if constexpr (sizeof...(Arguments) != 0)
 				ForwardArguments(ArgumentMap, Forward(Arguments)...);
 			auto EvaluatedItems = VaporGlobals::API->invoke(Plugin, Name.data(), ArgumentMap);
-			if (auto EvaluationState = VaporGlobals::API->getError(EvaluatedItems); EvaluationState != nullptr)
-				throw RuntimeError{ EvaluationState };
+			if (auto EvaluationState = VaporGlobals::API->getError(EvaluatedItems); EvaluationState != nullptr) {
+				auto Error = RuntimeError{ EvaluationState };
+				VaporGlobals::API->freeMap(EvaluatedItems);
+				VaporGlobals::API->freeMap(ArgumentMap);
+				throw Error;
+			}
 			EvaluatedClips = ExtractEvaluatedClips<HasMultipleOutputs, NumberOfOutputs>(EvaluatedItems);
 			VaporGlobals::API->freeMap(EvaluatedItems);
 			VaporGlobals::API->freeMap(ArgumentMap);
 			return EvaluatedClips;
 		}
 		template<auto NumberOfClips = IndeterminateSize>
-		auto ConfigureForMultipleOutputsInternal() & {
+		auto ConfigureForMultipleOutputsInternal()& {
 			return VaporFilter<true, NumberOfClips>{ .Plugin = Plugin, .Name = Name };
 		}
 		template<auto NumberOfClips = IndeterminateSize>
-		auto ConfigureForMultipleOutputsInternal() && {
+		auto ConfigureForMultipleOutputsInternal()&& {
 			return VaporFilter<true, NumberOfClips>{ .Plugin = Plugin, .Name = std::move(Name) };
 		}
 	};

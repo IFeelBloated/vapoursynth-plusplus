@@ -23,13 +23,13 @@ struct Rec601ToRGB final {
 		auto InputFrame = InputClip.GetFrame<const float>(Index, FrameContext);
 		auto ProcessedFrame = Frame<float>{ Core.AllocateFrame(VSPresetFormat::pfRGBS, InputClip.Width, InputClip.Height) };
 		if (InputFrame["_Matrix"].Exists() == false)
-			return FrameContext.RaiseError("_Matrix property not found!");
+			throw RuntimeError{ "_Matrix property not found!" };
 		if (InputFrame["_ColorRange"].Exists() == false)
-			return FrameContext.RaiseError("_ColorRange property not found!");
+			throw RuntimeError{ "_ColorRange property not found!" };
 		if (auto Matrix = static_cast<int>(InputFrame["_Matrix"]); Matrix != 6)
-			return FrameContext.RaiseError("unrecognized _Matrix!");
+			throw RuntimeError{ "unrecognized _Matrix!" };
 		if (auto ColorRange = static_cast<int>(InputFrame["_ColorRange"]); ColorRange != 0)
-			return FrameContext.RaiseError("only full range supported!");
+			throw RuntimeError{ "only full range supported!" };
 		for (auto y : Range{ InputClip.Height })
 			for (auto x : Range{ InputClip.Width }) {
 				auto Kr = 0.299;

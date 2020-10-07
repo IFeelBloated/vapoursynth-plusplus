@@ -21,13 +21,9 @@ struct ModifyFrame final {
 		InputClip.RequestFrame(Index, FrameContext);
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
+		using FrameType = Frame<const float>;
 		auto InputFrame = InputClip.GetFrame<const float>(Index, FrameContext);
-		try {
-			auto EvaluatedFrame = static_cast<Frame<const float>>(Evaluator("src", InputFrame));
-			return EvaluatedFrame.Leak();
-		}
-		catch (RuntimeError& ErrorMessage) {
-			return FrameContext.RaiseError(ErrorMessage);
-		}
+		auto EvaluatedFrame = static_cast<FrameType>(Evaluator("src", InputFrame));
+		return EvaluatedFrame.Leak();
 	}
 };

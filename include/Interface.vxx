@@ -29,13 +29,22 @@ namespace VaporInterface {
 	auto Evaluate(auto Index, auto ActivationReason, auto InstanceData, auto, auto FrameContext, auto Core, auto...) {
 		auto Data = reinterpret_cast<FilterType*>(*InstanceData);
 		auto NullFrame = static_cast<const VSFrameRef*>(nullptr);
+		auto DrawFrameIfPossible = [&]() {
+			auto ContextHandle = VaporFrameContext<FilterType>{ .Context = FrameContext };
+			try {
+				return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, ContextHandle);
+			}
+			catch (RuntimeError& ErrorMessage) {
+				return ContextHandle.RaiseError(ErrorMessage);
+			}
+		};
 		if (ActivationReason == VSActivationReason::arInitial)
 			if constexpr (requires { Data->RequestReferenceFrames(0, FrameContext); })
 				Data->RequestReferenceFrames(Index, FrameContext);
 			else
-				return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, VaporFrameContext<FilterType>{.Context = FrameContext });
+				return DrawFrameIfPossible();
 		else if (ActivationReason == VSActivationReason::arAllFramesReady)
-			return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, VaporFrameContext<FilterType>{.Context = FrameContext });
+			return DrawFrameIfPossible();
 		return NullFrame;
 	}
 

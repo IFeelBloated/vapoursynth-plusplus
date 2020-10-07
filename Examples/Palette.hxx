@@ -7,7 +7,7 @@ struct Palette final {
 	self(Shades, std::vector<double>{});
 	self(Width, 640);
 	self(Height, 480);
-	auto Initialize(auto Arguments, auto Console) {
+	auto Initialize(auto Arguments) {
 		for (auto&& x : Arguments["shades"])
 			Shades.push_back(x);
 		if (Arguments["width"].Exists())
@@ -15,8 +15,7 @@ struct Palette final {
 		if (Arguments["height"].Exists())
 			Height = Arguments["height"];
 		if (Width <= 0 || Height <= 0)
-			return Console.RaiseError("spatial dimensions must be positive!");
-		return true;
+			throw RuntimeError{ "spatial dimensions must be positive!" };
 	}
 	auto RegisterVideoInfo(auto Core) {
 		auto VideoInfo = VSVideoInfo{

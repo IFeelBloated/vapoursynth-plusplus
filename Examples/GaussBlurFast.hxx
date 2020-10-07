@@ -5,11 +5,10 @@ struct GaussBlurFast final {
 	static constexpr auto Name = "GaussBlurFast";
 	static constexpr auto Parameters = "clip:clip;";
 	self(InputClip, Clip{});
-	auto Initialize(auto Arguments, auto Console) {
+	auto Initialize(auto Arguments) {
 		InputClip = Arguments["clip"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
-			return Console.RaiseError("only single precision floating point clips with constant format and dimensions supported.");
-		return true;
+			throw RuntimeError{ "only single precision floating point clips with constant format and dimensions supported." };
 	}
 	auto RegisterVideoInfo(auto Core) {
 		return InputClip.ExposeVideoInfo();

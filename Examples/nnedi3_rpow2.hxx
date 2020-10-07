@@ -17,13 +17,13 @@ struct nnedi3_rpow2 final {
             ++LinearFactor;
         return LinearFactor;
     }
-    auto Initialize(auto Arguments, auto Console) {
+    auto Initialize(auto Arguments) {
         InputClip = Arguments["clip"];
         if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.Is444())
-            return Console.RaiseError("clips with subsampled format not supported!");
+            throw RuntimeError{ "clips with subsampled format not supported!" };
         RFactor = Arguments["rfactor"];
         if (RFactor != 1 << LogarithmizeRFactor())
-            return Console.RaiseError("rfactor must be a power of 2");
+            throw RuntimeError{ "rfactor must be a power of 2" };
         if (Arguments["nsize"].Exists())
             NSize = Arguments["nsize"];
         if (Arguments["nns"].Exists())
@@ -36,7 +36,6 @@ struct nnedi3_rpow2 final {
             PSCRN = Arguments["pscrn"];
         else if (InputClip.IsSinglePrecision())
             PSCRN = 1;
-        return true;
     }
     auto RegisterInvokingSequence(auto Core, auto&& SelfInvoker) {
         for (auto x : Range{ LogarithmizeRFactor() }) {

@@ -138,7 +138,6 @@ struct Controller final {
 		auto Caption = FilterType::Name + ": "s;
 		auto DecoratedMessage = Caption + ErrorMessage;
 		VaporGlobals::API->setError(OutputMap, ExposeCString(DecoratedMessage));
-		return false;
 	}
 	auto Receive(auto&& VideoOutput) {
 		auto OutputSequence = WritableItem{ .Map = OutputMap, .Key = "clip" };

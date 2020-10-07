@@ -6,15 +6,14 @@ struct TemporalMedian final {
 	static constexpr auto Parameters = "clip:clip;radius:int:opt;";
 	self(InputClip, Clip{});
 	self(Radius, 1);
-	auto Initialize(auto Arguments, auto Console) {
+	auto Initialize(auto Arguments) {
 		InputClip = Arguments["clip"];
 		if (Arguments["radius"].Exists())
 			Radius = Arguments["radius"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
-			return Console.RaiseError("only single precision floating point clips with constant format and dimensions supported.");
+			throw RuntimeError{ "only single precision floating point clips with constant format and dimensions supported." };
 		if (Radius < 0)
-			return Console.RaiseError("radius cannot be negative!");
-		return true;
+			throw RuntimeError{ "radius cannot be negative!" };
 	}
 	auto RegisterVideoInfo(auto Core) {
 		return InputClip.ExposeVideoInfo();

@@ -82,15 +82,20 @@ namespace VaporInterface {
 			};
 			if constexpr (sizeof...(Arguments) != 0)
 				ForwardArguments(ArgumentMap, Forward(Arguments)...);
-			InstanceData->Initialize(ArgumentList{ ArgumentMap }, Console);
+			InstanceData->Initialize(ArgumentList{ ArgumentMap });
 			SelfEvaluator(EvaluatedMap, InstanceData);
 			auto EvaluatedClips = MaterializeEvaluatedClips();
 			VaporGlobals::API->freeMap(EvaluatedMap);
 			VaporGlobals::API->freeMap(ArgumentMap);
 			return EvaluatedClips;
 		};
-		if (auto InitializationStatus = Data.Initialize(ArgumentList{ InputMap }, Console); InitializationStatus == false)
+		try {
+			Data.Initialize(ArgumentList{ InputMap });
+		}
+		catch (RuntimeError& ErrorMessage) {
+			Console.RaiseError(ErrorMessage);
 			return;
+		}
 		if constexpr (requires { Data.RegisterInvokingSequence(VaporCore{}, SelfInvoker); })
 			try {
 				Console.Receive(Data.RegisterInvokingSequence(VaporCore{ .Instance = Core }, SelfInvoker));

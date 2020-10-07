@@ -9,7 +9,7 @@ struct Crop final {
 	self(Top, 0);
 	self(CroppedWidth, 0);
 	self(CroppedHeight, 0);
-	auto Initialize(auto Arguments, auto Console) {
+	auto Initialize(auto Arguments) {
 		auto Right = 0;
 		auto Bottom = 0;
 		InputClip = Arguments["clip"];
@@ -24,12 +24,11 @@ struct Crop final {
 		CroppedWidth = InputClip.Width - Left - Right;
 		CroppedHeight = InputClip.Height - Top - Bottom;
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.Is444())
-			return Console.RaiseError("clips with subsampled format not supported.");
+			throw RuntimeError{ "clips with subsampled format not supported." };
 		if (Left < 0 || Right < 0 || Top < 0 || Bottom < 0)
-			return Console.RaiseError("cannot crop negative measures!");
+			throw RuntimeError{ "cannot crop negative measures!" };
 		if (CroppedWidth <= 0 || CroppedHeight <= 0)
-			return Console.RaiseError("dimensions must be positive after cropping!");
-		return true;
+			throw RuntimeError{ "dimensions must be positive after cropping!" };
 	}
 	auto RegisterVideoInfo(auto Core) {
 		auto VideoInfo = InputClip.ExposeVideoInfo();

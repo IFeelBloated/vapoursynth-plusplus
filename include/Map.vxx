@@ -147,10 +147,9 @@ struct Controller final {
 				OutputSequence += x;
 		else
 			OutputSequence = VideoOutput;
-		return true;
 	}
 	auto Receive(auto&& ...VideoOutputs) {
-		return Receive(std::array{ Forward(VideoOutputs)... });
+		Receive(std::array{ Forward(VideoOutputs)... });
 	}
 	operator auto() {
 		return OutputMap;

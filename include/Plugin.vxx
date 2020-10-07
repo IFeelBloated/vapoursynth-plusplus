@@ -34,11 +34,11 @@ struct VaporPlugin final {
 			return EvaluatedClips;
 		}
 		template<auto NumberOfClips = IndeterminateSize>
-		auto ConfigureForMultipleOutputsInternal()& {
+		auto ConfigureForMultipleOutputsInternal() & {
 			return VaporFilter<true, NumberOfClips>{ .Plugin = Plugin, .Name = Name };
 		}
 		template<auto NumberOfClips = IndeterminateSize>
-		auto ConfigureForMultipleOutputsInternal()&& {
+		auto ConfigureForMultipleOutputsInternal() && {
 			return VaporFilter<true, NumberOfClips>{ .Plugin = Plugin, .Name = std::move(Name) };
 		}
 	};

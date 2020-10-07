@@ -82,8 +82,13 @@ namespace VaporInterface {
 		};
 		if (auto InitializationStatus = Data.Initialize(ArgumentList{ InputMap }, Console); InitializationStatus == false)
 			return;
-		if constexpr (requires { Data.RegisterInvokingSequence(VaporCore{}, SelfInvoker, Console); })
-			Data.RegisterInvokingSequence(VaporCore{ .Instance = Core }, SelfInvoker, Console);
+		if constexpr (requires { Data.RegisterInvokingSequence(VaporCore{}, SelfInvoker); })
+			try {
+				Console.Receive(Data.RegisterInvokingSequence(VaporCore{ .Instance = Core }, SelfInvoker));
+			}
+			catch (RuntimeError& ErrorMessage) {
+				Console.RaiseError(ErrorMessage);
+			}
 		else
 			SelfEvaluator(OutputMap, new FilterType{ std::move(Data) });
 	}

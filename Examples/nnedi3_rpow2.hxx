@@ -38,19 +38,14 @@ struct nnedi3_rpow2 final {
             PSCRN = 1;
         return true;
     }
-    auto RegisterInvokingSequence(auto Core, auto&& SelfInvoker, auto Console) {
+    auto RegisterInvokingSequence(auto Core, auto&& SelfInvoker) {
         for (auto x : Range{ LogarithmizeRFactor() }) {
             auto Field = x == 0 ? 1 : 0;
-            try {
-                InputClip = Core["nnedi3"]["nnedi3"]("clip", InputClip, "field", Field, "dh", true, "nsize", NSize, "nns", NNS, "qual", Qual, "etype", EType, "pscrn", PSCRN);
-            }
-            catch (RuntimeError& ErrorMessage) {
-                return Console.RaiseError(ErrorMessage);
-            }
+            InputClip = Core["nnedi3"]["nnedi3"]("clip", InputClip, "field", Field, "dh", true, "nsize", NSize, "nns", NNS, "qual", Qual, "etype", EType, "pscrn", PSCRN);
             InputClip = Core["std"]["Transpose"]("clip", InputClip);
             InputClip = Core["nnedi3"]["nnedi3"]("clip", InputClip, "field", Field, "dh", true, "nsize", NSize, "nns", NNS, "qual", Qual, "etype", EType, "pscrn", PSCRN);
             InputClip = Core["std"]["Transpose"]("clip", InputClip);
         }
-        return Console.Receive(InputClip);
+        return InputClip;
     }
 };

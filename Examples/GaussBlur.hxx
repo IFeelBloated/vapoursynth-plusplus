@@ -5,7 +5,7 @@ struct GaussBlur final {
 	static constexpr auto Name = "GaussBlur";
 	static constexpr auto Parameters = "clip:clip;";
 	self(InputClip, Clip{});
-	auto Initialize(auto Arguments) {
+	GaussBlur(auto Arguments) {
 		InputClip = Arguments["clip"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
 			throw RuntimeError{ "only single precision floating point clips with constant format and dimensions supported." };

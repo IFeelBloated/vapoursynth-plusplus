@@ -17,7 +17,7 @@ struct nnedi3_rpow2 final {
             ++LinearFactor;
         return LinearFactor;
     }
-    auto Initialize(auto Arguments) {
+    nnedi3_rpow2(auto Arguments) {
         InputClip = Arguments["clip"];
         if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.Is444())
             throw RuntimeError{ "clips with subsampled format not supported!" };

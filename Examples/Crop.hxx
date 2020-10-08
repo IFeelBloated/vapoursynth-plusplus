@@ -9,7 +9,7 @@ struct Crop final {
 	self(Top, 0);
 	self(CroppedWidth, 0);
 	self(CroppedHeight, 0);
-	auto Initialize(auto Arguments) {
+	Crop(auto Arguments) {
 		auto Right = 0;
 		auto Bottom = 0;
 		InputClip = Arguments["clip"];

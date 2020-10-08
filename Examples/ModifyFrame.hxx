@@ -7,7 +7,7 @@ struct ModifyFrame final {
 	static constexpr auto MultithreadingMode = VSFilterMode::fmParallelRequests;
 	self(InputClip, Clip{});
 	self(Evaluator, Function{});
-	auto Initialize(auto Arguments) {
+	ModifyFrame(auto Arguments) {
 		InputClip = Arguments["clip"];
 		Evaluator = Arguments["evaluator"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())

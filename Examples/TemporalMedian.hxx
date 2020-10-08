@@ -6,7 +6,7 @@ struct TemporalMedian final {
 	static constexpr auto Parameters = "clip:clip;radius:int:opt;";
 	self(InputClip, Clip{});
 	self(Radius, 1);
-	auto Initialize(auto Arguments) {
+	TemporalMedian(auto Arguments) {
 		InputClip = Arguments["clip"];
 		if (Arguments["radius"].Exists())
 			Radius = Arguments["radius"];

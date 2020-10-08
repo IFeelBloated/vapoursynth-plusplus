@@ -26,31 +26,27 @@ namespace VaporInterface {
 	}
 
 	template<typename FilterType>
-	auto Evaluate(auto Index, auto ActivationReason, auto InstanceData, auto, auto FrameContext, auto Core, auto...) {
+	auto Evaluate(auto Index, auto ActivationReason, auto InstanceData, auto, auto FrameContext, auto Core, auto...) try {
 		auto Data = reinterpret_cast<FilterType*>(*InstanceData);
 		auto NullFrame = static_cast<const VSFrameRef*>(nullptr);
-		auto DrawFrameIfPossible = [&]() {
-			auto ContextHandle = VaporFrameContext<FilterType>{ .Context = FrameContext };
-			try {
-				return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, ContextHandle);
-			}
-			catch (RuntimeError& ErrorMessage) {
-				return ContextHandle.RaiseError(ErrorMessage);
-			}
-		};
+		auto ContextHandle = VaporFrameContext<FilterType>{ .Context = FrameContext };
 		if (ActivationReason == VSActivationReason::arInitial)
 			if constexpr (requires { Data->RequestReferenceFrames(0, FrameContext); })
-				Data->RequestReferenceFrames(Index, FrameContext);
+				Data->RequestReferenceFrames(Index, ContextHandle);
 			else
-				return DrawFrameIfPossible();
+				return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, ContextHandle);
 		else if (ActivationReason == VSActivationReason::arAllFramesReady)
-			return DrawFrameIfPossible();
+			return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, ContextHandle);
 		return NullFrame;
+	}
+	catch (RuntimeError& ErrorMessage) {
+		auto ContextHandle = VaporFrameContext<FilterType>{ .Context = FrameContext };
+		return ContextHandle.RaiseError(ErrorMessage);
 	}
 
 	template<typename FilterType>
-	auto Create(auto InputMap, auto OutputMap, auto, auto Core, auto...) {
-		auto Data = FilterType{};
+	auto Create(auto InputMap, auto OutputMap, auto, auto Core, auto...) try {
+		auto Data = FilterType{ ArgumentList{ InputMap } };
 		auto Console = Controller<FilterType>{ OutputMap };
 		auto SelfEvaluator = [&](auto EvaluatedMap, auto InstanceData) {
 			auto AuxiliaryMap = VaporGlobals::API->createMap();
@@ -65,7 +61,7 @@ namespace VaporInterface {
 			VaporGlobals::API->freeMap(AuxiliaryMap);
 		};
 		auto SelfInvoker = [&](auto&& ...Arguments) {
-			auto InstanceData = new FilterType{};
+			auto InstanceData = static_cast<FilterType*>(nullptr);
 			auto ArgumentMap = VaporGlobals::API->createMap();
 			auto EvaluatedMap = VaporGlobals::API->createMap();
 			auto MaterializeEvaluatedClips = [&]() {
@@ -83,10 +79,11 @@ namespace VaporInterface {
 			if constexpr (sizeof...(Arguments) != 0)
 				ForwardArguments(ArgumentMap, Forward(Arguments)...);
 			try {
-				InstanceData->Initialize(ArgumentList{ ArgumentMap });
+				InstanceData = new FilterType{ ArgumentList{ ArgumentMap } };
 			}
 			catch (...) {
-				delete InstanceData;
+				VaporGlobals::API->freeMap(EvaluatedMap);
+				VaporGlobals::API->freeMap(ArgumentMap);
 				throw;
 			}
 			SelfEvaluator(EvaluatedMap, InstanceData);
@@ -95,22 +92,14 @@ namespace VaporInterface {
 			VaporGlobals::API->freeMap(ArgumentMap);
 			return EvaluatedClips;
 		};
-		try {
-			Data.Initialize(ArgumentList{ InputMap });
-		}
-		catch (RuntimeError& ErrorMessage) {
-			Console.RaiseError(ErrorMessage);
-			return;
-		}
 		if constexpr (requires { Data.RegisterInvokingSequence(VaporCore{}, SelfInvoker); })
-			try {
-				Console.Receive(Data.RegisterInvokingSequence(VaporCore{ .Instance = Core }, SelfInvoker));
-			}
-			catch (RuntimeError& ErrorMessage) {
-				Console.RaiseError(ErrorMessage);
-			}
+			Console.Receive(Data.RegisterInvokingSequence(VaporCore{ .Instance = Core }, SelfInvoker));
 		else
 			SelfEvaluator(OutputMap, new FilterType{ std::move(Data) });
+	}
+	catch (RuntimeError& ErrorMessage) {
+		auto Console = Controller<FilterType>{ OutputMap };
+		Console.RaiseError(ErrorMessage);
 	}
 
 	template<typename FilterType>

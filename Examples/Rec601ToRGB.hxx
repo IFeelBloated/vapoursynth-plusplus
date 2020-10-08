@@ -5,7 +5,7 @@ struct Rec601ToRGB final {
 	static constexpr auto Name = "Rec601ToRGB";
 	static constexpr auto Parameters = "clip:clip;";
 	self(InputClip, Clip{});
-	auto Initialize(auto Arguments) {
+	Rec601ToRGB(auto Arguments) {
 		InputClip = Arguments["clip"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision() || !InputClip.IsYUV() || !InputClip.Is444())
 			throw RuntimeError{ "only YUV444PS clips supported." };

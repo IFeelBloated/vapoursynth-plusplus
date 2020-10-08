@@ -7,7 +7,7 @@ struct Palette final {
 	self(Shades, std::vector<double>{});
 	self(Width, 640);
 	self(Height, 480);
-	auto Initialize(auto Arguments) {
+	Palette(auto Arguments) {
 		for (auto&& x : Arguments["shades"])
 			Shades.push_back(x);
 		if (Arguments["width"].Exists())

@@ -82,7 +82,13 @@ namespace VaporInterface {
 			};
 			if constexpr (sizeof...(Arguments) != 0)
 				ForwardArguments(ArgumentMap, Forward(Arguments)...);
-			InstanceData->Initialize(ArgumentList{ ArgumentMap });
+			try {
+				InstanceData->Initialize(ArgumentList{ ArgumentMap });
+			}
+			catch (...) {
+				delete InstanceData;
+				throw;
+			}
 			SelfEvaluator(EvaluatedMap, InstanceData);
 			auto EvaluatedClips = MaterializeEvaluatedClips();
 			VaporGlobals::API->freeMap(EvaluatedMap);

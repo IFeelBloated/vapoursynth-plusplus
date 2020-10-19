@@ -7,6 +7,7 @@
 #include <type_traits>
 #include <functional>
 #include <algorithm>
+#include <concepts>
 #include <utility>
 #include <new>
 #include <cstring>
@@ -16,6 +17,7 @@
 #include <cstdlib>
 
 #define self(ClassMember, ...) std::decay_t<decltype(__VA_ARGS__)> ClassMember = __VA_ARGS__
+#define field(ClassMember, ...) std::decay_t<decltype(__VA_ARGS__)> ClassMember = __VA_ARGS__
 #define isinstance(Object, Type) (std::is_same_v<std::decay_t<decltype(Object)>, Type> || std::is_base_of_v<Type, std::decay_t<decltype(Object)>>)
 #define Forward(Object) std::forward<decltype(Object)>(Object)
 #define ConfigureForMultipleOutputs(...) __VA_OPT__(template) ConfigureForMultipleOutputsInternal __VA_OPT__(<) __VA_ARGS__ __VA_OPT__(>)()

@@ -5,7 +5,7 @@
 template<typename ArbitraryType>
 concept VaporNodeCompatible = requires(ArbitraryType x) { VaporGlobals::API->freeNode(x); };
 
-struct Clip final : VSVideoInfo, MaterializedFormat {
+struct Clip final : VSVideoInfo, VideoFormat {
 	self(VideoNode, static_cast<VSNodeRef*>(nullptr));
 	template<typename ContainerType>
 	struct Sequence final {
@@ -95,7 +95,7 @@ struct Clip final : VSVideoInfo, MaterializedFormat {
 	}
 	template<typename PixelType, auto DirectAccess = false>
 	auto GetFrame(auto Index, auto FrameContext) {
-		return GetFrame<PixelType, DirectAccess>(Index, PaddingPolicies::Temporal::Default, FrameContext);
+		return GetFrame<PixelType, DirectAccess>(Index, PaddingFunctions::Video::Temporal::Default, FrameContext);
 	}
 	template<typename PixelType, auto DirectAccess = false>
 	auto GetFrames(auto Index, auto Radius, auto&& PaddingPolicy, auto FrameContext, auto&& ...AuxiliaryArguments) {
@@ -108,13 +108,13 @@ struct Clip final : VSVideoInfo, MaterializedFormat {
 	}
 	template<typename PixelType, auto DirectAccess = false>
 	auto GetFrames(auto Index, auto Radius, auto FrameContext) {
-		return GetFrames<PixelType, DirectAccess>(Index, Radius, PaddingPolicies::Temporal::Default, FrameContext);
+		return GetFrames<PixelType, DirectAccess>(Index, Radius, PaddingFunctions::Video::Temporal::Default, FrameContext);
 	}
 	auto& PeekFrameFormat(auto Index, auto FrameContext) {
 		auto RawFrame = VaporGlobals::API->getFrameFilter(Index, VideoNode, FrameContext);
 		auto Format = VaporGlobals::API->getFrameFormat(RawFrame);
 		VaporGlobals::API->freeFrame(RawFrame);
-		return static_cast<const MaterializedFormat&>(*Format);
+		return static_cast<const VideoFormat&>(*Format);
 	}
 	auto WithConstantDimensions() {
 		return Width != 0 && Height != 0;

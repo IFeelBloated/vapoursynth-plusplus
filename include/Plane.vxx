@@ -1,58 +1,115 @@
 #pragma once
 #include "Range.vxx"
 
-template<typename PixelType, auto DirectAccess = false>
-struct Plane final {
-	using PolicyType = auto(PixelType**, std::size_t, std::size_t, std::ptrdiff_t, std::ptrdiff_t)->PixelType;
-	self(Width, 0_size);
-	self(Height, 0_size);
-	self(Canvas, std::vector<PixelType*>{});
-	self(PaddingPolicy, std::function<PolicyType>{});
-	struct Proxy final {
-		self(State, static_cast<Plane*>(nullptr));
-		self(y, 0_ptrdiff);
-		self(yOffset, 0_ptrdiff);
-		self(xOffset, 0_ptrdiff);
-		auto operator[](auto x) {
-			auto yAbsolute = y + yOffset;
+template<typename PixelType, auto DirectAccess>
+struct Plane {
+	field(Width, 0_size);
+	field(Height, 0_size);
+	field(Canvas, std::vector<PixelType*>{});
+
+private:
+	static constexpr auto EnabledAutomaticPadding = std::is_const_v<PixelType> && !DirectAccess;
+
+private:
+	using EmptyType = struct {};
+	using PaddingFunctionInterface = auto(PixelType**, std::size_t, std::size_t, std::ptrdiff_t, std::ptrdiff_t)->PixelType;
+	using PaddingFunctionType = std::function<PaddingFunctionInterface>;
+	using PaddingFunctionWrapper = std::conditional_t<EnabledAutomaticPadding, PaddingFunctionType, EmptyType>;
+
+public:
+	[[no_unique_address]]
+	field(PaddingFunction, PaddingFunctionWrapper{});
+
+private:
+	struct PaddedAccess {
+		field(TargetPlane, static_cast<Plane*>(nullptr));
+		field(yAbsolute, 0_ptrdiff);
+		field(xOffset, 0_ptrdiff);
+
+	public:
+		auto operator[](std::integral auto x) {
 			auto xAbsolute = x + xOffset;
-			if (xAbsolute < 0 || yAbsolute < 0 || xAbsolute >= State->Width || yAbsolute >= State->Height)
-				return State->PaddingPolicy(State->Canvas.data(), State->Width, State->Height, yAbsolute, xAbsolute);
+			auto PlaneWidth = TargetPlane->Width;
+			auto PlaneHeight = TargetPlane->Height;
+			if (xAbsolute < 0 || yAbsolute < 0 || xAbsolute >= PlaneWidth || yAbsolute >= PlaneHeight)
+				return TargetPlane->PaddingFunction(TargetPlane->Canvas.data(), PlaneWidth, PlaneHeight, yAbsolute, xAbsolute);
 			else
-				return State->Canvas[yAbsolute][xAbsolute];
+				return TargetPlane->Canvas[yAbsolute][xAbsolute];
 		}
 	};
-	struct Offset final {
-		self(State, static_cast<Plane*>(nullptr));
-		self(yOffset, 0_ptrdiff);
-		self(xOffset, 0_ptrdiff);
-		auto operator[](auto y) {
-			return Proxy{ .State = State, .y = y, .yOffset = yOffset, .xOffset = xOffset };
+
+private:
+	struct PlaneView {
+		field(TargetPlane, static_cast<Plane*>(nullptr));
+		field(yOffset, 0_ptrdiff);
+		field(xOffset, 0_ptrdiff);
+
+	public:
+		auto operator[](std::integral auto y) {
+			return PaddedAccess{ .TargetPlane = TargetPlane, .yAbsolute = y + yOffset, .xOffset = xOffset };
 		}
 		auto GetCoordinates() {
 			return std::array{ yOffset, xOffset };
 		}
-		auto View(auto y, auto x) {
-			return Offset{ .State = State, .yOffset = yOffset + y, .xOffset = xOffset + x };
+		auto View(std::integral auto y, std::integral auto x) {
+			return PlaneView{ .TargetPlane = TargetPlane, .yOffset = yOffset + y, .xOffset = xOffset + x };
 		}
 	};
+
+public:
 	Plane() = default;
-	Plane(auto Pointer, auto Width, auto Height, auto Stride, auto&& PaddingPolicy) {
+	Plane(auto Pointer, auto Width, auto Height, auto Stride, auto&& PaddingFunction) {
+		this->Canvas.resize(Height);
 		this->Width = Width;
 		this->Height = Height;
-		this->PaddingPolicy = Forward(PaddingPolicy);
-		auto Origin = reinterpret_cast<PixelType*>(Pointer);
-		Canvas.resize(Height);
-		for (auto y : Range{ Height })
-			Canvas[y] = Origin + y * Stride;
+		if constexpr (EnabledAutomaticPadding)
+			this->PaddingFunction = Forward(PaddingFunction);
+		for (auto Origin = reinterpret_cast<PixelType*>(Pointer); auto y : Range{ Height })
+			this->Canvas[y] = Origin + y * Stride;
 	}
-	auto operator[](auto y) {
-		if constexpr (std::is_const_v<PixelType> && DirectAccess == false)
-			return Proxy{ .State = this, .y = y };
+
+public:
+	auto operator[](std::integral auto y) {
+		if constexpr (EnabledAutomaticPadding)
+			return PaddedAccess{ .TargetPlane = this, .yAbsolute = y };
 		else
 			return Canvas[y];
 	}
-	auto View(auto y, auto x) {
-		return Offset{ .State = this, .yOffset = y, .xOffset = x };
+	auto View(std::integral auto y, std::integral auto x) {
+		static_assert(EnabledAutomaticPadding, "View() is only available when automatic padding is enabled!");
+		return PlaneView{ .TargetPlane = this, .yOffset = y, .xOffset = x };
 	}
 };
+
+namespace PaddingFunctions::Utility {
+	auto ReflectCoordinate(auto x, auto Bound) {
+		while (x < 0 || x >= Bound) {
+			x = std::abs(x);
+			x -= Bound - 1;
+			x = -std::abs(x);
+			x += Bound - 1;
+		}
+		return x;
+	}
+}
+
+namespace PaddingFunctions::Video::Spatial {
+	auto Constant(auto Value) {
+		return [=](auto Canvas, auto Width, auto Height, auto y, auto x) {
+			using PixelType = std::decay_t<decltype(Canvas[0][0])>;
+			return static_cast<PixelType>(Value);
+		};
+	}
+	auto Repeat = [](auto Canvas, auto Width, auto Height, auto y, auto x) {
+		x = Min(Max(x, 0), Width - 1);
+		y = Min(Max(y, 0), Height - 1);
+		return Canvas[y][x];
+	};
+	auto Reflect = [](auto Canvas, auto Width, auto Height, auto y, auto x) {
+		x = Utility::ReflectCoordinate(x, Width);
+		y = Utility::ReflectCoordinate(y, Height);
+		return Canvas[y][x];
+	};
+	auto Zero = Constant(0);
+	auto Default = Reflect;
+}

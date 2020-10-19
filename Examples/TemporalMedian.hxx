@@ -22,7 +22,7 @@ struct TemporalMedian final {
 		InputClip.RequestFrames(Index, Radius, FrameContext);
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
-		auto InputFrames = InputClip.GetFrames<const float>(Index, Radius, PaddingPolicies::Temporal::Reflect, FrameContext);
+		auto InputFrames = InputClip.GetFrames<const float>(Index, Radius, PaddingFunctions::Video::Temporal::Reflect, FrameContext);
 		auto ProcessedFrame = Core.CreateNewFrameFrom(InputFrames[0]);
 		auto Samples = std::vector<float>{};
 		Samples.resize(2 * Radius + 1);

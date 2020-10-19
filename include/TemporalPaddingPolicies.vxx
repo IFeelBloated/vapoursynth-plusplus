@@ -1,8 +1,7 @@
 #pragma once
-#include "SpatialPaddingPolicies.vxx"
 #include "Frame.vxx"
 
-namespace PaddingPolicies::Temporal {
+namespace PaddingFunctions::Video::Temporal {
 	template<typename PixelType>
 	auto Zero = [](auto& VideoClip, auto Index, auto FrameContext, auto Core) {
 		auto Format = VideoClip.Format;
@@ -22,7 +21,7 @@ namespace PaddingPolicies::Temporal {
 	};
 
 	auto Reflect = [](auto& VideoClip, auto Index, auto FrameContext) {
-		Index = ReflectCoordinate(Index, VideoClip.FrameCount);
+		Index = Utility::ReflectCoordinate(Index, VideoClip.FrameCount);
 		return VaporGlobals::API->getFrameFilter(Index, VideoClip.VideoNode, FrameContext);
 	};
 

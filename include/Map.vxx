@@ -44,7 +44,7 @@ struct ReadonlyItem final {
 		auto RawFrame = VaporGlobals::API->propGetFrame(Map, Key.data(), Index, nullptr);
 		auto Format = VaporGlobals::API->getFrameFormat(RawFrame);
 		VaporGlobals::API->freeFrame(RawFrame);
-		return static_cast<const MaterializedFormat&>(*Format);
+		return static_cast<const VideoFormat&>(*Format);
 	}
 	operator Clip() {
 		return { VaporGlobals::API->propGetNode(Map, Key.data(), Index, nullptr) };

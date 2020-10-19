@@ -2,13 +2,12 @@
 #include "Globals.vxx"
 #include "Plane.vxx"
 #include "Format.vxx"
-#include "SpatialPaddingPolicies.vxx"
 
 template<typename ArbitraryType>
 concept VaporFrameCompatible = requires(ArbitraryType x) { VaporGlobals::API->freeFrame(x); };
 
 template<typename PixelType, auto DirectAccess = false>
-struct Frame final : MaterializedFormat {
+struct Frame final : VideoFormat {
 	using PlaneType = Plane<PixelType, DirectAccess>;
 	self(RawFrame, static_cast<VSFrameRef*>(nullptr));
 	self(Planes, std::array{ PlaneType{}, PlaneType{}, PlaneType{} });
@@ -26,7 +25,7 @@ struct Frame final : MaterializedFormat {
 				else
 					return VaporGlobals::API->getWritePtr(this->RawFrame, Index);
 			};
-			return PlaneType{ GetPlanePointer(), Width, Height, Stride, PaddingPolicies::Spatial::Default };
+			return PlaneType{ GetPlanePointer(), Width, Height, Stride, PaddingFunctions::Video::Spatial::Default };
 		};
 		this->RawFrame = Forward(RawFrame);
 		this->Format = VaporGlobals::API->getFrameFormat(this->RawFrame);

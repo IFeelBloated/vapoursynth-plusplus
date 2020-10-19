@@ -2,7 +2,7 @@
 #include "VapourSynth.h"
 #include "Infrastructure.vxx"
 
-struct MaterializedFormat : VSFormat {
+struct VideoFormat : VSFormat {
 	auto IsSinglePrecision() const {
 		return SampleType == VSSampleType::stFloat && BitsPerSample == 32;
 	}
@@ -21,7 +21,8 @@ struct MaterializedFormat : VSFormat {
 	auto operator<=>(auto&& OtherFormat) const {
 		return ID <=> OtherFormat.ID;
 	}
-	auto operator==(auto&& OtherFormat) const {
-		return ID == OtherFormat.ID;
-	}
+};
+
+struct AudioFormat {
+	//Placeholder for API v4.
 };

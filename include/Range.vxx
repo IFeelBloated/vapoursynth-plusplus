@@ -1,49 +1,56 @@
 #pragma once
 #include "Infrastructure.vxx"
 
-class Range final {
-	struct Iterator final {
-		self(Cursor, 0_ptrdiff);
-		self(Step, 0_ptrdiff);
-		auto operator*() const {
+struct Range {
+	field(Startpoint, 0_ptrdiff);
+	field(Endpoint, 0_ptrdiff);
+	field(Step, 1_ptrdiff);
+
+private:
+	struct Iterator {
+		field(Cursor, 0_ptrdiff);
+		field(Step, 0_ptrdiff);
+
+	public:
+		constexpr auto operator*() const {
 			return Cursor;
 		}
-		auto& operator++() {
+		constexpr auto& operator++() {
 			Cursor += Step;
 			return *this;
 		}
-		auto operator!=(auto&& OtherIterator) const {
+		constexpr auto operator!=(auto&& OtherIterator) const {
 			if (Step > 0)
 				return Cursor < OtherIterator.Cursor;
 			else
 				return Cursor > OtherIterator.Cursor;
 		}
 	};
-	self(Startpoint, 0_ptrdiff);
-	self(Endpoint, 0_ptrdiff);
-	self(Step, 1_ptrdiff);
+
 public:
-	Range() = default;
-	Range(auto Endpoint) {
+	constexpr Range() = default;
+	constexpr Range(std::integral auto Endpoint) {
 		if (Endpoint < 0)
-			Step = -1;
-		this->Endpoint = static_cast<std::ptrdiff_t>(Endpoint);
+			this->Step = -1;
+		this->Endpoint = Endpoint;
 	}
-	Range(auto Startpoint, auto Endpoint) {
+	constexpr Range(std::integral auto Startpoint, std::integral auto Endpoint) {
 		if (Startpoint > Endpoint)
-			Step = -1;
-		this->Startpoint = static_cast<std::ptrdiff_t>(Startpoint);
-		this->Endpoint = static_cast<std::ptrdiff_t>(Endpoint);
+			this->Step = -1;
+		this->Startpoint = Startpoint;
+		this->Endpoint = Endpoint;
 	}
-	Range(auto Startpoint, auto Endpoint, auto Step) {
-		this->Startpoint = static_cast<std::ptrdiff_t>(Startpoint);
-		this->Endpoint = static_cast<std::ptrdiff_t>(Endpoint);
-		this->Step = static_cast<std::ptrdiff_t>(Step);
+	constexpr Range(std::integral auto Startpoint, std::integral auto Endpoint, std::integral auto Step) {
+		this->Startpoint = Startpoint;
+		this->Endpoint = Endpoint;
+		this->Step = Step;
 	}
-	auto Begin() const {
+
+public:
+	constexpr auto begin() const {
 		return Iterator{ .Cursor = Startpoint, .Step = Step };
 	}
-	auto End() const {
+	constexpr auto end() const {
 		return Iterator{ .Cursor = Endpoint, .Step = Step };
 	}
 };

@@ -20,7 +20,7 @@ struct ModifyFrame final {
 		InputClip.RequestFrame(Index, FrameContext);
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
-		using FrameType = Frame<const float>;
+		using FrameType = VideoFrame<const float>;
 		auto InputFrame = InputClip.GetFrame<const float>(Index, FrameContext);
 		auto EvaluatedFrame = static_cast<FrameType>(Evaluator("src", InputFrame));
 		return EvaluatedFrame.Leak();

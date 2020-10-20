@@ -27,7 +27,7 @@ struct Palette final {
 		return std::vector{ Shades.Size(), VideoInfo };
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
-		auto ProcessedFrame = Frame<float>{ Core.AllocateFrame(VSPresetFormat::pfGrayS, Width, Height) };
+		auto ProcessedFrame = VideoFrame<float>{ Core.AllocateFrame(VSPresetFormat::pfGrayS, Width, Height) };
 		for (auto y : Range{ Height })
 			for (auto x : Range{ Width })
 				ProcessedFrame[0][y][x] = Shades[FrameContext.RevealOutputIndex()];

@@ -1,5 +1,5 @@
 #pragma once
-#include "Frame.vxx"
+#include "VideoFrame.vxx"
 
 namespace PaddingFunctions::Video::Temporal {
 	template<typename PixelType>
@@ -7,7 +7,7 @@ namespace PaddingFunctions::Video::Temporal {
 		auto Format = VideoClip.Format;
 		auto Width = VideoClip.Width;
 		auto Height = VideoClip.Height;
-		auto BlankFrame = Frame<PixelType>{ Core.AllocateFrame(Format, Width, Height) };
+		auto BlankFrame = VideoFrame<PixelType>{ Core.AllocateFrame(Format, Width, Height) };
 		for (auto c : Range{ BlankFrame.PlaneCount })
 			for (auto y : Range{ BlankFrame.Height[c] })
 				for (auto x : Range{ BlankFrame.Width[c] })

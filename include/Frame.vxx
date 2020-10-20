@@ -1,42 +1,30 @@
 #pragma once
+#include "Infrastructure.vxx"
 #include "Globals.vxx"
-#include "Plane.vxx"
-#include "Format.vxx"
 
-template<typename ArbitraryType>
-concept VaporFrameCompatible = requires(ArbitraryType x) { VaporGlobals::API->freeFrame(x); };
+template<typename SampleType>
+struct Frame {
+	field(Handle, static_cast<VSFrameRef*>(nullptr));
+	field(PropertyMap, static_cast<VSMap*>(nullptr));
 
-template<typename PixelType, auto DirectAccess = false>
-struct Frame final : VideoFormat {
-	using PlaneType = Plane<PixelType, DirectAccess>;
-	self(RawFrame, static_cast<VSFrameRef*>(nullptr));
-	self(Planes, std::array{ PlaneType{}, PlaneType{}, PlaneType{} });
-	self(Format, static_cast<const VSFormat*>(nullptr));
-	self(PropertyMap, static_cast<VSMap*>(nullptr));
+protected:
+	using FramePointer = const VSFrameRef*;
+
+public:
+	static constexpr auto NullHandle = static_cast<FramePointer>(nullptr);
+
+public:
 	Frame() = default;
-	Frame(VaporFrameCompatible auto&& RawFrame) {
-		auto ConstructPlane = [this](auto Index) {
-			auto Width = VaporGlobals::API->getFrameWidth(this->RawFrame, Index);
-			auto Height = VaporGlobals::API->getFrameHeight(this->RawFrame, Index);
-			auto Stride = VaporGlobals::API->getStride(this->RawFrame, Index) / sizeof(PixelType);
-			auto GetPlanePointer = [&]() {
-				if constexpr (std::is_const_v<PixelType>)
-					return VaporGlobals::API->getReadPtr(this->RawFrame, Index);
-				else
-					return VaporGlobals::API->getWritePtr(this->RawFrame, Index);
-			};
-			return PlaneType{ GetPlanePointer(), Width, Height, Stride, PaddingFunctions::Video::Spatial::Default };
-		};
-		this->RawFrame = Forward(RawFrame);
-		this->Format = VaporGlobals::API->getFrameFormat(this->RawFrame);
-		SynchronizeFormat();
-		for (auto Index : Range{ PlaneCount })
-			Planes[Index] = ConstructPlane(Index);
-		if constexpr (std::is_const_v<PixelType>)
-			PropertyMap = PointerRemoveConstant(VaporGlobals::API->getFramePropsRO(this->RawFrame));
+	Frame(std::convertible_to<FramePointer> auto&& Descriptor) {
+		auto FrameHandle = static_cast<FramePointer>(Forward(Descriptor));
+		this->Handle = PointerRemoveConstant(FrameHandle);
+		if constexpr (std::is_const_v<SampleType>)
+			this->PropertyMap = PointerRemoveConstant(VaporGlobals::API->getFramePropsRO(this->Handle));
 		else
-			PropertyMap = VaporGlobals::API->getFramePropsRW(this->RawFrame);
+			this->PropertyMap = VaporGlobals::API->getFramePropsRW(this->Handle);
 	}
+
+public:
 	Frame(const Frame& OtherFrame) {
 		*this = OtherFrame;
 	}
@@ -45,66 +33,49 @@ struct Frame final : VideoFormat {
 	}
 	auto& operator=(const Frame& OtherFrame) {
 		if (this != &OtherFrame) {
-			this->~Frame();
-			RawFrame = PointerRemoveConstant(VaporGlobals::API->cloneFrameRef(OtherFrame.RawFrame));
-			Planes = OtherFrame.Planes;
-			Format = OtherFrame.Format;
-			PropertyMap = OtherFrame.PropertyMap;
-			SynchronizeFormat();
+			VaporGlobals::API->freeFrame(this->Handle);
+			this->Handle = PointerRemoveConstant(VaporGlobals::API->cloneFrameRef(OtherFrame.Handle));
+			this->PropertyMap = OtherFrame.PropertyMap;
 		}
 		return *this;
 	}
 	auto& operator=(Frame&& OtherFrame) {
 		if (this != &OtherFrame) {
-			std::swap(RawFrame, OtherFrame.RawFrame);
-			Planes = std::move(OtherFrame.Planes);
-			Format = OtherFrame.Format;
-			PropertyMap = OtherFrame.PropertyMap;
-			SynchronizeFormat();
+			std::swap(this->Handle, OtherFrame.Handle);
+			this->PropertyMap = OtherFrame.PropertyMap;
 		}
 		return *this;
 	}
+
+public:
 	~Frame() {
-		VaporGlobals::API->freeFrame(RawFrame);
+		VaporGlobals::API->freeFrame(this->Handle);
 	}
-	auto SynchronizeFormat() {
-		auto& EnclosedFormat = static_cast<VSFormat&>(*this);
-		EnclosedFormat = *Format;
-	}
-	auto GetProperty(auto&&);
-	decltype(auto) operator[](auto&& x) {
-		if constexpr (isinstance(x, const char*) || isinstance(x, char*) || isinstance(x, std::string) || isinstance(x, std::string_view))
-			return GetProperty(Forward(x));
-		else
-			return Planes[x];
-	}
+
+public:
 	auto Leak() {
-		auto LeakedFrame = RawFrame;
-		RawFrame = nullptr;
-		return PointerAddConstant(LeakedFrame);
+		auto TransferredHandle = Handle;
+		Handle = nullptr;
+		return PointerAddConstant(TransferredHandle);
 	}
-	operator auto() {
-		if constexpr (std::is_const_v<PixelType>)
-			return PointerAddConstant(RawFrame);
-		else
-			return RawFrame;
-	}
+	auto operator[](std::convertible_to<std::string> auto&&);
 };
 
 template<typename FilterType>
-struct VaporFrameContext final {
-	self(Context, static_cast<VSFrameContext*>(nullptr));
+struct FrameContextWrapper {
+	field(Handle, static_cast<VSFrameContext*>(nullptr));
+
+public:
 	auto RaiseError(auto&& ErrorMessage) {
-		auto NullFrame = static_cast<const VSFrameRef*>(nullptr);
 		auto Caption = FilterType::Name + ": "s;
-		auto DecoratedMessage = Caption + ErrorMessage;
-		VaporGlobals::API->setFilterError(ExposeCString(DecoratedMessage), Context);
-		return NullFrame;
+		auto DecoratedMessage = Caption + Forward(ErrorMessage);
+		VaporGlobals::API->setFilterError(DecoratedMessage.data(), Handle);
+		return Frame<void>::NullHandle;
 	}
 	auto RevealOutputIndex() {
-		return VaporGlobals::API->getOutputIndex(Context);
+		return VaporGlobals::API->getOutputIndex(Handle);
 	}
 	operator auto() {
-		return Context;
+		return Handle;
 	}
 };

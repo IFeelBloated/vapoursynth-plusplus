@@ -1,0 +1,48 @@
+#pragma once
+#include "Frame.vxx"
+#include "Plane.vxx"
+#include "Format.vxx"
+
+template<typename PixelType, auto DirectAccess = false>
+struct VideoFrame : Frame<PixelType>, VideoFormat {
+	field(Format, static_cast<const VSFormat*>(nullptr));
+
+private:
+	using PlaneType = Plane<PixelType, DirectAccess>;
+	using typename Frame<PixelType>::FramePointer;
+
+public:
+	field(Planes, std::array{ PlaneType{}, PlaneType{}, PlaneType{} });
+
+public:
+	VideoFrame() = default;
+	VideoFrame(std::convertible_to<FramePointer> auto&& Descriptor) : Frame<PixelType>{ Forward(Descriptor) } {
+		auto ConstructPlane = [this](auto Index) {
+			auto Width = VaporGlobals::API->getFrameWidth(this->Handle, Index);
+			auto Height = VaporGlobals::API->getFrameHeight(this->Handle, Index);
+			auto Stride = VaporGlobals::API->getStride(this->Handle, Index) / sizeof(PixelType);
+			auto GetPlanePointer = [&] {
+				if constexpr (std::is_const_v<PixelType>)
+					return VaporGlobals::API->getReadPtr(this->Handle, Index);
+				else
+					return VaporGlobals::API->getWritePtr(this->Handle, Index);
+			};
+			return PlaneType{ GetPlanePointer(), Width, Height, Stride, PaddingFunctions::Video::Spatial::Default };
+		};
+		auto SynchronizeFormat = [this] {
+			auto& ReferenceFormat = reinterpret_cast<const VideoFormat&>(*Format);
+			auto& FlattenedFormat = static_cast<VideoFormat&>(*this);
+			FlattenedFormat = ReferenceFormat;
+		};
+		this->Format = VaporGlobals::API->getFrameFormat(this->Handle);
+		SynchronizeFormat();
+		for (auto Index : Range{ PlaneCount })
+			Planes[Index] = ConstructPlane(Index);
+	}
+
+public:
+	auto& operator[](std::integral auto x) {
+		return Planes[x];
+	}
+	using Frame<PixelType>::operator[];
+};

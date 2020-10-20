@@ -68,7 +68,7 @@ struct ReadonlyItem final {
 		return { VaporGlobals::API->propGetData(Map, Key.data(), Index, nullptr) };
 	}
 	template<typename PixelType, auto DirectAccess = false>
-	operator Frame<PixelType, DirectAccess>() {
+	operator VideoFrame<PixelType, DirectAccess>() {
 		return { PointerRemoveConstant(VaporGlobals::API->propGetFrame(Map, Key.data(), Index, nullptr)) };
 	}
 	operator Function() {
@@ -90,8 +90,8 @@ struct WritableItem final {
 			return VaporGlobals::API->propSetData(Map, Key.data(), Value.data(), Value.size(), AppendMode) == 0;
 		else if constexpr (isinstance(Value, Clip))
 			return VaporGlobals::API->propSetNode(Map, Key.data(), Value.VideoNode, AppendMode) == 0;
-		else if constexpr (requires { &Value.RawFrame; })
-			return VaporGlobals::API->propSetFrame(Map, Key.data(), Value.RawFrame, AppendMode) == 0;
+		else if constexpr (requires { &Value.Handle; })
+			return VaporGlobals::API->propSetFrame(Map, Key.data(), Value.Handle, AppendMode) == 0;
 		else if constexpr (isinstance(Value, Function))
 			return VaporGlobals::API->propSetFunc(Map, Key.data(), Value.FunctionHandle, AppendMode) == 0;
 		else
@@ -155,9 +155,9 @@ struct Controller final {
 	}
 };
 
-template<typename PixelType, auto DirectAccess>
-auto Frame<PixelType, DirectAccess>::GetProperty(auto&& Key) {
-	if constexpr (std::is_const_v<PixelType>)
+template<typename SampleType>
+auto Frame<SampleType>::operator[](std::convertible_to<std::string> auto&& Key) {
+	if constexpr (std::is_const_v<SampleType>)
 		return ReadonlyItem{ .Map = PropertyMap, .Key = Forward(Key) };
 	else
 		return WritableItem{ .Map = PropertyMap, .Key = Forward(Key) };
@@ -177,7 +177,7 @@ auto Function::SynchronizeEvaluatedMap(auto OtherEvaluatedMap)->void {
 		else if (x.Type() == VSPropTypes::ptData)
 			ResultItems += static_cast<std::string>(x);
 		else if (x.Type() == VSPropTypes::ptFrame)
-			ResultItems += static_cast<Frame<char>>(x);
+			ResultItems += static_cast<VideoFrame<char>>(x);
 		else if (x.Type() == VSPropTypes::ptFunction)
 			ResultItems += static_cast<Function>(x);
 	if (auto EvaluationState = VaporGlobals::API->getError(OtherEvaluatedMap); EvaluationState != nullptr)

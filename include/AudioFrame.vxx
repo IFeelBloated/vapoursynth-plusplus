@@ -1,0 +1,7 @@
+#pragma once
+#include "Frame.vxx"
+
+template<typename SampleType>
+struct AudioFrame : Frame<SampleType> {
+	//Placeholder for API v4.
+};

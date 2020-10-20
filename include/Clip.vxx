@@ -1,5 +1,5 @@
 #pragma once
-#include "Frame.vxx"
+#include "VideoFrame.vxx"
 #include "TemporalPaddingPolicies.vxx"
 
 template<typename ArbitraryType>
@@ -86,7 +86,7 @@ struct Clip final : VSVideoInfo, VideoFormat {
 	template<typename PixelType, auto DirectAccess = false>
 	auto GetFrame(auto Index, auto&& PaddingPolicy, auto FrameContext, auto&& ...AuxiliaryArguments) {
 		auto WrapAsFrame = [](auto RawFrame) {
-			return Frame<PixelType, DirectAccess>{ PointerRemoveConstant(RawFrame) };
+			return VideoFrame<PixelType, DirectAccess>{ RawFrame };
 		};
 		if (Index < 0 || Index >= FrameCount)
 			return WrapAsFrame(PaddingPolicy(*this, Index, FrameContext, Forward(AuxiliaryArguments)...));
@@ -99,7 +99,7 @@ struct Clip final : VSVideoInfo, VideoFormat {
 	}
 	template<typename PixelType, auto DirectAccess = false>
 	auto GetFrames(auto Index, auto Radius, auto&& PaddingPolicy, auto FrameContext, auto&& ...AuxiliaryArguments) {
-		using ContainerType = std::vector<Frame<PixelType, DirectAccess>>;
+		using ContainerType = std::vector<VideoFrame<PixelType, DirectAccess>>;
 		auto Container = ContainerType{};
 		Container.reserve(2 * Radius + 1);
 		for (auto Offset : Range{ Index - Radius, Index + Radius + 1 })

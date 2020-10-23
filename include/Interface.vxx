@@ -28,7 +28,7 @@ namespace VaporInterface {
 	template<typename FilterType>
 	auto Evaluate(auto Index, auto ActivationReason, auto InstanceData, auto, auto FrameContext, auto Core, auto...) try {
 		auto Data = reinterpret_cast<FilterType*>(*InstanceData);
-		auto ContextHandle = FrameContextWrapper<FilterType>{ .Handle = FrameContext };
+		auto ContextHandle = FrameContextWrapper{ .Handle = FrameContext };
 		if (ActivationReason == VSActivationReason::arInitial)
 			if constexpr (requires { Data->RequestReferenceFrames(0, FrameContext); })
 				Data->RequestReferenceFrames(Index, ContextHandle);
@@ -39,8 +39,8 @@ namespace VaporInterface {
 		return Frame<void>::NullHandle;
 	}
 	catch (RuntimeError& ErrorMessage) {
-		auto ContextHandle = FrameContextWrapper<FilterType>{ .Handle = FrameContext };
-		return ContextHandle.RaiseError(ErrorMessage);
+		auto ContextHandle = FrameContextWrapper{ .Handle = FrameContext };
+		return ContextHandle.RaiseError<FilterType>(ErrorMessage);
 	}
 
 	template<typename FilterType>
@@ -55,7 +55,7 @@ namespace VaporInterface {
 				AssumedMultithreadingMode = FilterType::MultithreadingMode;
 			if constexpr (requires { &FilterType::CacheFlag; })
 				AssumedCacheFlag = FilterType::CacheFlag;
-			if constexpr (requires { Data.DrawFrame(0, VaporCore{}, FrameContextWrapper<FilterType>{}); })
+			if constexpr (requires { Data.DrawFrame(0, VaporCore{}, FrameContextWrapper{}); })
 				VaporGlobals::API->createFilter(AuxiliaryMap, EvaluatedMap, FilterType::Name, Initialize<FilterType>, Evaluate<FilterType>, Delete<FilterType>, AssumedMultithreadingMode, AssumedCacheFlag, InstanceData, Core);
 			VaporGlobals::API->freeMap(AuxiliaryMap);
 		};

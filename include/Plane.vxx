@@ -93,7 +93,7 @@ namespace PaddingFunctions::Utility {
 	}
 }
 
-namespace PaddingFunctions::Video::Spatial {
+namespace PaddingFunctions::Plane {
 	auto Constant(auto Value) {
 		return [=](auto Canvas, auto Width, auto Height, auto y, auto x) {
 			using PixelType = std::decay_t<decltype(Canvas[0][0])>;

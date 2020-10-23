@@ -61,17 +61,19 @@ public:
 	auto operator[](std::convertible_to<std::string> auto&&);
 };
 
-template<typename FilterType>
 struct FrameContextWrapper {
 	field(Handle, static_cast<VSFrameContext*>(nullptr));
 
 public:
+	template<typename FilterType>
 	auto RaiseError(auto&& ErrorMessage) {
 		auto Caption = FilterType::Name + ": "s;
 		auto DecoratedMessage = Caption + Forward(ErrorMessage);
 		VaporGlobals::API->setFilterError(DecoratedMessage.data(), Handle);
 		return Frame<void>::NullHandle;
 	}
+
+public:
 	auto RevealOutputIndex() {
 		return VaporGlobals::API->getOutputIndex(Handle);
 	}

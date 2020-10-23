@@ -5,7 +5,7 @@ struct ModifyFrame final {
 	static constexpr auto Name = "ModifyFrame";
 	static constexpr auto Parameters = "clip:clip;evaluator:func;";
 	static constexpr auto MultithreadingMode = VSFilterMode::fmParallelRequests;
-	self(InputClip, Clip{});
+	self(InputClip, VideoNode{});
 	self(Evaluator, Function{});
 	ModifyFrame(auto Arguments) {
 		InputClip = Arguments["clip"];
@@ -21,7 +21,7 @@ struct ModifyFrame final {
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
 		using FrameType = VideoFrame<const float>;
-		auto InputFrame = InputClip.GetFrame<const float>(Index, FrameContext);
+		auto InputFrame = InputClip.FetchFrame<const float>(Index, FrameContext);
 		auto EvaluatedFrame = static_cast<FrameType>(Evaluator("src", InputFrame));
 		return EvaluatedFrame.Leak();
 	}

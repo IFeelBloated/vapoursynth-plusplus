@@ -10,11 +10,11 @@ struct VaporPlugin final {
 		auto CreateOutputPrototype() {
 			if constexpr (HasMultipleOutputs)
 				if constexpr (NumberOfOutputs == IndeterminateSize)
-					return std::vector<Clip>{};
+					return std::vector<VideoNode>{};
 				else
-					return std::array<Clip, NumberOfOutputs>{};
+					return std::array<VideoNode, NumberOfOutputs>{};
 			else
-				return Clip{};
+				return VideoNode{};
 		}
 		auto operator()(auto&& ...Arguments) {
 			auto ArgumentMap = VaporGlobals::API->createMap();

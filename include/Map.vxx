@@ -1,5 +1,6 @@
 #pragma once
-#include "Clip.vxx"
+#include "VideoNode.vxx"
+#include "AudioNode.vxx"
 #include "Function.vxx"
 
 struct ReadonlyItem final {
@@ -46,7 +47,7 @@ struct ReadonlyItem final {
 		VaporGlobals::API->freeFrame(RawFrame);
 		return static_cast<const VideoFormat&>(*Format);
 	}
-	operator Clip() {
+	operator VideoNode() {
 		return { VaporGlobals::API->propGetNode(Map, Key.data(), Index, nullptr) };
 	}
 	operator double() {
@@ -88,8 +89,8 @@ struct WritableItem final {
 			return VaporGlobals::API->propSetData(Map, Key.data(), Value, -1, AppendMode) == 0;
 		else if constexpr (isinstance(Value, std::string) || isinstance(Value, std::string_view))
 			return VaporGlobals::API->propSetData(Map, Key.data(), Value.data(), Value.size(), AppendMode) == 0;
-		else if constexpr (isinstance(Value, Clip))
-			return VaporGlobals::API->propSetNode(Map, Key.data(), Value.VideoNode, AppendMode) == 0;
+		else if constexpr (isinstance(Value, VideoNode))
+			return VaporGlobals::API->propSetNode(Map, Key.data(), Value.Handle, AppendMode) == 0;
 		else if constexpr (requires { &Value.Handle; })
 			return VaporGlobals::API->propSetFrame(Map, Key.data(), Value.Handle, AppendMode) == 0;
 		else if constexpr (isinstance(Value, Function))
@@ -169,7 +170,7 @@ auto Function::SynchronizeEvaluatedMap(auto OtherEvaluatedMap)->void {
 	auto ReferenceItems = ReadonlyItem{ .Map = OtherEvaluatedMap, .Key = "val" };
 	for (auto& x : ReferenceItems)
 		if (x.Type() == VSPropTypes::ptNode)
-			ResultItems += static_cast<Clip>(x);
+			ResultItems += static_cast<VideoNode>(x);
 		else if (x.Type() == VSPropTypes::ptFloat)
 			ResultItems += static_cast<double>(x);
 		else if (x.Type() == VSPropTypes::ptInt)
@@ -193,19 +194,19 @@ auto ExtractEvaluatedClips(auto EvaluatedMap) {
 	auto ClipSequence = ReadonlyItem{ .Map = EvaluatedMap, .Key = "clip" };
 	if constexpr (ContainsMultipleClips)
 		if constexpr (NumberOfClips == IndeterminateSize) {
-			auto EvaluatedClips = std::vector<Clip>{};
+			auto EvaluatedClips = std::vector<VideoNode>{};
 			for (auto&& x : ClipSequence)
 				EvaluatedClips.push_back(x);
 			return EvaluatedClips;
 		}
 		else {
-			auto EvaluatedClips = std::array<Clip, NumberOfClips>{};
+			auto EvaluatedClips = std::array<VideoNode, NumberOfClips>{};
 			for (auto x : Range{ Min(NumberOfClips, ClipSequence.Size()) })
 				EvaluatedClips[x] = ClipSequence[x];
 			return EvaluatedClips;
 		}
 	else
-		return static_cast<Clip>(ClipSequence);
+		return static_cast<VideoNode>(ClipSequence);
 }
 
 auto ForwardArguments(auto ArgumentMap, auto&& Parameter, auto&& Argument, auto&& ...ArgumentQueue) {

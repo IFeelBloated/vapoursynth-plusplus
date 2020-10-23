@@ -4,7 +4,7 @@
 struct TemporalMedian final {
 	static constexpr auto Name = "TemporalMedian";
 	static constexpr auto Parameters = "clip:clip;radius:int:opt;";
-	self(InputClip, Clip{});
+	self(InputClip, VideoNode{});
 	self(Radius, 1);
 	TemporalMedian(auto Arguments) {
 		InputClip = Arguments["clip"];
@@ -19,10 +19,10 @@ struct TemporalMedian final {
 		return InputClip.ExposeVideoInfo();
 	}
 	auto RequestReferenceFrames(auto Index, auto FrameContext) {
-		InputClip.RequestFrames(Index, Radius, FrameContext);
+		InputClip.RequestFrames(Index, FrameContext, [this](auto x) { return Range{ x - Radius, x + Radius + 1 }; });
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
-		auto InputFrames = InputClip.GetFrames<const float>(Index, Radius, PaddingFunctions::Video::Temporal::Reflect, FrameContext);
+		auto InputFrames = InputClip.FetchFrames<const float>(Index, FrameContext);
 		auto ProcessedFrame = Core.CreateNewFrameFrom(InputFrames[0]);
 		auto Samples = std::vector<float>{};
 		Samples.resize(2 * Radius + 1);

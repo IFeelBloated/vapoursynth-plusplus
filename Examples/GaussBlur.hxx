@@ -4,7 +4,7 @@
 struct GaussBlur final {
 	static constexpr auto Name = "GaussBlur";
 	static constexpr auto Parameters = "clip:clip;";
-	self(InputClip, Clip{});
+	self(InputClip, VideoNode{});
 	GaussBlur(auto Arguments) {
 		InputClip = Arguments["clip"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
@@ -17,7 +17,7 @@ struct GaussBlur final {
 		InputClip.RequestFrame(Index, FrameContext);
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
-		auto InputFrame = InputClip.GetFrame<const float>(Index, FrameContext);
+		auto InputFrame = InputClip.FetchFrame<const float>(Index, FrameContext);
 		auto ProcessedFrame = Core.CreateNewFrameFrom(InputFrame);
 		auto GaussKernel = [](auto Center) {
 			auto Conv = Center[-1][-1] + Center[-1][0] * 2 + Center[-1][1] +

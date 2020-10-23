@@ -27,10 +27,10 @@ public:
 				else
 					return VaporGlobals::API->getWritePtr(this->Handle, Index);
 			};
-			return PlaneType{ GetPlanePointer(), Width, Height, Stride, PaddingFunctions::Video::Spatial::Default };
+			return PlaneType{ GetPlanePointer(), Width, Height, Stride, PaddingFunctions::Plane::Default };
 		};
 		auto SynchronizeFormat = [this] {
-			auto& ReferenceFormat = reinterpret_cast<const VideoFormat&>(*Format);
+			auto& ReferenceFormat = reinterpret_cast<const VideoFormat&>(*this->Format);
 			auto& FlattenedFormat = static_cast<VideoFormat&>(*this);
 			FlattenedFormat = ReferenceFormat;
 		};

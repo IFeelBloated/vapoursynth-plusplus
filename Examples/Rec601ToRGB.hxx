@@ -4,7 +4,7 @@
 struct Rec601ToRGB final {
 	static constexpr auto Name = "Rec601ToRGB";
 	static constexpr auto Parameters = "clip:clip;";
-	self(InputClip, Clip{});
+	self(InputClip, VideoNode{});
 	Rec601ToRGB(auto Arguments) {
 		InputClip = Arguments["clip"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision() || !InputClip.IsYUV() || !InputClip.Is444())
@@ -19,7 +19,7 @@ struct Rec601ToRGB final {
 		InputClip.RequestFrame(Index, FrameContext);
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
-		auto InputFrame = InputClip.GetFrame<const float>(Index, FrameContext);
+		auto InputFrame = InputClip.FetchFrame<const float>(Index, FrameContext);
 		auto ProcessedFrame = VideoFrame<float>{ Core.AllocateFrame(VSPresetFormat::pfRGBS, InputClip.Width, InputClip.Height) };
 		if (InputFrame["_Matrix"].Exists() == false)
 			throw RuntimeError{ "_Matrix property not found!" };

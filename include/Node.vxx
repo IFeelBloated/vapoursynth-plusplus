@@ -1,0 +1,84 @@
+#pragma once
+#include "Infrastructure.vxx"
+#include "Globals.vxx"
+
+struct Node {
+	field(Handle, static_cast<VSNodeRef*>(nullptr));
+
+private:
+	using RequestFunctionInterface = auto(std::ptrdiff_t)->std::vector<std::ptrdiff_t>;
+	using RequestFunctionType = std::function<RequestFunctionInterface>;
+
+protected:
+	field(RequestFunction, RequestFunctionType{});
+
+protected:
+	using NodePointer = const VSNodeRef*;
+
+public:
+	Node() = default;
+	Node(std::convertible_to<NodePointer> auto&& Descriptor) {
+		auto NodeHandle = static_cast<NodePointer>(Forward(Descriptor));
+		this->Handle = PointerRemoveConstant(NodeHandle);
+	}
+
+public:
+	auto& operator=(const Node& OtherNode) {
+		if (this != &OtherNode) {
+			VaporGlobals::API->freeNode(this->Handle);
+			this->Handle = VaporGlobals::API->cloneNodeRef(OtherNode.Handle);
+			this->RequestFunction = OtherNode.RequestFunction;
+		}
+		return *this;
+	}
+	auto& operator=(Node&& OtherNode) {
+		if (this != &OtherNode) {
+			std::swap(this->Handle, OtherNode.Handle);
+			this->RequestFunction = std::move(OtherNode.RequestFunction);
+		}
+		return *this;
+	}
+	Node(const Node& OtherNode) {
+		*this = OtherNode;
+	}
+	Node(Node&& OtherNode) {
+		*this = std::move(OtherNode);
+	}
+
+public:
+	~Node() {
+		VaporGlobals::API->freeNode(this->Handle);
+	}
+
+public:
+	auto RequestFrameUnchecked(std::integral auto Index, auto FrameContext) {
+		VaporGlobals::API->requestFrameFilter(Index, Handle, FrameContext);
+	}
+	auto FetchFrameHandleUnchecked(std::integral auto Index, auto FrameContext) {
+		return VaporGlobals::API->getFrameFilter(Index, Handle, FrameContext);
+	}
+	auto SetRequestFunction(auto&& RequestFunction) {
+		if constexpr (isinstance(RequestFunction(0_ptrdiff), std::vector<std::ptrdiff_t>))
+			this->RequestFunction = Forward(RequestFunction);
+		else
+			this->RequestFunction = [RequestFunction = Forward(RequestFunction)](auto Index) {
+				auto RequestedFrameIndexes = RequestFunction(Index);
+				auto TypeErasedContainer = std::vector<std::ptrdiff_t>{};
+				for (auto x : RequestedFrameIndexes)
+					TypeErasedContainer.push_back(x);
+				return TypeErasedContainer;
+			};
+	}
+};
+
+namespace PaddingFunctions::Node {
+	auto Repeat = [](auto& Clip, auto Index, auto FrameContext) {
+		Index = Min(Max(Index, 0), Clip.FrameCount - 1);
+		return Clip.FetchFrameHandleUnchecked(Index, FrameContext);
+	};
+	auto Reflect = [](auto& Clip, auto Index, auto FrameContext) {
+		Index = Utility::ReflectCoordinate(Index, Clip.FrameCount);
+		return Clip.FetchFrameHandleUnchecked(Index, FrameContext);
+	};
+	auto Default = Reflect;
+}

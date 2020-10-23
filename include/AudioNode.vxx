@@ -1,0 +1,7 @@
+#pragma once
+#include "AudioFrame.vxx"
+#include "Node.vxx"
+
+struct AudioNode : Node {
+	//Placeholder for API v4.
+};

@@ -4,7 +4,7 @@
 struct GaussBlurFast final {
 	static constexpr auto Name = "GaussBlurFast";
 	static constexpr auto Parameters = "clip:clip;";
-	self(InputClip, Clip{});
+	self(InputClip, VideoNode{});
 	GaussBlurFast(auto Arguments) {
 		InputClip = Arguments["clip"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
@@ -36,7 +36,7 @@ struct GaussBlurFast final {
 		return Conv / 16;
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
-		auto InputFrame = InputClip.GetFrame<const float, true>(Index, FrameContext);
+		auto InputFrame = InputClip.FetchFrame<const float, true>(Index, FrameContext);
 		auto ProcessedFrame = Core.CreateNewFrameFrom(InputFrame);
 		for (auto c : Range{ InputFrame.PlaneCount }) {
 			for (auto y : Range{ 1, InputFrame[c].Height - 1 }) {

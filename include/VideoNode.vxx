@@ -1,0 +1,143 @@
+#pragma once
+#include "VideoFrame.vxx"
+#include "Node.vxx"
+
+struct VideoNode : Node, VSVideoInfo, VideoFormat {
+private:
+	using PaddingFunctionInterface = auto(VideoNode&, std::ptrdiff_t, FrameContextWrapper)->const VSFrameRef*;
+	using PaddingFunctionType = std::function<PaddingFunctionInterface>;
+
+public:
+	field(PaddingFunction, PaddingFunctionType{});
+
+public:
+	VideoNode() = default;
+	VideoNode(std::convertible_to<NodePointer> auto&& Descriptor) : Node{ Forward(Descriptor) } {
+		auto SynchronizeFormat = [this] {
+			auto& ReferenceFormat = reinterpret_cast<const VideoFormat&>(*this->Format);
+			if (auto& FlattenedFormat = static_cast<VideoFormat&>(*this); this->Format != nullptr)
+				FlattenedFormat = ReferenceFormat;
+		};
+		auto SynchronizeVideoInfo = [this] {
+			auto& ReferenceVideoInfo = *VaporGlobals::API->getVideoInfo(this->Handle);
+			auto& FlattenedVideoInfo = static_cast<VSVideoInfo&>(*this);
+			FlattenedVideoInfo = ReferenceVideoInfo;
+		};
+		SynchronizeVideoInfo();
+		SynchronizeFormat();
+		this->PaddingFunction = PaddingFunctions::Node::Default;
+	}
+
+public:
+	auto RequestFrame(std::integral auto Index, auto FrameContext) {
+		if (Index >= 0 && Index < FrameCount)
+			RequestFrameUnchecked(Index, FrameContext);
+	}
+	auto RequestFrames(std::integral auto Index, auto FrameContext, auto&& GeneralizedRequestFunction) {
+		for (auto RequestedFrameIndexes = GeneralizedRequestFunction(Index); auto x : RequestedFrameIndexes)
+			RequestFrame(x, FrameContext);
+		if (!RequestFunction)
+			SetRequestFunction(Forward(GeneralizedRequestFunction));
+	}
+
+private:
+	auto FetchFrameHandle(auto Index, auto FrameContext) {
+		if (Index < 0 || Index >= FrameCount)
+			return PaddingFunction(*this, Index, FrameContext);
+		else
+			return FetchFrameHandleUnchecked(Index, FrameContext);
+	}
+
+public:
+	template<typename PixelType, auto DirectAccess = false>
+	auto FetchFrame(std::integral auto Index, auto FrameContext) {
+		return VideoFrame<PixelType, DirectAccess>{ FetchFrameHandle(Index, FrameContext) };
+	}
+
+public:
+	template<typename PixelType, auto DirectAccess = false>
+	auto FetchFrames(std::integral auto Index, auto FrameContext) {
+		using FrameType = VideoFrame<PixelType, DirectAccess>;
+		auto FetchedFrames = std::unordered_map<std::ptrdiff_t, FrameType>{};
+		auto RequestedFrameIndexes = RequestFunction(Index);
+		FetchedFrames.rehash(RequestedFrameIndexes.size());
+		for (auto x : RequestedFrameIndexes)
+			FetchedFrames[x - Index] = FetchFrame<PixelType, DirectAccess>(x, FrameContext);
+		return FetchedFrames;
+	}
+
+public:
+	auto& ExposeVideoInfo() {
+		return static_cast<VSVideoInfo&>(*this);
+	}
+	auto& PeekFrameFormat(std::integral auto Index, auto FrameContext) {
+		auto FrameHandle = FetchFrameHandle(Index, FrameContext);
+		auto FormatPointer = VaporGlobals::API->getFrameFormat(FrameHandle);
+		VaporGlobals::API->freeFrame(FrameHandle);
+		return reinterpret_cast<const VideoFormat&>(*FormatPointer);
+	}
+	auto WithConstantDimensions() {
+		return Width != 0 && Height != 0;
+	}
+	auto WithConstantFormat() {
+		return Format != nullptr;
+	}
+	auto ContainsVideo() {
+		return Handle != nullptr;
+	}
+};
+
+namespace PaddingFunctions::Utility::Video {
+	auto ColorBlankFrame(auto&& BlankFrame, auto&& Color) {
+		using PixelType = std::decay_t<decltype(BlankFrame[0][0][0])>;
+		auto GeneratePalette = [&] {
+			if constexpr (requires { Color.begin(); }) {
+				auto PaletteBuffer = std::vector<PixelType>{};
+				for (auto&& x : Color)
+					PaletteBuffer.push_back(static_cast<PixelType>(x));
+				if (PaletteBuffer.size() >= 3)
+					return std::array{ PaletteBuffer[0], PaletteBuffer[1], PaletteBuffer[2] };
+				else if (PaletteBuffer.size() == 2)
+					return std::array{ PaletteBuffer[0], PaletteBuffer[1], PaletteBuffer[1] };
+				else if (PaletteBuffer.size() == 1)
+					return std::array{ PaletteBuffer[0], PaletteBuffer[0], PaletteBuffer[0] };
+				else
+					throw RuntimeError{ "PaddingFunctions::Utility::Video::ColorBlankFrame: failed to generate color palette." };
+			}
+			else {
+				auto Intensity = static_cast<PixelType>(Color);
+				return std::array{ Intensity, Intensity, Intensity };
+			}
+		};
+		auto Palette = GeneratePalette();
+		for (auto c : Range{ BlankFrame.PlaneCount })
+			for (auto y : Range{ BlankFrame[c].Height })
+				for (auto x : Range{ BlankFrame[c].Width })
+					BlankFrame[c][y][x] = Palette[c];
+		return BlankFrame.Leak();
+	}
+}
+
+namespace PaddingFunctions::VideoNode {
+	auto Constant(auto Core, auto&& Values) {
+		return [Core, Values = Forward(Values)](auto& Clip, auto Index, auto...) mutable {
+			if (!Clip.WithConstantFormat() || !Clip.WithConstantDimensions())
+				throw RuntimeError{ "PaddingFunctions::VideoNode::Constant: only clips with constant format and dimensions supported." };
+			auto FrameHandle = Core.AllocateFrame(Clip.Format, Clip.Width, Clip.Height);
+			if (Clip.IsSinglePrecision())
+				return Utility::Video::ColorBlankFrame(VideoFrame<float>{ FrameHandle }, Values);
+			else if (Clip.BitsPerSample > 8)
+				return Utility::Video::ColorBlankFrame(VideoFrame<std::uint16_t>{ FrameHandle }, Values);
+			else
+				return Utility::Video::ColorBlankFrame(VideoFrame<std::uint8_t>{ FrameHandle }, Values);
+		};
+	}
+	auto Zero(auto Core) {
+		return [=](auto& Clip, auto Index, auto...) {
+			if (Clip.IsRGB() || Clip.IsGray() || Clip.IsSinglePrecision())
+				return Constant(Core, 0)(Clip, Index);
+			else
+				return Constant(Core, std::array{ 0, 1 << (Clip.BitsPerSample - 1) })(Clip, Index);
+		};
+	}
+}

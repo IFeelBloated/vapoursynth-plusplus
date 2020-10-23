@@ -4,7 +4,7 @@
 struct Crop final {
 	static constexpr auto Name = "Crop";
 	static constexpr auto Parameters = "clip:clip;left:int:opt;right:int:opt;top:int:opt;bottom:int:opt;";
-	self(InputClip, Clip{});
+	self(InputClip, VideoNode{});
 	self(Left, 0);
 	self(Top, 0);
 	self(CroppedWidth, 0);
@@ -51,10 +51,10 @@ struct Crop final {
 			return ProcessedFrame.Leak();
 		};
 		if (InputClip.IsSinglePrecision())
-			return DrawGenericFrame(InputClip.GetFrame<const float>(Index, FrameContext));
+			return DrawGenericFrame(InputClip.FetchFrame<const float>(Index, FrameContext));
 		else if (InputClip.BitsPerSample > 8)
-			return DrawGenericFrame(InputClip.GetFrame<const std::uint16_t>(Index, FrameContext));
+			return DrawGenericFrame(InputClip.FetchFrame<const std::uint16_t>(Index, FrameContext));
 		else
-			return DrawGenericFrame(InputClip.GetFrame<const std::uint8_t>(Index, FrameContext));
+			return DrawGenericFrame(InputClip.FetchFrame<const std::uint8_t>(Index, FrameContext));
 	}
 };

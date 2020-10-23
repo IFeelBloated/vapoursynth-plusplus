@@ -4,7 +4,7 @@
 struct nnedi3_rpow2 final {
     static constexpr auto Name = "nnedi3_rpow2";
     static constexpr auto Parameters = "clip:clip;rfactor:int;nsize:int:opt;nns:int:opt;qual:int:opt;etype:int:opt;pscrn:int:opt;";
-    self(InputClip, Clip{});
+    self(InputClip, VideoNode{});
     self(RFactor, 0);
     self(NSize, 0);
     self(NNS, 3);

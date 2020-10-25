@@ -2,8 +2,6 @@
 #include "Range.vxx"
 #include "Globals.vxx"
 
-auto ForwardArguments(auto, auto&&, auto&&, auto&&...);
-
 template<typename ArbitraryType>
 concept VaporFunctionCompatible = requires(ArbitraryType x) { VaporGlobals::API->freeFunc(x); };
 

@@ -1,0 +1,67 @@
+#pragma once
+#include "Infrastructure.vxx"
+#include "Globals.vxx"
+
+template<typename ManagedType>
+struct Owner {
+	field(Handle, static_cast<ManagedType*>(nullptr));
+
+protected:
+	using HandleType = const ManagedType*;
+
+public:
+	static constexpr auto NullHandle = static_cast<HandleType>(nullptr);
+
+public:
+	Owner() = default;
+	Owner(std::convertible_to<HandleType> auto&& Descriptor) {
+		auto ManagedHandle = static_cast<HandleType>(Forward(Descriptor));
+		this->Handle = PointerRemoveConstant(ManagedHandle);
+	}
+
+public:
+	Owner(const Owner& OtherOwner) {
+		*this = OtherOwner;
+	}
+	Owner(Owner&& OtherOwner) {
+		*this = std::move(OtherOwner);
+	}
+	auto& operator=(const Owner& OtherOwner) {
+		if (this != &OtherOwner) {
+			this->ReleaseHandle();
+			this->Handle = OtherOwner.CloneHandle();
+		}
+		return *this;
+	}
+	auto& operator=(Owner&& OtherOwner) {
+		if (this != &OtherOwner)
+			std::swap(this->Handle, OtherOwner.Handle);
+		return *this;
+	}
+
+public:
+	~Owner() {
+		this->ReleaseHandle();
+	}
+
+public:
+	auto Leak() {
+		auto TransferredHandle = Handle;
+		Handle = nullptr;
+		return PointerAddConstant(TransferredHandle);
+	}
+
+private:
+	auto CloneHandle() const {
+		if constexpr (isinstance(Handle, VSFrameRef*))
+			return PointerRemoveConstant(VaporGlobals::API->cloneFrameRef(Handle));
+		if constexpr (isinstance(Handle, VSNodeRef*))
+			return VaporGlobals::API->cloneNodeRef(Handle);
+	}
+	auto ReleaseHandle() {
+		if constexpr (isinstance(Handle, VSFrameRef*))
+			VaporGlobals::API->freeFrame(Handle);
+		if constexpr (isinstance(Handle, VSNodeRef*))
+			VaporGlobals::API->freeNode(Handle);
+	}
+};

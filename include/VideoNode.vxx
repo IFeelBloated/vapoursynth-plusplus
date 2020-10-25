@@ -4,7 +4,7 @@
 
 struct VideoNode : Node, VSVideoInfo, VideoFormat {
 private:
-	using PaddingFunctionInterface = auto(VideoNode&, std::ptrdiff_t, FrameContextWrapper)->const VSFrameRef*;
+	using PaddingFunctionInterface = auto(VideoNode&, std::ptrdiff_t, FrameContextWrapper)->FrameReference;
 	using PaddingFunctionType = std::function<PaddingFunctionInterface>;
 
 public:
@@ -12,7 +12,7 @@ public:
 
 public:
 	VideoNode() = default;
-	VideoNode(std::convertible_to<NodePointer> auto&& Descriptor) : Node{ Forward(Descriptor) } {
+	VideoNode(std::convertible_to<HandleType> auto&& Descriptor) : Node{ Forward(Descriptor) } {
 		auto SynchronizeFormat = [this] {
 			auto& ReferenceFormat = reinterpret_cast<const VideoFormat&>(*this->Format);
 			if (auto& FlattenedFormat = static_cast<VideoFormat&>(*this); this->Format != nullptr)
@@ -41,17 +41,17 @@ public:
 	}
 
 private:
-	auto FetchFrameHandle(auto Index, auto FrameContext) {
+	auto AccessFrame(auto Index, auto FrameContext) {
 		if (Index < 0 || Index >= FrameCount)
 			return PaddingFunction(*this, Index, FrameContext);
 		else
-			return FetchFrameHandleUnchecked(Index, FrameContext);
+			return AccessFrameUnchecked(Index, FrameContext);
 	}
 
 public:
 	template<typename PixelType, auto DirectAccess = false>
 	auto FetchFrame(std::integral auto Index, auto FrameContext) {
-		return VideoFrame<PixelType, DirectAccess>{ FetchFrameHandle(Index, FrameContext) };
+		return VideoFrame<PixelType, DirectAccess>{ AccessFrame(Index, FrameContext).Leak() };
 	}
 
 public:
@@ -71,9 +71,8 @@ public:
 		return static_cast<VSVideoInfo&>(*this);
 	}
 	auto& PeekFrameFormat(std::integral auto Index, auto FrameContext) {
-		auto FrameHandle = FetchFrameHandle(Index, FrameContext);
-		auto FormatPointer = VaporGlobals::API->getFrameFormat(FrameHandle);
-		VaporGlobals::API->freeFrame(FrameHandle);
+		auto FrameDescriptor = AccessFrame(Index, FrameContext);
+		auto FormatPointer = VaporGlobals::API->getFrameFormat(FrameDescriptor.Handle);
 		return reinterpret_cast<const VideoFormat&>(*FormatPointer);
 	}
 	auto WithConstantDimensions() {
@@ -83,7 +82,7 @@ public:
 		return Format != nullptr;
 	}
 	auto ContainsVideo() {
-		return Handle != nullptr;
+		return Handle != NullHandle;
 	}
 };
 
@@ -114,7 +113,7 @@ namespace PaddingFunctions::Utility::Video {
 			for (auto y : Range{ BlankFrame[c].Height })
 				for (auto x : Range{ BlankFrame[c].Width })
 					BlankFrame[c][y][x] = Palette[c];
-		return BlankFrame.Leak();
+		return BlankFrame.Transfer();
 	}
 }
 

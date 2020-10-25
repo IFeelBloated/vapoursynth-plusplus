@@ -9,14 +9,14 @@ struct VideoFrame : Frame<PixelType>, VideoFormat {
 
 private:
 	using PlaneType = Plane<PixelType, DirectAccess>;
-	using typename Frame<PixelType>::FramePointer;
+	using typename FrameReference::HandleType;
 
 public:
 	field(Planes, std::array{ PlaneType{}, PlaneType{}, PlaneType{} });
 
 public:
 	VideoFrame() = default;
-	VideoFrame(std::convertible_to<FramePointer> auto&& Descriptor) : Frame<PixelType>{ Forward(Descriptor) } {
+	VideoFrame(std::convertible_to<HandleType> auto&& Descriptor) : Frame<PixelType>{ Forward(Descriptor) } {
 		auto ConstructPlane = [this](auto Index) {
 			auto Width = VaporGlobals::API->getFrameWidth(this->Handle, Index);
 			auto Height = VaporGlobals::API->getFrameHeight(this->Handle, Index);

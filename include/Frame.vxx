@@ -1,23 +1,16 @@
 #pragma once
 #include "Infrastructure.vxx"
-#include "Globals.vxx"
+#include "Owner.vxx"
+
+using FrameReference = Owner<VSFrameRef>;
 
 template<typename SampleType>
-struct Frame {
-	field(Handle, static_cast<VSFrameRef*>(nullptr));
+struct Frame : FrameReference {
 	field(PropertyMap, static_cast<VSMap*>(nullptr));
-
-protected:
-	using FramePointer = const VSFrameRef*;
-
-public:
-	static constexpr auto NullHandle = static_cast<FramePointer>(nullptr);
 
 public:
 	Frame() = default;
-	Frame(std::convertible_to<FramePointer> auto&& Descriptor) {
-		auto FrameHandle = static_cast<FramePointer>(Forward(Descriptor));
-		this->Handle = PointerRemoveConstant(FrameHandle);
+	Frame(std::convertible_to<HandleType> auto&& Descriptor) : FrameReference{ Forward(Descriptor) } {
 		if constexpr (std::is_const_v<SampleType>)
 			this->PropertyMap = PointerRemoveConstant(VaporGlobals::API->getFramePropsRO(this->Handle));
 		else
@@ -25,38 +18,8 @@ public:
 	}
 
 public:
-	Frame(const Frame& OtherFrame) {
-		*this = OtherFrame;
-	}
-	Frame(Frame&& OtherFrame) {
-		*this = std::move(OtherFrame);
-	}
-	auto& operator=(const Frame& OtherFrame) {
-		if (this != &OtherFrame) {
-			VaporGlobals::API->freeFrame(this->Handle);
-			this->Handle = PointerRemoveConstant(VaporGlobals::API->cloneFrameRef(OtherFrame.Handle));
-			this->PropertyMap = OtherFrame.PropertyMap;
-		}
-		return *this;
-	}
-	auto& operator=(Frame&& OtherFrame) {
-		if (this != &OtherFrame) {
-			std::swap(this->Handle, OtherFrame.Handle);
-			this->PropertyMap = OtherFrame.PropertyMap;
-		}
-		return *this;
-	}
-
-public:
-	~Frame() {
-		VaporGlobals::API->freeFrame(this->Handle);
-	}
-
-public:
-	auto Leak() {
-		auto TransferredHandle = Handle;
-		Handle = nullptr;
-		return PointerAddConstant(TransferredHandle);
+	auto Transfer() {
+		return FrameReference{ Leak() };
 	}
 	auto operator[](std::convertible_to<std::string> auto&&);
 };
@@ -70,7 +33,7 @@ public:
 		auto Caption = FilterType::Name + ": "s;
 		auto DecoratedMessage = Caption + Forward(ErrorMessage);
 		VaporGlobals::API->setFilterError(DecoratedMessage.data(), Handle);
-		return Frame<void>::NullHandle;
+		return FrameReference::NullHandle;
 	}
 
 public:

@@ -30,7 +30,7 @@ public:
 			throw RuntimeError{ ErrorMessageBuffer.data() };
 		return Frame{ FrameHandle };
 	}
-	auto SetRequestFunction(auto&& RequestFunction) const {
+	auto CacheRequestFunction(auto&& RequestFunction) const {
 		if constexpr (isinstance(RequestFunction(0_ptrdiff), std::vector<std::ptrdiff_t>))
 			this->RequestFunction = Forward(RequestFunction);
 		else

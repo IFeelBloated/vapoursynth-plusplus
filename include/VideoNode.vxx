@@ -37,7 +37,7 @@ public:
 		for (auto RequestedFrameIndexes = GeneralizedRequestFunction(Index); auto x : RequestedFrameIndexes)
 			RequestFrame(x, FrameContext);
 		if (!RequestFunction)
-			SetRequestFunction(Forward(GeneralizedRequestFunction));
+			CacheRequestFunction(Forward(GeneralizedRequestFunction));
 	}
 
 private:

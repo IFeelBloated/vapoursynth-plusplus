@@ -27,7 +27,7 @@ private:
 		field(xOffset, 0_ptrdiff);
 
 	public:
-		auto operator[](std::integral auto x) {
+		auto operator[](std::integral auto x) const {
 			auto xAbsolute = x + xOffset;
 			auto PlaneWidth = TargetPlane->Width;
 			auto PlaneHeight = TargetPlane->Height;
@@ -45,13 +45,13 @@ private:
 		field(xOffset, 0_ptrdiff);
 
 	public:
-		auto operator[](std::integral auto y) {
+		auto operator[](std::integral auto y) const {
 			return PaddedAccess{ .TargetPlane = TargetPlane, .yAbsolute = y + yOffset, .xOffset = xOffset };
 		}
-		auto GetCoordinates() {
+		auto GetCoordinates() const {
 			return std::array{ yOffset, xOffset };
 		}
-		auto View(std::integral auto y, std::integral auto x) {
+		auto View(std::integral auto y, std::integral auto x) const {
 			return PlaneView{ .TargetPlane = TargetPlane, .yOffset = yOffset + y, .xOffset = xOffset + x };
 		}
 	};
@@ -69,15 +69,15 @@ public:
 	}
 
 public:
-	auto operator[](std::integral auto y) {
+	auto operator[](std::integral auto y) const {
 		if constexpr (EnabledAutomaticPadding)
-			return PaddedAccess{ .TargetPlane = this, .yAbsolute = y };
+			return PaddedAccess{ .TargetPlane = PointerRemoveConstant(this), .yAbsolute = y };
 		else
 			return Canvas[y];
 	}
-	auto View(std::integral auto y, std::integral auto x) {
+	auto View(std::integral auto y, std::integral auto x) const {
 		static_assert(EnabledAutomaticPadding, "View() is only available when automatic padding is enabled!");
-		return PlaneView{ .TargetPlane = this, .yOffset = y, .xOffset = x };
+		return PlaneView{ .TargetPlane = PointerRemoveConstant(this), .yOffset = y, .xOffset = x };
 	}
 };
 

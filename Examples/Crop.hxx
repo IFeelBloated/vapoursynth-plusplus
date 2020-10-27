@@ -30,11 +30,11 @@ struct Crop final {
 		if (CroppedWidth <= 0 || CroppedHeight <= 0)
 			throw RuntimeError{ "dimensions must be positive after cropping!" };
 	}
-	auto RegisterVideoInfo(auto Core) {
-		auto VideoInfo = InputClip.ExposeVideoInfo();
-		VideoInfo.Width = CroppedWidth;
-		VideoInfo.Height = CroppedHeight;
-		return VideoInfo;
+	auto RegisterMetadata(auto Core) {
+		auto Metadata = InputClip.ExtractMetadata();
+		Metadata.Width = CroppedWidth;
+		Metadata.Height = CroppedHeight;
+		return Metadata;
 	}
 	auto RequestReferenceFrames(auto Index, auto FrameContext) {
 		InputClip.RequestFrame(Index, FrameContext);

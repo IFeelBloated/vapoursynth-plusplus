@@ -3,14 +3,14 @@
 
 struct VaporCore final {
 	self(Instance, static_cast<VSCore*>(nullptr));
-	auto FetchFormat(auto FormatID) {
-		return VaporGlobals::API->getFormatPreset(FormatID, Instance);
+	auto FetchFormat(auto FormatID) const {
+		return reinterpret_cast<const VideoFormat*>(VaporGlobals::API->getFormatPreset(FormatID, Instance));
 	}
-	auto AllocateFrame(auto Format, auto Width, auto Height) {
-		if constexpr (isinstance(Format, const VSFormat*) || isinstance(Format, VSFormat*))
-			return VaporGlobals::API->newVideoFrame(Format, Width, Height, nullptr, Instance);
-		else
-			return VaporGlobals::API->newVideoFrame(FetchFormat(Format), Width, Height, nullptr, Instance);
+	auto AllocateFrame(std::convertible_to<const VSFormat*> auto Format, auto Width, auto Height) const {
+		return VaporGlobals::API->newVideoFrame(Format, Width, Height, nullptr, Instance);
+	}
+	auto AllocateFrame(auto FormatID, auto Width, auto Height) const {
+		return VaporGlobals::API->newVideoFrame(FetchFormat(FormatID), Width, Height, nullptr, Instance);
 	}
 	auto CopyFrameProperties(auto&& Source, auto&& Destination) {
 		VaporGlobals::API->copyFrameProps(Source.Handle, Destination.Handle, Instance);

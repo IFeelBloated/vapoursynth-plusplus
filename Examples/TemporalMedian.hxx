@@ -15,8 +15,8 @@ struct TemporalMedian final {
 		if (Radius < 0)
 			throw RuntimeError{ "radius cannot be negative!" };
 	}
-	auto RegisterVideoInfo(auto Core) {
-		return InputClip.ExposeVideoInfo();
+	auto RegisterMetadata(auto Core) {
+		return InputClip.ExtractMetadata();
 	}
 	auto RequestReferenceFrames(auto Index, auto FrameContext) {
 		InputClip.RequestFrames(Index, FrameContext, [this](auto x) { return Range{ x - Radius, x + Radius + 1 }; });

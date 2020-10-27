@@ -1,11 +1,10 @@
 #pragma once
 #include "Frame.vxx"
 #include "Plane.vxx"
-#include "Format.vxx"
 
 template<typename PixelType, auto DirectAccess = false>
 struct VideoFrame : Frame<PixelType>, VideoFormat {
-	field(Format, static_cast<const VSFormat*>(nullptr));
+	field(Format, static_cast<const VideoFormat*>(nullptr));
 
 private:
 	using PlaneType = Plane<PixelType, DirectAccess>;
@@ -17,6 +16,7 @@ public:
 public:
 	VideoFrame() = default;
 	VideoFrame(std::convertible_to<HandleType> auto&& Descriptor) : Frame<PixelType>{ Forward(Descriptor) } {
+		auto& ReferenceFormat = this->QueryVideoFormat();
 		auto ConstructPlane = [this](auto Index) {
 			auto Width = VaporGlobals::API->getFrameWidth(this->Handle, Index);
 			auto Height = VaporGlobals::API->getFrameHeight(this->Handle, Index);
@@ -29,19 +29,18 @@ public:
 			};
 			return PlaneType{ GetPlanePointer(), Width, Height, Stride, PaddingFunctions::Plane::Default };
 		};
-		auto SynchronizeFormat = [this] {
-			auto& ReferenceFormat = reinterpret_cast<const VideoFormat&>(*this->Format);
+		auto SynchronizeFormat = [&] {
 			auto& FlattenedFormat = static_cast<VideoFormat&>(*this);
 			FlattenedFormat = ReferenceFormat;
 		};
-		this->Format = VaporGlobals::API->getFrameFormat(this->Handle);
+		this->Format = &ReferenceFormat;
 		SynchronizeFormat();
-		for (auto Index : Range{ PlaneCount })
+		for (auto Index : Range{ this->PlaneCount })
 			Planes[Index] = ConstructPlane(Index);
 	}
 
 public:
-	auto& operator[](std::integral auto x) {
+	auto& operator[](std::integral auto x) const {
 		return Planes[x];
 	}
 	using Frame<PixelType>::operator[];

@@ -1,10 +1,11 @@
 #pragma once
 #include "Infrastructure.vxx"
 #include "Owner.vxx"
+#include "Metadata.vxx"
 
 using FrameReference = Owner<VSFrameRef>;
 
-template<typename SampleType>
+template<typename SampleType = const void>
 struct Frame : FrameReference {
 	field(PropertyMap, static_cast<VSMap*>(nullptr));
 
@@ -18,10 +19,30 @@ public:
 	}
 
 public:
+	auto Type() const {
+		//Placeholder for API v4.
+	}
+	auto& QueryVideoFormat() const {
+		auto FormatHandle = VaporGlobals::API->getFrameFormat(Handle);
+		return reinterpret_cast<const VideoFormat&>(*FormatHandle);
+	}
+	auto QueryAudioFormat() const {
+		//Placeholder for API v4.
+	}
 	auto Transfer() {
 		return FrameReference{ Leak() };
 	}
-	auto operator[](std::convertible_to<std::string> auto&&);
+	auto operator[](std::convertible_to<std::string> auto&&) const;
+
+public:
+	template<std::derived_from<FrameReference> FrameType>
+	operator FrameType() && {
+		return { this->Leak() };
+	}
+	template<std::derived_from<FrameReference> FrameType>
+	operator FrameType() const & {
+		return { this->CloneHandle() };
+	}
 };
 
 struct FrameContextWrapper {
@@ -29,7 +50,7 @@ struct FrameContextWrapper {
 
 public:
 	template<typename FilterType>
-	auto RaiseError(auto&& ErrorMessage) {
+	auto RaiseError(auto&& ErrorMessage) const {
 		auto Caption = FilterType::Name + ": "s;
 		auto DecoratedMessage = Caption + Forward(ErrorMessage);
 		VaporGlobals::API->setFilterError(DecoratedMessage.data(), Handle);
@@ -37,10 +58,10 @@ public:
 	}
 
 public:
-	auto RevealOutputIndex() {
+	auto QueryOutputIndex() const {
 		return VaporGlobals::API->getOutputIndex(Handle);
 	}
-	operator auto() {
+	operator auto() const {
 		return Handle;
 	}
 };

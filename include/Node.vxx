@@ -10,20 +10,27 @@ private:
 	using RequestFunctionType = std::function<RequestFunctionInterface>;
 
 protected:
-	field(RequestFunction, RequestFunctionType{});
+	mutable field(RequestFunction, RequestFunctionType{});
 
 public:
 	Node() = default;
 	Node(std::convertible_to<HandleType> auto&& Descriptor) : NodeReference{ Forward(Descriptor) } {}
 
 public:
-	auto RequestFrameUnchecked(std::integral auto Index, auto FrameContext) {
+	auto RequestFrameUnchecked(std::integral auto Index, auto FrameContext) const {
 		VaporGlobals::API->requestFrameFilter(Index, Handle, FrameContext);
 	}
-	auto AccessFrameUnchecked(std::integral auto Index, auto FrameContext) {
+	auto AccessFrameUnchecked(std::integral auto Index, auto FrameContext) const {
 		return FrameReference{ VaporGlobals::API->getFrameFilter(Index, Handle, FrameContext) };
 	}
-	auto SetRequestFunction(auto&& RequestFunction) {
+	auto PeekFrame(std::integral auto Index) const {
+		auto ErrorMessageBuffer = std::array<char, 1024>{};
+		auto FrameHandle = VaporGlobals::API->getFrame(Index, Handle, ErrorMessageBuffer.data(), 1024);
+		if (FrameHandle == FrameReference::NullHandle)
+			throw RuntimeError{ ErrorMessageBuffer.data() };
+		return Frame{ FrameHandle };
+	}
+	auto SetRequestFunction(auto&& RequestFunction) const {
 		if constexpr (isinstance(RequestFunction(0_ptrdiff), std::vector<std::ptrdiff_t>))
 			this->RequestFunction = Forward(RequestFunction);
 		else
@@ -34,6 +41,30 @@ public:
 					TypeErasedContainer.push_back(x);
 				return TypeErasedContainer;
 			};
+	}
+	auto Type() const {
+		//Placeholder for API v4.
+	}
+	auto& QueryVideoInfo() const {
+		auto InfoHandle = VaporGlobals::API->getVideoInfo(Handle);
+		return reinterpret_cast<const VideoInfo&>(*InfoHandle);
+	}
+	auto QueryAudioInfo() const {
+		//Placeholder for API v4.
+	}
+
+public:
+	template<std::derived_from<NodeReference> NodeType>
+	operator NodeType() && {
+		auto TargetNode = NodeType{ this->Leak() };
+		TargetNode.RequestFunction = std::move(this->RequestFunction);
+		return TargetNode;
+	}
+	template<std::derived_from<NodeReference> NodeType>
+	operator NodeType() const & {
+		auto TargetNode = NodeType{ this->CloneHandle() };
+		TargetNode.RequestFunction = this->RequestFunction;
+		return TargetNode;
 	}
 };
 

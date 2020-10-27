@@ -13,8 +13,8 @@ struct ModifyFrame final {
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
 			throw RuntimeError{ "only single precision floating point clips with constant format and dimensions supported." };
 	}
-	auto RegisterVideoInfo(auto Core) {
-		return InputClip.ExposeVideoInfo();
+	auto RegisterMetadata(auto Core) {
+		return InputClip.ExtractMetadata();
 	}
 	auto RequestReferenceFrames(auto Index, auto FrameContext) {
 		InputClip.RequestFrame(Index, FrameContext);

@@ -1,6 +1,19 @@
 # vsFilterScript
 C++ wrapper for VSAPI to help you sketch your filter in the fastest possible way.
 
+## Progress
+
+### Up To Date
+Range
+Plane
+Owner
+Metadata
+Frame
+VideoFrame
+AudioFrame
+Node
+VideoNode
+AudioNode
 
 ## Compilation
 

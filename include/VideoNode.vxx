@@ -2,9 +2,9 @@
 #include "VideoFrame.vxx"
 #include "Node.vxx"
 
-struct VideoNode : Node, VSVideoInfo, VideoFormat {
+struct VideoNode : Node, VideoInfo, VideoFormat {
 private:
-	using PaddingFunctionInterface = auto(VideoNode&, std::ptrdiff_t, FrameContextWrapper)->FrameReference;
+	using PaddingFunctionInterface = auto(const VideoNode&, std::ptrdiff_t, FrameContextWrapper)->FrameReference;
 	using PaddingFunctionType = std::function<PaddingFunctionInterface>;
 
 public:
@@ -14,13 +14,13 @@ public:
 	VideoNode() = default;
 	VideoNode(std::convertible_to<HandleType> auto&& Descriptor) : Node{ Forward(Descriptor) } {
 		auto SynchronizeFormat = [this] {
-			auto& ReferenceFormat = reinterpret_cast<const VideoFormat&>(*this->Format);
-			if (auto& FlattenedFormat = static_cast<VideoFormat&>(*this); this->Format != nullptr)
+			auto& FlattenedFormat = static_cast<VideoFormat&>(*this);
+			if (auto& ReferenceFormat = *this->Format; this->Format != nullptr)
 				FlattenedFormat = ReferenceFormat;
 		};
 		auto SynchronizeVideoInfo = [this] {
-			auto& ReferenceVideoInfo = *VaporGlobals::API->getVideoInfo(this->Handle);
-			auto& FlattenedVideoInfo = static_cast<VSVideoInfo&>(*this);
+			auto& ReferenceVideoInfo = this->QueryVideoInfo();
+			auto& FlattenedVideoInfo = static_cast<VideoInfo&>(*this);
 			FlattenedVideoInfo = ReferenceVideoInfo;
 		};
 		SynchronizeVideoInfo();
@@ -29,11 +29,11 @@ public:
 	}
 
 public:
-	auto RequestFrame(std::integral auto Index, auto FrameContext) {
+	auto RequestFrame(std::integral auto Index, auto FrameContext) const {
 		if (Index >= 0 && Index < FrameCount)
 			RequestFrameUnchecked(Index, FrameContext);
 	}
-	auto RequestFrames(std::integral auto Index, auto FrameContext, auto&& GeneralizedRequestFunction) {
+	auto RequestFrames(std::integral auto Index, auto FrameContext, auto&& GeneralizedRequestFunction) const {
 		for (auto RequestedFrameIndexes = GeneralizedRequestFunction(Index); auto x : RequestedFrameIndexes)
 			RequestFrame(x, FrameContext);
 		if (!RequestFunction)
@@ -41,7 +41,7 @@ public:
 	}
 
 private:
-	auto AccessFrame(auto Index, auto FrameContext) {
+	auto AccessFrame(auto Index, auto FrameContext) const {
 		if (Index < 0 || Index >= FrameCount)
 			return PaddingFunction(*this, Index, FrameContext);
 		else
@@ -50,13 +50,11 @@ private:
 
 public:
 	template<typename PixelType, auto DirectAccess = false>
-	auto FetchFrame(std::integral auto Index, auto FrameContext) {
+	auto FetchFrame(std::integral auto Index, auto FrameContext) const {
 		return VideoFrame<PixelType, DirectAccess>{ AccessFrame(Index, FrameContext).Leak() };
 	}
-
-public:
 	template<typename PixelType, auto DirectAccess = false>
-	auto FetchFrames(std::integral auto Index, auto FrameContext) {
+	auto FetchFrames(std::integral auto Index, auto FrameContext) const {
 		using FrameType = VideoFrame<PixelType, DirectAccess>;
 		auto FetchedFrames = std::unordered_map<std::ptrdiff_t, FrameType>{};
 		auto RequestedFrameIndexes = RequestFunction(Index);
@@ -67,23 +65,13 @@ public:
 	}
 
 public:
-	auto& ExposeVideoInfo() {
-		return static_cast<VSVideoInfo&>(*this);
+	auto& ExtractMetadata() const {
+		return static_cast<const VideoInfo&>(*this);
 	}
-	auto& PeekFrameFormat(std::integral auto Index, auto FrameContext) {
-		auto FrameDescriptor = AccessFrame(Index, FrameContext);
-		auto FormatPointer = VaporGlobals::API->getFrameFormat(FrameDescriptor.Handle);
-		return reinterpret_cast<const VideoFormat&>(*FormatPointer);
+	auto PeekFrame(std::integral auto Index, auto FrameContext) const {
+		return Frame{ AccessFrame(Index, FrameContext).Leak() };
 	}
-	auto WithConstantDimensions() {
-		return Width != 0 && Height != 0;
-	}
-	auto WithConstantFormat() {
-		return Format != nullptr;
-	}
-	auto ContainsVideo() {
-		return Handle != NullHandle;
-	}
+	using Node::PeekFrame;
 };
 
 namespace PaddingFunctions::Utility::Video {
@@ -119,7 +107,7 @@ namespace PaddingFunctions::Utility::Video {
 
 namespace PaddingFunctions::VideoNode {
 	auto Constant(auto Core, auto&& Values) {
-		return [Core, Values = Forward(Values)](auto& Clip, auto Index, auto...) mutable {
+		return [Core, Values = Forward(Values)](auto& Clip, auto Index, auto...) {
 			if (!Clip.WithConstantFormat() || !Clip.WithConstantDimensions())
 				throw RuntimeError{ "PaddingFunctions::VideoNode::Constant: only clips with constant format and dimensions supported." };
 			auto FrameHandle = Core.AllocateFrame(Clip.Format, Clip.Width, Clip.Height);

@@ -17,20 +17,20 @@ struct Palette final {
 		if (Width <= 0 || Height <= 0)
 			throw RuntimeError{ "spatial dimensions must be positive!" };
 	}
-	auto RegisterVideoInfo(auto Core) {
-		auto VideoInfo = VSVideoInfo{
+	auto RegisterMetadata(auto Core) {
+		auto Metadata = VideoInfo{
 			.Format = Core.FetchFormat(VSPresetFormat::pfGrayS),
 			.FrameRateNumerator = 30000, .FrameRateDenominator = 1001,
 			.Width = Width, .Height = Height,
 			.FrameCount = 1
 		};
-		return std::vector{ Shades.Size(), VideoInfo };
+		return std::vector{ Shades.Size(), Metadata };
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
 		auto ProcessedFrame = VideoFrame<float>{ Core.AllocateFrame(VSPresetFormat::pfGrayS, Width, Height) };
 		for (auto y : Range{ Height })
 			for (auto x : Range{ Width })
-				ProcessedFrame[0][y][x] = Shades[FrameContext.RevealOutputIndex()];
+				ProcessedFrame[0][y][x] = Shades[FrameContext.QueryOutputIndex()];
 		return ProcessedFrame.Leak();
 	}
 };

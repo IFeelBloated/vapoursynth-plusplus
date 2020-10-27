@@ -10,10 +10,10 @@ struct Rec601ToRGB final {
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision() || !InputClip.IsYUV() || !InputClip.Is444())
 			throw RuntimeError{ "only YUV444PS clips supported." };
 	}
-	auto RegisterVideoInfo(auto Core) {
-		auto VideoInfo = InputClip.ExposeVideoInfo();
-		VideoInfo.Format = Core.FetchFormat(VSPresetFormat::pfRGBS);
-		return VideoInfo;
+	auto RegisterMetadata(auto Core) {
+		auto Metadata = InputClip.ExtractMetadata();
+		Metadata.Format = Core.FetchFormat(VSPresetFormat::pfRGBS);
+		return Metadata;
 	}
 	auto RequestReferenceFrames(auto Index, auto FrameContext) {
 		InputClip.RequestFrame(Index, FrameContext);

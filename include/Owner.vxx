@@ -45,13 +45,16 @@ public:
 	}
 
 public:
+	auto IsEmpty() const {
+		return Handle == NullHandle;
+	}
 	auto Leak() {
 		auto TransferredHandle = Handle;
 		Handle = nullptr;
 		return PointerAddConstant(TransferredHandle);
 	}
 
-private:
+protected:
 	auto CloneHandle() const {
 		if constexpr (isinstance(Handle, VSFrameRef*))
 			return PointerRemoveConstant(VaporGlobals::API->cloneFrameRef(Handle));

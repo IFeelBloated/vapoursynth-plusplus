@@ -26,3 +26,25 @@ struct VideoFormat : VSFormat {
 struct AudioFormat {
 	//Placeholder for API v4.
 };
+
+struct VideoInfo {
+	field(Format, static_cast<const VideoFormat*>(nullptr));
+	field(FrameRateNumerator, 0_i64);
+	field(FrameRateDenominator, 0_i64);
+	field(Width, 0);
+	field(Height, 0);
+	field(FrameCount, 0);
+	field(Flags, 0);
+
+public:
+	auto WithConstantDimensions() const {
+		return Width != 0 && Height != 0;
+	}
+	auto WithConstantFormat() const {
+		return Format != nullptr;
+	}
+};
+
+struct AudioInfo {
+	//Placeholder for API v4.
+};

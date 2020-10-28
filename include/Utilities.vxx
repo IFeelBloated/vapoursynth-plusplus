@@ -1,0 +1,82 @@
+#pragma once
+#include "Macros.vxx"
+#include "Range.vxx"
+
+using RuntimeError = std::string;
+
+template<typename UnknownType>
+concept NativeArray = std::is_array_v<std::remove_cvref_t<UnknownType>>;
+
+template<typename UnknownType>
+concept Advanceable = requires(UnknownType x) { ++x; };
+
+template<typename UnknownType>
+concept Iterable = NativeArray<UnknownType> || requires(UnknownType x) {
+	{ x.begin() }->Advanceable;
+	*x.begin();
+	x.begin() != x.end();
+};
+
+namespace Utility {
+	auto PointerDropQualifiers(auto Pointer) {
+		using ReferencedType = std::remove_cvref_t<decltype(*Pointer)>;
+		return const_cast<ReferencedType*>(Pointer);
+	}
+	auto PointerAddConstQualifier(auto Pointer) {
+		using ReferencedType = std::remove_cvref_t<decltype(*Pointer)>;
+		return const_cast<const ReferencedType*>(Pointer);
+	}
+	auto Max(auto x, auto y) {
+		return x > y ? x : y;
+	}
+	auto Min(auto x, auto y) {
+		return x < y ? x : y;
+	}
+	auto TypeEraseIterableToTriplet(auto&& Entity) {
+		if constexpr (Iterable<decltype(Entity)>) {
+			auto Buffer = [&] {
+				if constexpr (NativeArray<decltype(Entity)>)
+					return std::vector<std::decay_t<decltype(Entity[0])>>{};
+				else
+					return std::vector<std::decay_t<decltype(*Entity.begin())>>{};
+			}();
+			if constexpr (std::is_rvalue_reference_v<decltype(Entity)>)
+				for (auto&& x : Entity)
+					Buffer.push_back(std::move(x));
+			else
+				for (auto&& x : Entity)
+					Buffer.push_back(x);
+			if (Buffer.size() >= 3)
+				return std::array{ std::move(Buffer[0]), std::move(Buffer[1]), std::move(Buffer[2]) };
+			else if (Buffer.size() == 2)
+				return std::array{ std::move(Buffer[0]), Buffer[1], std::move(Buffer[1]) };
+			else if (Buffer.size() == 1)
+				return std::array{ Buffer[0], Buffer[0], std::move(Buffer[0]) };
+			else
+				throw RuntimeError{ "TypeEraseIterableToTriplet: failed to convert iterable object to std::array<auto, 3>." };
+		}
+		else
+			return std::array{ Entity, Entity, Forward(Entity) };
+	}
+}
+
+namespace Utility::PaddingFunctions {
+	auto ReflectCoordinate(auto x, auto Bound) {
+		while (x < 0 || x >= Bound) {
+			x = std::abs(x);
+			x -= Bound - 1;
+			x = -std::abs(x);
+			x += Bound - 1;
+		}
+		return x;
+	}
+	auto ColorBlankFrame(auto&& BlankFrame, auto&& Values) {
+		using PixelType = std::decay_t<decltype(BlankFrame[0][0][0])>;
+		auto ColorComponents = TypeEraseIterableToTriplet(Forward(Values));
+		for (auto c : Range{ BlankFrame.PlaneCount })
+			for (auto y : Range{ BlankFrame[c].Height })
+				for (auto x : Range{ BlankFrame[c].Width })
+					BlankFrame[c][y][x] = static_cast<PixelType>(ColorComponents[c]);
+		return BlankFrame.Transfer();
+	}
+}

@@ -1,6 +1,6 @@
 #pragma once
-#include "Infrastructure.vxx"
-#include "Globals.vxx"
+#include "Owner.vxx"
+#include "Metadata.vxx"
 
 using NodeReference = Owner<VSNodeRef>;
 
@@ -29,6 +29,9 @@ public:
 		if (FrameHandle == FrameReference::NullHandle)
 			throw RuntimeError{ ErrorMessageBuffer.data() };
 		return Frame{ FrameHandle };
+	}
+	auto IsRequestFunctionCached() const {
+		return static_cast<bool>(RequestFunction);
 	}
 	auto CacheRequestFunction(auto&& RequestFunction) const {
 		if constexpr (isinstance(RequestFunction(0_ptrdiff), std::vector<std::ptrdiff_t>))
@@ -70,11 +73,11 @@ public:
 
 namespace PaddingFunctions::Node {
 	auto Repeat = [](auto& Clip, auto Index, auto FrameContext) {
-		Index = Min(Max(Index, 0), Clip.FrameCount - 1);
+		Index = Utility::Min(Utility::Max(Index, 0), Clip.FrameCount - 1);
 		return Clip.AccessFrameUnchecked(Index, FrameContext);
 	};
 	auto Reflect = [](auto& Clip, auto Index, auto FrameContext) {
-		Index = Utility::ReflectCoordinate(Index, Clip.FrameCount);
+		Index = Utility::PaddingFunctions::ReflectCoordinate(Index, Clip.FrameCount);
 		return Clip.AccessFrameUnchecked(Index, FrameContext);
 	};
 	auto Default = Reflect;

@@ -1,5 +1,5 @@
 #pragma once
-#include "Range.vxx"
+#include "Utilities.vxx"
 
 template<typename PixelType, auto DirectAccess>
 struct Plane {
@@ -71,27 +71,15 @@ public:
 public:
 	auto operator[](std::integral auto y) const {
 		if constexpr (EnabledAutomaticPadding)
-			return PaddedAccess{ .TargetPlane = PointerRemoveConstant(this), .yAbsolute = y };
+			return PaddedAccess{ .TargetPlane = Utility::PointerDropQualifiers(this), .yAbsolute = y };
 		else
 			return Canvas[y];
 	}
 	auto View(std::integral auto y, std::integral auto x) const {
 		static_assert(EnabledAutomaticPadding, "View() is only available when automatic padding is enabled!");
-		return PlaneView{ .TargetPlane = PointerRemoveConstant(this), .yOffset = y, .xOffset = x };
+		return PlaneView{ .TargetPlane = Utility::PointerDropQualifiers(this), .yOffset = y, .xOffset = x };
 	}
 };
-
-namespace PaddingFunctions::Utility {
-	auto ReflectCoordinate(auto x, auto Bound) {
-		while (x < 0 || x >= Bound) {
-			x = std::abs(x);
-			x -= Bound - 1;
-			x = -std::abs(x);
-			x += Bound - 1;
-		}
-		return x;
-	}
-}
 
 namespace PaddingFunctions::Plane {
 	auto Constant(auto Value) {
@@ -101,13 +89,13 @@ namespace PaddingFunctions::Plane {
 		};
 	}
 	auto Repeat = [](auto Canvas, auto Width, auto Height, auto y, auto x) {
-		x = Min(Max(x, 0), Width - 1);
-		y = Min(Max(y, 0), Height - 1);
+		x = Utility::Min(Utility::Max(x, 0), Width - 1);
+		y = Utility::Min(Utility::Max(y, 0), Height - 1);
 		return Canvas[y][x];
 	};
 	auto Reflect = [](auto Canvas, auto Width, auto Height, auto y, auto x) {
-		x = Utility::ReflectCoordinate(x, Width);
-		y = Utility::ReflectCoordinate(y, Height);
+		x = Utility::PaddingFunctions::ReflectCoordinate(x, Width);
+		y = Utility::PaddingFunctions::ReflectCoordinate(y, Height);
 		return Canvas[y][x];
 	};
 	auto Zero = Constant(0);

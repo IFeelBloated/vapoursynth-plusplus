@@ -6,14 +6,14 @@ namespace VaporInterface {
 	auto Initialize(auto, auto, auto InstanceData, auto Node, auto Core, auto...) {
 		auto Data = reinterpret_cast<FilterType*>(*InstanceData);
 		auto Metadata = Data->RegisterMetadata(VaporCore{ .Instance = Core });
-		if constexpr (requires { Metadata.Size(); })
+		if constexpr (requires { Metadata.size(); })
 			if constexpr (requires { Metadata.data(); })
-				VaporGlobals::API->setVideoInfo(reinterpret_cast<const VSVideoInfo*>(Metadata.data()), Metadata.Size(), Node);
+				VaporGlobals::API->setVideoInfo(reinterpret_cast<const VSVideoInfo*>(Metadata.data()), Metadata.size(), Node);
 			else {
 				auto AggregatedMetadata = std::vector<VideoInfo>{};
 				for (auto&& x : Metadata)
 					AggregatedMetadata.push_back(x);
-				VaporGlobals::API->setVideoInfo(reinterpret_cast<const VSVideoInfo*>(AggregatedMetadata.data()), Metadata.Size(), Node);
+				VaporGlobals::API->setVideoInfo(reinterpret_cast<const VSVideoInfo*>(AggregatedMetadata.data()), Metadata.size(), Node);
 			}
 		else
 			VaporGlobals::API->setVideoInfo(reinterpret_cast<const VSVideoInfo*>(&Metadata), 1, Node);
@@ -68,9 +68,9 @@ namespace VaporInterface {
 					using VideoInfoType = decltype(InstanceData->RegisterMetadata(VaporCore{}));
 					auto VideoInfoPrototype = VideoInfoType{};
 					if constexpr (WithConstexprSize(VideoInfoPrototype))
-						return ExtractEvaluatedClips<true, VideoInfoPrototype.Size()>(EvaluatedMap);
+						return ExtractEvaluatedClips<true, VideoInfoPrototype.size()>(EvaluatedMap);
 					else
-						return ExtractEvaluatedClips<requires { VideoInfoPrototype.Size(); }, IndeterminateSize>(EvaluatedMap);
+						return ExtractEvaluatedClips<requires { VideoInfoPrototype.size(); }, IndeterminateSize>(EvaluatedMap);
 				}
 				else
 					return ExtractEvaluatedClips<true, IndeterminateSize>(EvaluatedMap);

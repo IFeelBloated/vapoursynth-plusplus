@@ -1,6 +1,6 @@
 #pragma once
 #include "VapourSynth.h"
-#include "Infrastructure.vxx"
+#include "Utilities.vxx"
 
 struct VideoFormat : VSFormat {
 	auto IsSinglePrecision() const {

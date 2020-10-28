@@ -1,5 +1,5 @@
 #pragma once
-#include "Infrastructure.vxx"
+#include "Utilities.vxx"
 #include "Globals.vxx"
 
 template<typename ManagedType>
@@ -16,7 +16,7 @@ public:
 	Owner() = default;
 	Owner(std::convertible_to<HandleType> auto&& Descriptor) {
 		auto ManagedHandle = static_cast<HandleType>(Forward(Descriptor));
-		this->Handle = PointerRemoveConstant(ManagedHandle);
+		this->Handle = Utility::PointerDropQualifiers(ManagedHandle);
 	}
 
 public:
@@ -51,13 +51,13 @@ public:
 	auto Leak() {
 		auto TransferredHandle = Handle;
 		Handle = nullptr;
-		return PointerAddConstant(TransferredHandle);
+		return Utility::PointerAddConstQualifier(TransferredHandle);
 	}
 
 protected:
 	auto CloneHandle() const {
 		if constexpr (isinstance(Handle, VSFrameRef*))
-			return PointerRemoveConstant(VaporGlobals::API->cloneFrameRef(Handle));
+			return Utility::PointerDropQualifiers(VaporGlobals::API->cloneFrameRef(Handle));
 		if constexpr (isinstance(Handle, VSNodeRef*))
 			return VaporGlobals::API->cloneNodeRef(Handle);
 	}

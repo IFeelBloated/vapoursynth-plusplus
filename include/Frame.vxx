@@ -1,5 +1,4 @@
 #pragma once
-#include "Infrastructure.vxx"
 #include "Owner.vxx"
 #include "Metadata.vxx"
 
@@ -13,7 +12,7 @@ public:
 	Frame() = default;
 	Frame(std::convertible_to<HandleType> auto&& Descriptor) : FrameReference{ Forward(Descriptor) } {
 		if constexpr (std::is_const_v<SampleType>)
-			this->PropertyMap = PointerRemoveConstant(VaporGlobals::API->getFramePropsRO(this->Handle));
+			this->PropertyMap = Utility::PointerDropQualifiers(VaporGlobals::API->getFramePropsRO(this->Handle));
 		else
 			this->PropertyMap = VaporGlobals::API->getFramePropsRW(this->Handle);
 	}

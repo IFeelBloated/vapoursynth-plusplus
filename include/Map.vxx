@@ -22,20 +22,20 @@ struct ReadonlyItem final {
 			return Index != OtherIterator.Index;
 		}
 	};
-	auto Size() {
-		return Max(VaporGlobals::API->propNumElements(Map, Key.data()), 0);
+	auto size() {
+		return Utility::Max(VaporGlobals::API->propNumElements(Map, Key.data()), 0);
 	}
 	auto Exists() {
-		return Index < Size();
+		return Index < size();
 	}
 	auto Type() {
 		return VaporGlobals::API->propGetType(Map, Key.data());
 	}
-	auto Begin() {
+	auto begin() {
 		return Iterator{ .State = this, .Index = 0 };
 	}
-	auto End() {
-		return Iterator{ .State = this, .Index = Size() };
+	auto end() {
+		return Iterator{ .State = this, .Index = size() };
 	}
 	auto& operator[](auto Index) {
 		this->Index = Index;
@@ -64,7 +64,7 @@ struct ReadonlyItem final {
 	}
 	template<typename PixelType, auto DirectAccess = false>
 	operator VideoFrame<PixelType, DirectAccess>() {
-		return { PointerRemoveConstant(VaporGlobals::API->propGetFrame(Map, Key.data(), Index, nullptr)) };
+		return { Utility::PointerDropQualifiers(VaporGlobals::API->propGetFrame(Map, Key.data(), Index, nullptr)) };
 	}
 	operator Function() {
 		return { VaporGlobals::API->propGetFunc(Map, Key.data(), Index, nullptr) };
@@ -136,7 +136,7 @@ struct Controller final {
 	}
 	auto Receive(auto&& VideoOutput) {
 		auto OutputSequence = WritableItem{ .Map = OutputMap, .Key = "clip" };
-		if constexpr (requires { VideoOutput.Size(); })
+		if constexpr (requires { VideoOutput.size(); })
 			for (auto&& x : VideoOutput)
 				OutputSequence += x;
 		else
@@ -195,7 +195,7 @@ auto ExtractEvaluatedClips(auto EvaluatedMap) {
 		}
 		else {
 			auto EvaluatedClips = std::array<VideoNode, NumberOfClips>{};
-			for (auto x : Range{ Min(NumberOfClips, ClipSequence.Size()) })
+			for (auto x : Range{ Utility::Min(NumberOfClips, ClipSequence.size()) })
 				EvaluatedClips[x] = ClipSequence[x];
 			return EvaluatedClips;
 		}
@@ -205,7 +205,7 @@ auto ExtractEvaluatedClips(auto EvaluatedMap) {
 
 auto ForwardArguments(auto ArgumentMap, auto&& Parameter, auto&& Argument, auto&& ...ArgumentQueue) {
 	auto MaterializedParameter = WritableItem{ .Map = ArgumentMap, .Key = Forward(Parameter) };
-	if constexpr (requires { Argument.Begin(); } && !isinstance(Argument, std::string) && !isinstance(Argument, std::string_view))
+	if constexpr (requires { Argument.begin(); } && !isinstance(Argument, std::string) && !isinstance(Argument, std::string_view))
 		for (auto&& x : Argument)
 			MaterializedParameter += x;
 	else

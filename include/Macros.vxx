@@ -1,0 +1,15 @@
+#pragma once
+
+#define Width width
+#define Height height
+#define Format format
+#define ID id
+#define SampleType sampleType
+#define BitsPerSample bitsPerSample
+#define ColorFamily colorFamily
+#define FrameCount numFrames
+#define PlaneCount numPlanes
+#define FrameRateNumerator fpsNum
+#define FrameRateDenominator fpsDen
+#define HorizontalSubsamplingFactor subSamplingW
+#define VerticalSubsamplingFactor subSamplingH

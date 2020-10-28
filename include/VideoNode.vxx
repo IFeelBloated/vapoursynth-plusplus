@@ -33,11 +33,11 @@ public:
 		if (Index >= 0 && Index < FrameCount)
 			RequestFrameUnchecked(Index, FrameContext);
 	}
-	auto RequestFrames(std::integral auto Index, auto FrameContext, auto&& GeneralizedRequestFunction) const {
-		for (auto RequestedFrameIndexes = GeneralizedRequestFunction(Index); auto x : RequestedFrameIndexes)
+	auto RequestFrames(std::integral auto Index, auto FrameContext, auto&& RequestFunction) const {
+		for (auto RequestedFrameIndexes = RequestFunction(Index); auto x : RequestedFrameIndexes)
 			RequestFrame(x, FrameContext);
-		if (!RequestFunction)
-			CacheRequestFunction(Forward(GeneralizedRequestFunction));
+		if (IsRequestFunctionCached() == false)
+			CacheRequestFunction(Forward(RequestFunction));
 	}
 
 private:
@@ -74,37 +74,6 @@ public:
 	using Node::PeekFrame;
 };
 
-namespace PaddingFunctions::Utility::Video {
-	auto ColorBlankFrame(auto&& BlankFrame, auto&& Color) {
-		using PixelType = std::decay_t<decltype(BlankFrame[0][0][0])>;
-		auto GeneratePalette = [&] {
-			if constexpr (requires { Color.begin(); }) {
-				auto PaletteBuffer = std::vector<PixelType>{};
-				for (auto&& x : Color)
-					PaletteBuffer.push_back(static_cast<PixelType>(x));
-				if (PaletteBuffer.size() >= 3)
-					return std::array{ PaletteBuffer[0], PaletteBuffer[1], PaletteBuffer[2] };
-				else if (PaletteBuffer.size() == 2)
-					return std::array{ PaletteBuffer[0], PaletteBuffer[1], PaletteBuffer[1] };
-				else if (PaletteBuffer.size() == 1)
-					return std::array{ PaletteBuffer[0], PaletteBuffer[0], PaletteBuffer[0] };
-				else
-					throw RuntimeError{ "PaddingFunctions::Utility::Video::ColorBlankFrame: failed to generate color palette." };
-			}
-			else {
-				auto Intensity = static_cast<PixelType>(Color);
-				return std::array{ Intensity, Intensity, Intensity };
-			}
-		};
-		auto Palette = GeneratePalette();
-		for (auto c : Range{ BlankFrame.PlaneCount })
-			for (auto y : Range{ BlankFrame[c].Height })
-				for (auto x : Range{ BlankFrame[c].Width })
-					BlankFrame[c][y][x] = Palette[c];
-		return BlankFrame.Transfer();
-	}
-}
-
 namespace PaddingFunctions::VideoNode {
 	auto Constant(auto Core, auto&& Values) {
 		return [Core, Values = Forward(Values)](auto& Clip, auto Index, auto...) {
@@ -112,11 +81,11 @@ namespace PaddingFunctions::VideoNode {
 				throw RuntimeError{ "PaddingFunctions::VideoNode::Constant: only clips with constant format and dimensions supported." };
 			auto FrameHandle = Core.AllocateFrame(Clip.Format, Clip.Width, Clip.Height);
 			if (Clip.IsSinglePrecision())
-				return Utility::Video::ColorBlankFrame(VideoFrame<float>{ FrameHandle }, Values);
+				return Utility::PaddingFunctions::ColorBlankFrame(VideoFrame<float>{ FrameHandle }, Values);
 			else if (Clip.BitsPerSample > 8)
-				return Utility::Video::ColorBlankFrame(VideoFrame<std::uint16_t>{ FrameHandle }, Values);
+				return Utility::PaddingFunctions::ColorBlankFrame(VideoFrame<std::uint16_t>{ FrameHandle }, Values);
 			else
-				return Utility::Video::ColorBlankFrame(VideoFrame<std::uint8_t>{ FrameHandle }, Values);
+				return Utility::PaddingFunctions::ColorBlankFrame(VideoFrame<std::uint8_t>{ FrameHandle }, Values);
 		};
 	}
 	auto Zero(auto Core) {

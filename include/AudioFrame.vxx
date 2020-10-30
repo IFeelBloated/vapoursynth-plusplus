@@ -2,6 +2,6 @@
 #include "Frame.vxx"
 
 template<typename SampleType>
-struct AudioFrame : Frame<SampleType> {
+struct AudioFrame : FramePrototype<SampleType> {
 	//Placeholder for API v4.
 };

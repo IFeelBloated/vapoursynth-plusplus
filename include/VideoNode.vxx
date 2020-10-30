@@ -36,7 +36,7 @@ public:
 	auto RequestFrames(std::integral auto Index, auto FrameContext, auto&& RequestFunction) const {
 		for (auto RequestedFrameIndexes = RequestFunction(Index); auto x : RequestedFrameIndexes)
 			RequestFrame(x, FrameContext);
-		if (IsRequestFunctionCached() == false)
+		if (WasRequestFunctionAlreadyCached() == false)
 			CacheRequestFunction(Forward(RequestFunction));
 	}
 

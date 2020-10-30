@@ -36,7 +36,7 @@ namespace VaporInterface {
 				return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, ContextHandle);
 		else if (ActivationReason == VSActivationReason::arAllFramesReady)
 			return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, ContextHandle);
-		return FrameReference::NullHandle;
+		return Frame::NullHandle;
 	}
 	catch (RuntimeError& ErrorMessage) {
 		auto ContextHandle = FrameContextWrapper{ .Handle = FrameContext };

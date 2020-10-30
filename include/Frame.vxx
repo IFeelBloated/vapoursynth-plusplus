@@ -1,17 +1,20 @@
 #pragma once
-#include "Owner.vxx"
+#include "ResourceManager.vxx"
 #include "Metadata.vxx"
 
 using FrameReference = Owner<VSFrameRef>;
 
-template<typename SampleType = const void>
-struct Frame : FrameReference {
+template<typename SampleType>
+struct FramePrototype : FrameReference {
 	field(PropertyMap, static_cast<VSMap*>(nullptr));
 
 public:
-	Frame() = default;
-	Frame(std::convertible_to<HandleType> auto&& Descriptor) : FrameReference{ Forward(Descriptor) } {
-		if constexpr (std::is_const_v<SampleType>)
+	static constexpr auto Readonly = std::is_const_v<SampleType>;
+
+public:
+	FramePrototype() = default;
+	FramePrototype(std::convertible_to<HandleType> auto&& Descriptor) : FrameReference{ Forward(Descriptor) } {
+		if constexpr (Readonly)
 			this->PropertyMap = Utility::PointerDropQualifiers(VaporGlobals::API->getFramePropsRO(this->Handle));
 		else
 			this->PropertyMap = VaporGlobals::API->getFramePropsRW(this->Handle);
@@ -31,7 +34,12 @@ public:
 	auto Transfer() {
 		return FrameReference{ Leak() };
 	}
-	auto operator[](std::convertible_to<std::string> auto&&) const;
+	auto ListProperties() {
+		return Utility::Map::ListKeys(PropertyMap);
+	}
+	auto operator[](std::convertible_to<std::string> auto&& Key) const {
+		return AccessMap<Readonly>(PropertyMap, Forward(Key));
+	}
 
 public:
 	template<std::derived_from<FrameReference> FrameType>
@@ -44,6 +52,8 @@ public:
 	}
 };
 
+using Frame = FramePrototype<const void>;
+
 struct FrameContextWrapper {
 	field(Handle, static_cast<VSFrameContext*>(nullptr));
 
@@ -53,7 +63,7 @@ public:
 		auto Caption = FilterType::Name + ": "s;
 		auto DecoratedMessage = Caption + Forward(ErrorMessage);
 		VaporGlobals::API->setFilterError(DecoratedMessage.data(), Handle);
-		return FrameReference::NullHandle;
+		return Frame::NullHandle;
 	}
 
 public:

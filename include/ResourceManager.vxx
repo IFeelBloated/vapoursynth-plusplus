@@ -1,5 +1,5 @@
 #pragma once
-#include "Utilities.vxx"
+#include "Utility.vxx"
 #include "Globals.vxx"
 
 template<typename ManagedType>
@@ -56,15 +56,43 @@ public:
 
 protected:
 	auto CloneHandle() const {
-		if constexpr (isinstance(Handle, VSFrameRef*))
+		if constexpr (SubtypeOf<HandleType, const VSFrameRef*>)
 			return Utility::PointerDropQualifiers(VaporGlobals::API->cloneFrameRef(Handle));
-		if constexpr (isinstance(Handle, VSNodeRef*))
+		if constexpr (SubtypeOf<HandleType, const VSNodeRef*>)
 			return VaporGlobals::API->cloneNodeRef(Handle);
 	}
 	auto ReleaseHandle() {
-		if constexpr (isinstance(Handle, VSFrameRef*))
+		if constexpr (SubtypeOf<HandleType, const VSFrameRef*>)
 			VaporGlobals::API->freeFrame(Handle);
-		if constexpr (isinstance(Handle, VSNodeRef*))
+		if constexpr (SubtypeOf<HandleType, const VSNodeRef*>)
 			VaporGlobals::API->freeNode(Handle);
+	}
+};
+
+template<auto Managed>
+struct MapReference {
+	field(Handle, static_cast<VSMap*>(nullptr));
+
+private:
+	using HandleType = const VSMap*;
+
+public:
+	MapReference() = default;
+	MapReference(std::convertible_to<HandleType> auto&& Descriptor) {
+		auto MapHandle = static_cast<HandleType>(Forward(Descriptor));
+		this->Handle = Utility::PointerDropQualifiers(MapHandle);
+	}
+
+public:
+	MapReference(const MapReference&) = delete;
+	MapReference(MapReference&&) = delete;
+	auto& operator=(const MapReference&) = delete;
+	auto& operator=(MapReference&&) = delete;
+
+public:
+	~MapReference() {
+		if constexpr (Managed == false)
+			if (this->Handle != nullptr)
+				VaporGlobals::API->freeMap(this->Handle);
 	}
 };

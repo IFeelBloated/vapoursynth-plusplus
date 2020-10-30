@@ -1,5 +1,6 @@
 #pragma once
 #include "Macros.vxx"
+#include "Globals.vxx"
 #include "Range.vxx"
 
 using RuntimeError = std::string;
@@ -16,6 +17,15 @@ concept Iterable = NativeArray<UnknownType> || requires(UnknownType x) {
 	*x.begin();
 	x.begin() != x.end();
 };
+
+template<typename UnknownType, typename ReferenceType>
+concept SubtypeOf = std::same_as<std::decay_t<UnknownType>, ReferenceType> || std::derived_from<std::decay_t<UnknownType>, ReferenceType>;
+
+template<typename UnknownType, typename ...ReferenceTypes>
+concept AnyOf = (SubtypeOf<UnknownType, ReferenceTypes> || ...);
+
+template<typename UnknownType, typename ...ReferenceTypes>
+concept AnyBut = !AnyOf<UnknownType, ReferenceTypes...>;
 
 namespace Utility {
 	auto PointerDropQualifiers(auto Pointer) {
@@ -40,11 +50,10 @@ namespace Utility {
 				else
 					return std::vector<std::decay_t<decltype(*Entity.begin())>>{};
 			}();
-			if constexpr (std::is_rvalue_reference_v<decltype(Entity)>)
-				for (auto&& x : Entity)
+			for (auto&& x : Entity)
+				if constexpr (std::is_rvalue_reference_v<decltype(Entity)>)
 					Buffer.push_back(std::move(x));
-			else
-				for (auto&& x : Entity)
+				else
 					Buffer.push_back(x);
 			if (Buffer.size() >= 3)
 				return std::array{ std::move(Buffer[0]), std::move(Buffer[1]), std::move(Buffer[2]) };
@@ -57,6 +66,17 @@ namespace Utility {
 		}
 		else
 			return std::array{ Entity, Entity, Forward(Entity) };
+	}
+}
+
+namespace Utility::Map {
+	auto ListKeys(auto MapHandle) {
+		auto ItemCount = VaporGlobals::API->propNumKeys(MapHandle);
+		auto Keys = std::vector<std::string_view>{};
+		Keys.resize(ItemCount);
+		for (auto x : Range{ ItemCount })
+			Keys[x] = VaporGlobals::API->propGetKey(MapHandle, x);
+		return Keys;
 	}
 }
 

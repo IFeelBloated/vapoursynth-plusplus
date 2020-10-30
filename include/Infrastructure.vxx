@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <tuple>
 #include <array>
@@ -10,6 +11,7 @@
 #include <algorithm>
 #include <concepts>
 #include <utility>
+#include <memory>
 #include <new>
 #include <cstring>
 #include <cstdint>

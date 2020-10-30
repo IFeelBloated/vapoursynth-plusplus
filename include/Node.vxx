@@ -1,5 +1,5 @@
 #pragma once
-#include "Owner.vxx"
+#include "ResourceManager.vxx"
 #include "Metadata.vxx"
 
 using NodeReference = Owner<VSNodeRef>;
@@ -26,15 +26,15 @@ public:
 	auto PeekFrame(std::integral auto Index) const {
 		auto ErrorMessageBuffer = std::array<char, 1024>{};
 		auto FrameHandle = VaporGlobals::API->getFrame(Index, Handle, ErrorMessageBuffer.data(), 1024);
-		if (FrameHandle == FrameReference::NullHandle)
+		if (FrameHandle == Frame::NullHandle)
 			throw RuntimeError{ ErrorMessageBuffer.data() };
 		return Frame{ FrameHandle };
 	}
-	auto IsRequestFunctionCached() const {
+	auto WasRequestFunctionAlreadyCached() const {
 		return static_cast<bool>(RequestFunction);
 	}
 	auto CacheRequestFunction(auto&& RequestFunction) const {
-		if constexpr (isinstance(RequestFunction(0_ptrdiff), std::vector<std::ptrdiff_t>))
+		if constexpr (SubtypeOf<decltype(RequestFunction(0_ptrdiff)), std::vector<std::ptrdiff_t>>)
 			this->RequestFunction = Forward(RequestFunction);
 		else
 			this->RequestFunction = [RequestFunction = Forward(RequestFunction)](auto Index) {

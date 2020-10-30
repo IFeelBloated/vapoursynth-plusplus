@@ -1,6 +1,6 @@
 #pragma once
 #include "VapourSynth.h"
-#include "Utilities.vxx"
+#include "Utility.vxx"
 
 struct VideoFormat : VSFormat {
 	auto IsSinglePrecision() const {
@@ -47,4 +47,15 @@ public:
 
 struct AudioInfo {
 	//Placeholder for API v4.
+};
+
+enum struct ItemTypes {
+	Int = 'i',
+	Float = 'f',
+	Data = 's',
+	VideoNode = 'c',
+	VideoFrame = 'v',
+	Function = 'm',
+	AudioNode,
+	AudioFrame
 };

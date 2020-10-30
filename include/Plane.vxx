@@ -1,5 +1,5 @@
 #pragma once
-#include "Utilities.vxx"
+#include "Utility.vxx"
 
 template<typename PixelType, auto DirectAccess>
 struct Plane {
@@ -7,8 +7,9 @@ struct Plane {
 	field(Height, 0_size);
 	field(Canvas, std::vector<PixelType*>{});
 
-private:
-	static constexpr auto EnabledAutomaticPadding = std::is_const_v<PixelType> && !DirectAccess;
+public:
+	static constexpr auto Readonly = std::is_const_v<PixelType>;
+	static constexpr auto EnabledAutomaticPadding = Readonly && !DirectAccess;
 
 private:
 	using EmptyType = struct {};

@@ -10,7 +10,7 @@ private:
 	using RequestFunctionType = std::function<RequestFunctionInterface>;
 
 protected:
-	mutable field(RequestFunction, RequestFunctionType{});
+	field(RequestFunction, RequestFunctionType{});
 
 public:
 	Node() = default;
@@ -33,14 +33,13 @@ public:
 	auto WasRequestFunctionAlreadyCached() const {
 		return static_cast<bool>(RequestFunction);
 	}
-	auto CacheRequestFunction(auto&& RequestFunction) const {
+	auto CacheRequestFunction(auto&& RequestFunction) {
 		if constexpr (SubtypeOf<decltype(RequestFunction(0_ptrdiff)), std::vector<std::ptrdiff_t>>)
 			this->RequestFunction = Forward(RequestFunction);
 		else
 			this->RequestFunction = [RequestFunction = Forward(RequestFunction)](auto Index) {
-				auto RequestedFrameIndexes = RequestFunction(Index);
 				auto TypeErasedContainer = std::vector<std::ptrdiff_t>{};
-				for (auto x : RequestedFrameIndexes)
+				for (auto x : RequestFunction(Index))
 					TypeErasedContainer.push_back(x);
 				return TypeErasedContainer;
 			};

@@ -10,8 +10,8 @@ struct ModifyFrame final {
 	ModifyFrame(auto Arguments) {
 		InputClip = Arguments["clip"];
 		Evaluator = Arguments["evaluator"];
-		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
-			throw RuntimeError{ "only single precision floating point clips with constant format and dimensions supported." };
+		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions())
+			throw RuntimeError{ "only clips with constant format and dimensions supported." };
 	}
 	auto RegisterMetadata(auto Core) {
 		return InputClip.ExtractMetadata();
@@ -20,9 +20,8 @@ struct ModifyFrame final {
 		InputClip.RequestFrame(Index, FrameContext);
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
-		using FrameType = VideoFrame<const float>;
-		auto InputFrame = InputClip.FetchFrame<const float>(Index, FrameContext);
-		auto EvaluatedFrame = static_cast<FrameType>(Evaluator("src", InputFrame));
+		auto InputFrame = InputClip.PeekFrame(Index, FrameContext);
+		auto EvaluatedFrame = static_cast<Frame>(Evaluator("src", InputFrame));
 		return EvaluatedFrame.Leak();
 	}
 };

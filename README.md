@@ -7,10 +7,10 @@ C++ wrapper for VSAPI to help you sketch your filter in the fastest possible way
 
 ```
 Macros
-Utilities
+Utility
 Range
 Plane
-Owner
+ResourceManager
 Metadata
 Frame
 VideoFrame
@@ -18,6 +18,8 @@ AudioFrame
 Node
 VideoNode
 AudioNode
+Function
+Map (Partial)
 ```
 
 ## Compilation

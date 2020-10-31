@@ -2,60 +2,21 @@
 #include "Utility.vxx"
 #include "ResourceManager.vxx"
 
-using FunctionReference = struct{};
+using FunctionReference = Owner<VSFuncRef>;
 
-template<typename ArbitraryType>
-concept VaporFunctionCompatible = requires(ArbitraryType x) { VaporGlobals::API->freeFunc(x); };
-
-struct Function:FunctionReference {
-	self(Handle, static_cast<VSFuncRef*>(nullptr));
-	self(EvaluatedMap, static_cast<VSMap*>(nullptr));
+struct Function : FunctionReference {
 	Function() = default;
-	Function(VaporFunctionCompatible auto&& RawFunction) {
-		Handle = Forward(RawFunction);
-	}
-	auto RefreshEvaluatedMap() {
-		if (EvaluatedMap != nullptr)
-			VaporGlobals::API->freeMap(EvaluatedMap);
-		EvaluatedMap = VaporGlobals::API->createMap();
-	}
-	auto SynchronizeEvaluatedMap(auto)->void;
-	auto& operator=(const Function& OtherFunction) {
-		if (this != &OtherFunction) {
-			VaporGlobals::API->freeFunc(Handle);
-			Handle = VaporGlobals::API->cloneFuncRef(OtherFunction.Handle);
-			SynchronizeEvaluatedMap(OtherFunction.EvaluatedMap);
-		}
-		return *this;
-	}
-	auto& operator=(Function&& OtherFunction) {
-		if (this != &OtherFunction) {
-			std::swap(Handle, OtherFunction.Handle);
-			std::swap(EvaluatedMap, OtherFunction.EvaluatedMap);
-		}
-		return *this;
-	}
-	Function(const Function& OtherFunction) {
-		*this = OtherFunction;
-	}
-	Function(Function&& OtherFunction) {
-		*this = std::move(OtherFunction);
-	}
-	~Function() {
-		if (EvaluatedMap != nullptr)
-			VaporGlobals::API->freeMap(EvaluatedMap);
-		VaporGlobals::API->freeFunc(Handle);
-	}
-	template<auto Readonly = true>
-	auto operator()(auto&& ...Arguments) {
-		auto ArgumentMap = VaporGlobals::API->createMap();
-		RefreshEvaluatedMap();
+	Function(std::convertible_to<HandleType> auto&& Descriptor) : FunctionReference{ Forward(Descriptor) } {}
+
+public:
+	auto operator()(auto&& ...Arguments) const {
+		auto ArgumentMap = Utility::Map::Create();
+		auto ResultMap = Utility::Map::Create();
 		if constexpr (sizeof...(Arguments) != 0)
-			ForwardArguments(ArgumentMap, Forward(Arguments)...);
-		VaporGlobals::API->callFunc(Handle, ArgumentMap, EvaluatedMap, nullptr, nullptr);
-		VaporGlobals::API->freeMap(ArgumentMap);
-		if (auto EvaluationState = VaporGlobals::API->getError(EvaluatedMap); EvaluationState != nullptr)
-			throw RuntimeError{ EvaluationState };
-		return AccessMap<Readonly>(EvaluatedMap, "val");
+			Utility::Map::Fill(ArgumentMap.Handle, Forward(Arguments)...);
+		VaporGlobals::API->callFunc(Handle, ArgumentMap.Handle, ResultMap.Handle, nullptr, nullptr);
+		if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ResultMap.Handle); EvaluationFailed)
+			throw RuntimeError{ ErrorMessage };
+		return Utility::Map::AccessItem<true, false>(ResultMap.Leak(), "val");
 	}
 };

@@ -70,14 +70,12 @@ namespace Utility {
 }
 
 namespace Utility::Map {
-	auto ListKeys(auto MapHandle) {
-		auto ItemCount = VaporGlobals::API->propNumKeys(MapHandle);
-		auto Keys = std::vector<std::string_view>{};
-		Keys.resize(ItemCount);
-		for (auto x : Range{ ItemCount })
-			Keys[x] = VaporGlobals::API->propGetKey(MapHandle, x);
-		return Keys;
-	}
+	auto Create();
+	auto ListKeys(auto);
+	auto Fill(auto, auto&&, auto&&, auto&&...);
+	auto CheckForError(auto);
+	template<auto = true, auto = true>
+	auto AccessItem(auto, auto&&);
 }
 
 namespace Utility::PaddingFunctions {

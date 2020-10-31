@@ -76,7 +76,7 @@ namespace VaporInterface {
 					return ExtractEvaluatedClips<true, IndeterminateSize>(EvaluatedMap);
 			};
 			if constexpr (sizeof...(Arguments) != 0)
-				ForwardArguments(ArgumentMap, Forward(Arguments)...);
+				Utility::Map::Fill(ArgumentMap, Forward(Arguments)...);
 			try {
 				InstanceData = new FilterType{ ArgumentList{ ArgumentMap } };
 			}

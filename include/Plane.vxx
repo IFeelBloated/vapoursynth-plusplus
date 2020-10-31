@@ -23,7 +23,7 @@ public:
 
 private:
 	struct PaddedAccess {
-		field(TargetPlane, static_cast<Plane*>(nullptr));
+		field(TargetPlane, static_cast<const Plane*>(nullptr));
 		field(yAbsolute, 0_ptrdiff);
 		field(xOffset, 0_ptrdiff);
 
@@ -32,8 +32,9 @@ private:
 			auto xAbsolute = x + xOffset;
 			auto PlaneWidth = TargetPlane->Width;
 			auto PlaneHeight = TargetPlane->Height;
+			auto Canvas = Utility::PointerDropQualifiers(TargetPlane)->Canvas.data();
 			if (xAbsolute < 0 || yAbsolute < 0 || xAbsolute >= PlaneWidth || yAbsolute >= PlaneHeight)
-				return TargetPlane->PaddingFunction(TargetPlane->Canvas.data(), PlaneWidth, PlaneHeight, yAbsolute, xAbsolute);
+				return TargetPlane->PaddingFunction(Canvas, PlaneWidth, PlaneHeight, yAbsolute, xAbsolute);
 			else
 				return TargetPlane->Canvas[yAbsolute][xAbsolute];
 		}
@@ -41,7 +42,7 @@ private:
 
 private:
 	struct PlaneView {
-		field(TargetPlane, static_cast<Plane*>(nullptr));
+		field(TargetPlane, static_cast<const Plane*>(nullptr));
 		field(yOffset, 0_ptrdiff);
 		field(xOffset, 0_ptrdiff);
 
@@ -72,13 +73,13 @@ public:
 public:
 	auto operator[](std::integral auto y) const {
 		if constexpr (EnabledAutomaticPadding)
-			return PaddedAccess{ .TargetPlane = Utility::PointerDropQualifiers(this), .yAbsolute = y };
+			return PaddedAccess{ .TargetPlane = this, .yAbsolute = y };
 		else
 			return Canvas[y];
 	}
 	auto View(std::integral auto y, std::integral auto x) const {
 		static_assert(EnabledAutomaticPadding, "View() is only available when automatic padding is enabled!");
-		return PlaneView{ .TargetPlane = Utility::PointerDropQualifiers(this), .yOffset = y, .xOffset = x };
+		return PlaneView{ .TargetPlane = this, .yOffset = y, .xOffset = x };
 	}
 };
 

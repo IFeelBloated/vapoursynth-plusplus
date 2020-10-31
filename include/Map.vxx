@@ -106,53 +106,85 @@ public:
 	}
 
 private:
-	auto InsertValue(auto&& Value, auto AppendMode) const {
-		static_assert(Readonly == false, "Item: cannot modify readonly item");
-		using ValueType = std::decay_t<decltype(Value)>;
-		if constexpr (std::floating_point<ValueType>)
-			VaporGlobals::API->propSetFloat(Access->Handle, Access->Key.data(), Value, AppendMode);
-		else if constexpr (std::integral<ValueType>)
-			VaporGlobals::API->propSetInt(Access->Handle, Access->Key.data(), Value, AppendMode);
-		else if constexpr (std::convertible_to<ValueType, const char*>)
-			VaporGlobals::API->propSetData(Access->Handle, Access->Key.data(), Value, -1, AppendMode);
-		else if constexpr (requires { Value.size(); { Value.data() }->std::convertible_to<const char*>; })
-			VaporGlobals::API->propSetData(Access->Handle, Access->Key.data(), Value.data(), Value.size(), AppendMode);
-		else if constexpr (SubtypeOf<ValueType, NodeReference>)
-			VaporGlobals::API->propSetNode(Access->Handle, Access->Key.data(), Value.Handle, AppendMode);
-		else if constexpr (SubtypeOf<ValueType, FrameReference>)
-			VaporGlobals::API->propSetFrame(Access->Handle, Access->Key.data(), Value.Handle, AppendMode);
-		else if constexpr (SubtypeOf<ValueType, FunctionReference>)
-			VaporGlobals::API->propSetFunc(Access->Handle, Access->Key.data(), Value.Handle, AppendMode);
+	auto Insert(auto&& Entity, auto AppendMode) const {
+		constexpr auto IsIterable = Iterable<decltype(Entity)>;
+		constexpr auto IsCharArray = std::convertible_to<std::decay_t<decltype(Entity)>, const char*>;
+		constexpr auto IsCharContainer = requires{ { *Entity.begin() }->SubtypeOf<char>; };
+		auto InjectValue = [this](auto&& Value) {
+			using ValueType = std::decay_t<decltype(Value)>;
+			if constexpr (std::floating_point<ValueType>)
+				VaporGlobals::API->propSetFloat(Access->Handle, Access->Key.data(), Value, VSPropAppendMode::paAppend);
+			else if constexpr (std::integral<ValueType>)
+				VaporGlobals::API->propSetInt(Access->Handle, Access->Key.data(), Value, VSPropAppendMode::paAppend);
+			else if constexpr (std::convertible_to<ValueType, const char*>)
+				VaporGlobals::API->propSetData(Access->Handle, Access->Key.data(), Value, -1, VSPropAppendMode::paAppend);
+			else if constexpr (requires { Value.size(); { Value.data() }->std::convertible_to<const char*>; })
+				VaporGlobals::API->propSetData(Access->Handle, Access->Key.data(), Value.data(), Value.size(), VSPropAppendMode::paAppend);
+			else if constexpr (SubtypeOf<ValueType, NodeReference>)
+				VaporGlobals::API->propSetNode(Access->Handle, Access->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
+			else if constexpr (SubtypeOf<ValueType, FrameReference>)
+				VaporGlobals::API->propSetFrame(Access->Handle, Access->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
+			else if constexpr (SubtypeOf<ValueType, FunctionReference>)
+				VaporGlobals::API->propSetFunc(Access->Handle, Access->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
+			else
+				static_assert(sizeof(Value) == -1, "Item: failed to inject an instance of unrecognized type.");
+		};
+		if (AppendMode == VSPropAppendMode::paReplace)
+			Erase();
+		if constexpr (IsIterable && !IsCharArray && !IsCharContainer)
+			for (auto&& x : Entity)
+				InjectValue(x);
+		else
+			InjectValue(Entity);
 	}
 
 public:
 	auto Erase() const {
-		static_assert(Readonly == false, "Item: cannot erase readonly item");
+		static_assert(Readonly == false, "Item: cannot modify readonly item.");
 		return VaporGlobals::API->propDeleteKey(Access->Handle, Access->Key.data()) == 1;
 	}
 	auto& operator=(AnyBut<Item> auto&& Entity) const {
-		InsertValue(Forward(Entity), VSPropAppendMode::paReplace);
+		Insert(Entity, VSPropAppendMode::paReplace);
 		return *this;
 	}
 	auto& operator+=(auto&& Entity) const {
-		InsertValue(Forward(Entity), VSPropAppendMode::paAppend);
-		return *this;
-	}
-	auto& operator|=(auto&& Entity) const {
-		InsertValue(Forward(Entity), VSPropAppendMode::paTouch);
+		Insert(Entity, VSPropAppendMode::paAppend);
 		return *this;
 	}
 };
 
-template<auto Readonly = true, auto Managed = true>
-auto AccessMap(auto MapHandle, auto&& Key) {
-	return Item<Readonly, Managed>{  MapHandle, Forward(Key) };
+namespace Utility::Map {
+	auto Create() {
+		return MapReference<false>{ VaporGlobals::API->createMap() };
+	}
+	auto ListKeys(auto MapHandle) {
+		auto ItemCount = VaporGlobals::API->propNumKeys(MapHandle);
+		auto Keys = std::vector<std::string_view>{};
+		Keys.resize(ItemCount);
+		for (auto x : Range{ ItemCount })
+			Keys[x] = VaporGlobals::API->propGetKey(MapHandle, x);
+		return Keys;
+	}
+	auto Fill(auto MapHandle, auto&& Key, auto&& Values, auto&& ...Arguments) {
+		auto Storage = AccessItem<false>(MapHandle, Forward(Key));
+		Storage += Values;
+		if constexpr (sizeof...(Arguments) != 0)
+			Fill(MapHandle, Forward(Arguments)...);
+	}
+	auto CheckForError(auto MapHandle) {
+		auto ErrorMessage = VaporGlobals::API->getError(MapHandle);
+		return std::tuple{ ErrorMessage != nullptr, ErrorMessage };
+	}
+	template<auto Readonly, auto Managed>
+	auto AccessItem(auto MapHandle, auto&& Key) {
+		return Item<Readonly, Managed>{  MapHandle, Forward(Key) };
+	}
 }
 
 struct ArgumentList final {
 	self(InputMap, static_cast<const VSMap*>(nullptr));
 	auto operator[](auto&& Parameter) {
-		return AccessMap(InputMap, Forward(Parameter));
+		return Utility::Map::AccessItem(InputMap, Forward(Parameter));
 	}
 };
 
@@ -165,45 +197,17 @@ struct Controller final {
 		VaporGlobals::API->setError(OutputMap, ExposeCString(DecoratedMessage));
 	}
 	auto Receive(auto&& VideoOutput) {
-		auto OutputSequence = AccessMap<false>(OutputMap, "clip");
-		if constexpr (requires { VideoOutput.size(); })
-			for (auto&& x : VideoOutput)
-				OutputSequence += x;
-		else
-			OutputSequence = VideoOutput;
-	}
-	auto Receive(auto&& ...VideoOutputs) {
-		Receive(std::array{ Forward(VideoOutputs)... });
+		auto OutputSequence = Utility::Map::AccessItem<false>(OutputMap, "clip");
+		OutputSequence += VideoOutput;
 	}
 	operator auto() {
 		return OutputMap;
 	}
 };
 
-auto Function::SynchronizeEvaluatedMap(auto OtherEvaluatedMap)->void {
-	RefreshEvaluatedMap();
-	auto ResultItems = AccessMap<false>(EvaluatedMap, "val");
-	auto ReferenceItems = AccessMap(OtherEvaluatedMap, "val");
-	for (auto x : ReferenceItems)
-		if (x.Type() == ItemTypes::VideoNode)
-			ResultItems += static_cast<VideoNode>(x);
-		else if (x.Type() == ItemTypes::Float)
-			ResultItems += static_cast<double>(x);
-		else if (x.Type() == ItemTypes::Int)
-			ResultItems += static_cast<std::int64_t>(x);
-		else if (x.Type() == ItemTypes::Data)
-			ResultItems += static_cast<std::string>(x);
-		else if (x.Type() == ItemTypes::VideoFrame)
-			ResultItems += static_cast<VideoFrame<char>>(x);
-		else if (x.Type() == ItemTypes::Function)
-			ResultItems += static_cast<Function>(x);
-	if (auto EvaluationState = VaporGlobals::API->getError(OtherEvaluatedMap); EvaluationState != nullptr)
-		VaporGlobals::API->setError(EvaluatedMap, EvaluationState);
-}
-
 template<auto ContainsMultipleClips, auto NumberOfClips>
 auto ExtractEvaluatedClips(auto EvaluatedMap) {
-	auto ClipSequence = AccessMap(EvaluatedMap, "clip");
+	auto ClipSequence = Utility::Map::AccessItem(EvaluatedMap, "clip");
 	if constexpr (ContainsMultipleClips)
 		if constexpr (NumberOfClips == IndeterminateSize) {
 			auto EvaluatedClips = std::vector<VideoNode>{};
@@ -219,15 +223,4 @@ auto ExtractEvaluatedClips(auto EvaluatedMap) {
 		}
 	else
 		return static_cast<VideoNode>(ClipSequence);
-}
-
-auto ForwardArguments(auto ArgumentMap, auto&& Parameter, auto&& Argument, auto&& ...ArgumentQueue) {
-	auto MaterializedParameter = AccessMap<false>(ArgumentMap, Forward(Parameter));
-	if constexpr (requires { Argument.begin(); } && !isinstance(Argument, std::string) && !isinstance(Argument, std::string_view))
-		for (auto&& x : Argument)
-			MaterializedParameter += x;
-	else
-		MaterializedParameter = Argument;
-	if constexpr (sizeof...(ArgumentQueue) != 0)
-		ForwardArguments(ArgumentMap, Forward(ArgumentQueue)...);
 }

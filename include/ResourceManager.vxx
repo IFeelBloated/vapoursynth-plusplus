@@ -60,12 +60,16 @@ protected:
 			return Utility::PointerDropQualifiers(VaporGlobals::API->cloneFrameRef(Handle));
 		if constexpr (SubtypeOf<HandleType, const VSNodeRef*>)
 			return VaporGlobals::API->cloneNodeRef(Handle);
+		if constexpr (SubtypeOf<HandleType, const VSFuncRef*>)
+			return VaporGlobals::API->cloneFuncRef(Handle);
 	}
 	auto ReleaseHandle() {
 		if constexpr (SubtypeOf<HandleType, const VSFrameRef*>)
 			VaporGlobals::API->freeFrame(Handle);
 		if constexpr (SubtypeOf<HandleType, const VSNodeRef*>)
 			VaporGlobals::API->freeNode(Handle);
+		if constexpr (SubtypeOf<HandleType, const VSFuncRef*>)
+			VaporGlobals::API->freeFunc(Handle);
 	}
 };
 
@@ -94,5 +98,12 @@ public:
 		if constexpr (Managed == false)
 			if (this->Handle != nullptr)
 				VaporGlobals::API->freeMap(this->Handle);
+	}
+
+public:
+	auto Leak() {
+		auto TransferredHandle = Handle;
+		Handle = nullptr;
+		return Utility::PointerAddConstQualifier(TransferredHandle);
 	}
 };

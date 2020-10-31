@@ -34,10 +34,10 @@ public:
 			RequestFrameUnchecked(Index, FrameContext);
 	}
 	auto RequestFrames(std::integral auto Index, auto FrameContext, auto&& RequestFunction) const {
-		for (auto RequestedFrameIndexes = RequestFunction(Index); auto x : RequestedFrameIndexes)
+		for (auto x : RequestFunction(Index))
 			RequestFrame(x, FrameContext);
 		if (WasRequestFunctionAlreadyCached() == false)
-			CacheRequestFunction(Forward(RequestFunction));
+			Utility::PointerDropQualifiers(this)->CacheRequestFunction(Forward(RequestFunction));
 	}
 
 private:

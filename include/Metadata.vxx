@@ -2,7 +2,18 @@
 #include "VapourSynth.h"
 #include "Utility.vxx"
 
-struct VideoFormat : VSFormat {
+struct VideoFormat {
+	field(Name, std::array<char, 32>{});
+	field(ID, 0);
+	field(ColorFamily, 0);
+	field(SampleType, 0);
+	field(BitsPerSample, 0);
+	field(BytesPerSample, 0);
+	field(HorizontalSubsamplingFactor, 0);
+	field(VerticalSubsamplingFactor, 0);
+	field(PlaneCount, 0);
+
+public:
 	auto IsSinglePrecision() const {
 		return SampleType == VSSampleType::stFloat && BitsPerSample == 32;
 	}

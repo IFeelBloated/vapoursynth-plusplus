@@ -6,11 +6,11 @@ struct VaporCore final {
 	auto FetchFormat(auto FormatID) const {
 		return reinterpret_cast<const VideoFormat*>(VaporGlobals::API->getFormatPreset(FormatID, Instance));
 	}
-	auto AllocateFrame(std::convertible_to<const VSFormat*> auto Format, auto Width, auto Height) const {
-		return VaporGlobals::API->newVideoFrame(Format, Width, Height, nullptr, Instance);
+	auto AllocateFrame(std::convertible_to<const VideoFormat*> auto Format, auto Width, auto Height) const {
+		return VaporGlobals::API->newVideoFrame(reinterpret_cast<const VSFormat*>(Format), Width, Height, nullptr, Instance);
 	}
 	auto AllocateFrame(auto FormatID, auto Width, auto Height) const {
-		return VaporGlobals::API->newVideoFrame(FetchFormat(FormatID), Width, Height, nullptr, Instance);
+		return VaporGlobals::API->newVideoFrame(reinterpret_cast<const VSFormat*>(FetchFormat(FormatID)), Width, Height, nullptr, Instance);
 	}
 	auto CopyFrameProperties(auto&& Source, auto&& Destination) {
 		VaporGlobals::API->copyFrameProps(Source.Handle, Destination.Handle, Instance);
@@ -21,7 +21,7 @@ struct VaporCore final {
 		auto Width = ReferenceFrame[0].Width;
 		auto Height = ReferenceFrame[0].Height;
 		auto Properties = ReferenceFrame.Handle;
-		auto AllocatedFrame = VaporGlobals::API->newVideoFrame(Format, Width, Height, Properties, Instance);
+		auto AllocatedFrame = VaporGlobals::API->newVideoFrame(reinterpret_cast<const VSFormat*>(Format), Width, Height, Properties, Instance);
 		return VideoFrame<PixelType>{ AllocatedFrame };
 	}
 	auto CopyFrame(auto&& ReferenceFrame) {

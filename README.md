@@ -6,7 +6,6 @@ C++ wrapper for VSAPI to help you sketch your filter in the fastest possible way
 ### Up To Date
 
 ```
-Macros
 Utility
 Range
 Plane

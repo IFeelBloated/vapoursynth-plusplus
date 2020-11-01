@@ -106,6 +106,43 @@ public:
 	}
 
 private:
+	auto InjectInt(auto Value) const {
+		VaporGlobals::API->propSetInt(Access->Handle, Access->Key.data(), Value, VSPropAppendMode::paAppend);
+	}
+	auto InjectFloat(auto Value) const {
+		VaporGlobals::API->propSetFloat(Access->Handle, Access->Key.data(), Value, VSPropAppendMode::paAppend);
+	}
+	auto InjectString(auto&& Value) const {
+		VaporGlobals::API->propSetData(Access->Handle, Access->Key.data(), Value.data(), Value.size(), VSPropAppendMode::paAppend);
+	}
+	auto InjectNativeString(auto Value) const {
+		VaporGlobals::API->propSetData(Access->Handle, Access->Key.data(), Value, -1, VSPropAppendMode::paAppend);
+	}
+	auto InjectNode(auto&& Value) const {
+		VaporGlobals::API->propSetNode(Access->Handle, Access->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
+	}
+	auto InjectFrame(auto&& Value) const {
+		VaporGlobals::API->propSetFrame(Access->Handle, Access->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
+	}
+	auto InjectFunction(auto&& Value) const {
+		VaporGlobals::API->propSetFunc(Access->Handle, Access->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
+	}
+	auto InjectDynamicallyTypedObject(auto&& Object) const {
+		if (Object.Type() == ItemTypes::Int)
+			InjectInt(static_cast<std::int64_t>(Object));
+		else if (Object.Type() == ItemTypes::Float)
+			InjectFloat(static_cast<double>(Object));
+		else if (Object.Type() == ItemTypes::Data)
+			InjectString(static_cast<std::string>(Object));
+		else if (Object.Type() == ItemTypes::VideoNode || Object.Type() == ItemTypes::AudioNode)
+			InjectNode(static_cast<Node>(Object));
+		else if (Object.Type() == ItemTypes::VideoFrame || Object.Type() == ItemTypes::AudioFrame)
+			InjectFrame(static_cast<Frame>(Object));
+		else if (Object.Type() == ItemTypes::Function)
+			InjectFunction(static_cast<Function>(Object));
+	}
+
+private:
 	auto Insert(auto&& Entity, auto AppendMode) const {
 		constexpr auto IsIterable = Iterable<decltype(Entity)>;
 		constexpr auto IsCharArray = std::convertible_to<std::decay_t<decltype(Entity)>, const char*>;
@@ -113,19 +150,21 @@ private:
 		auto InjectValue = [this](auto&& Value) {
 			using ValueType = std::decay_t<decltype(Value)>;
 			if constexpr (std::floating_point<ValueType>)
-				VaporGlobals::API->propSetFloat(Access->Handle, Access->Key.data(), Value, VSPropAppendMode::paAppend);
+				InjectFloat(Value);
 			else if constexpr (std::integral<ValueType>)
-				VaporGlobals::API->propSetInt(Access->Handle, Access->Key.data(), Value, VSPropAppendMode::paAppend);
+				InjectInt(Value);
 			else if constexpr (std::convertible_to<ValueType, const char*>)
-				VaporGlobals::API->propSetData(Access->Handle, Access->Key.data(), Value, -1, VSPropAppendMode::paAppend);
+				InjectNativeString(static_cast<const char*>(Value));
 			else if constexpr (requires { Value.size(); { Value.data() }->std::convertible_to<const char*>; })
-				VaporGlobals::API->propSetData(Access->Handle, Access->Key.data(), Value.data(), Value.size(), VSPropAppendMode::paAppend);
+				InjectString(Value);
 			else if constexpr (SubtypeOf<ValueType, NodeReference>)
-				VaporGlobals::API->propSetNode(Access->Handle, Access->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
+				InjectNode(Value);
 			else if constexpr (SubtypeOf<ValueType, FrameReference>)
-				VaporGlobals::API->propSetFrame(Access->Handle, Access->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
+				InjectFrame(Value);
 			else if constexpr (SubtypeOf<ValueType, FunctionReference>)
-				VaporGlobals::API->propSetFunc(Access->Handle, Access->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
+				InjectFunction(Value);
+			else if constexpr (requires { { Value.Type() }->SubtypeOf<ItemTypes>; })
+				InjectDynamicallyTypedObject(Value);
 			else
 				static_assert(sizeof(Value) == -1, "Item: failed to inject an instance of unrecognized type.");
 		};

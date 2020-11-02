@@ -76,16 +76,24 @@ public:
 
 namespace PaddingFunctions::VideoNode {
 	auto Constant(auto Core, auto&& Values) {
-		return [Core, Values = Forward(Values)](auto& Clip, auto Index, auto...) {
+		return [Core, Values = Utility::TypeEraseIterableToTriplet(Forward(Values))](auto& Clip, auto Index, auto...) {
 			if (!Clip.WithConstantFormat() || !Clip.WithConstantDimensions())
 				throw RuntimeError{ "PaddingFunctions::VideoNode::Constant: only clips with constant format and dimensions supported." };
 			auto FrameHandle = Core.AllocateFrame(Clip.Format, Clip.Width, Clip.Height);
+			auto FillWithColor = [&](auto&& BlankFrame) {
+				using PixelType = std::decay_t<decltype(BlankFrame[0][0][0])>;
+				for (auto c : Range{ BlankFrame.PlaneCount })
+					for (auto y : Range{ BlankFrame[c].Height })
+						for (auto x : Range{ BlankFrame[c].Width })
+							BlankFrame[c][y][x] = static_cast<PixelType>(Values[c]);
+				return BlankFrame.Transfer();
+			};
 			if (Clip.IsSinglePrecision())
-				return Utility::PaddingFunctions::ColorBlankFrame(VideoFrame<float>{ FrameHandle }, Values);
+				return FillWithColor(VideoFrame<float>{ FrameHandle });
 			else if (Clip.BitsPerSample > 8)
-				return Utility::PaddingFunctions::ColorBlankFrame(VideoFrame<std::uint16_t>{ FrameHandle }, Values);
+				return FillWithColor(VideoFrame<std::uint16_t>{ FrameHandle });
 			else
-				return Utility::PaddingFunctions::ColorBlankFrame(VideoFrame<std::uint8_t>{ FrameHandle }, Values);
+				return FillWithColor(VideoFrame<std::uint8_t>{ FrameHandle });
 		};
 	}
 	auto Zero(auto Core) {

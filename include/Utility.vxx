@@ -87,13 +87,4 @@ namespace Utility::PaddingFunctions {
 		}
 		return x;
 	}
-	auto ColorBlankFrame(auto&& BlankFrame, auto&& Values) {
-		using PixelType = std::decay_t<decltype(BlankFrame[0][0][0])>;
-		auto ColorComponents = TypeEraseIterableToTriplet(Forward(Values));
-		for (auto c : Range{ BlankFrame.PlaneCount })
-			for (auto y : Range{ BlankFrame[c].Height })
-				for (auto x : Range{ BlankFrame[c].Width })
-					BlankFrame[c][y][x] = static_cast<PixelType>(ColorComponents[c]);
-		return BlankFrame.Transfer();
-	}
 }

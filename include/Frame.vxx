@@ -37,8 +37,8 @@ public:
 	auto ListProperties() {
 		return Utility::Map::ListKeys(PropertyMap);
 	}
-	auto operator[](std::convertible_to<std::string> auto&& Key) const {
-		return Utility::Map::AccessItem<Readonly>(PropertyMap, Forward(Key));
+	auto operator[](std::convertible_to<std::string_view> auto&& Property) const {
+		return Utility::Map::AccessItem<Readonly>(PropertyMap, Forward(Property));
 	}
 
 public:

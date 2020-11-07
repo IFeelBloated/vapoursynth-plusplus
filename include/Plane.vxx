@@ -35,7 +35,7 @@ private:
 			auto Canvas = Utility::PointerDropQualifiers(TargetPlane)->Canvas.data();
 			if (xAbsolute < 0 || yAbsolute < 0 || xAbsolute >= PlaneWidth || yAbsolute >= PlaneHeight)
 				return TargetPlane->PaddingFunction(Canvas, PlaneWidth, PlaneHeight, yAbsolute, xAbsolute);
-			else
+			else [[likely]]
 				return TargetPlane->Canvas[yAbsolute][xAbsolute];
 		}
 	};

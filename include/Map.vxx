@@ -42,7 +42,7 @@ public:
 
 public:
 	Item() = default;
-	Item(auto&& Descriptor, std::convertible_to<std::string> auto&& Key) {
+	Item(auto&& Descriptor, std::convertible_to<std::string_view> auto&& Key) {
 		this->Access = std::make_shared<SharedAccess>(Forward(Descriptor), Forward(Key));
 	}
 

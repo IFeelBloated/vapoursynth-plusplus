@@ -1,48 +1,63 @@
 #pragma once
 #include "Map.vxx"
 
-struct VaporPlugin final {
-	self(Plugin, static_cast<VSPlugin*>(nullptr));
-	template<auto HasMultipleOutputs = false, auto NumberOfOutputs = IndeterminateSize>
-	struct VaporFilter final {
-		self(Plugin, static_cast<VSPlugin*>(nullptr));
-		self(Name, ""s);
-		auto CreateOutputPrototype() {
-			if constexpr (HasMultipleOutputs)
-				if constexpr (NumberOfOutputs == IndeterminateSize)
-					return std::vector<VideoNode>{};
-				else
-					return std::array<VideoNode, NumberOfOutputs>{};
-			else
-				return VideoNode{};
-		}
-		auto operator()(auto&& ...Arguments) {
-			auto ArgumentMap = VaporGlobals::API->createMap();
-			auto EvaluatedClips = CreateOutputPrototype();
+struct Plugin {
+	field(Handle, static_cast<VSPlugin*>(nullptr));
+	field(FunctionSignatures, std::unordered_map<std::string, std::string>{});
+
+private:
+	using HandleType = const VSPlugin*;
+
+private:
+	struct Function {
+		field(Handle, static_cast<VSPlugin*>(nullptr));
+		field(Name, ""s);
+		field(Signature, ""s);
+		field(ReturnKey, "clip"s);
+
+	public:
+		auto operator()(auto&& ...Arguments) const {
+			auto ArgumentMap = Utility::Map::Create();
 			if constexpr (sizeof...(Arguments) != 0)
-				Utility::Map::Fill(ArgumentMap, Forward(Arguments)...);
-			auto EvaluatedItems = VaporGlobals::API->invoke(Plugin, Name.data(), ArgumentMap);
-			if (auto EvaluationState = VaporGlobals::API->getError(EvaluatedItems); EvaluationState != nullptr) {
-				auto Error = RuntimeError{ EvaluationState };
-				VaporGlobals::API->freeMap(EvaluatedItems);
-				VaporGlobals::API->freeMap(ArgumentMap);
-				throw Error;
-			}
-			EvaluatedClips = ExtractEvaluatedClips<HasMultipleOutputs, NumberOfOutputs>(EvaluatedItems);
-			VaporGlobals::API->freeMap(EvaluatedItems);
-			VaporGlobals::API->freeMap(ArgumentMap);
-			return EvaluatedClips;
-		}
-		template<auto NumberOfClips = IndeterminateSize>
-		auto ConfigureForMultipleOutputsInternal() & {
-			return VaporFilter<true, NumberOfClips>{ .Plugin = Plugin, .Name = Name };
-		}
-		template<auto NumberOfClips = IndeterminateSize>
-		auto ConfigureForMultipleOutputsInternal() && {
-			return VaporFilter<true, NumberOfClips>{ .Plugin = Plugin, .Name = std::move(Name) };
+				Utility::Map::Fill(ArgumentMap.Handle, Forward(Arguments)...);
+			auto ResultMap = VaporGlobals::API->invoke(Handle, Name.data(), ArgumentMap.Handle);
+			auto ResultItem = Utility::Map::AccessItem<true, false>(ResultMap, ReturnKey);
+			if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ResultMap); EvaluationFailed)
+				throw RuntimeError{ ErrorMessage };
+			return ResultItem;
 		}
 	};
-	auto operator[](auto&& FilterName) {
-		return VaporFilter{ .Plugin = Plugin, .Name = Forward(FilterName) };
+
+public:
+	Plugin() = default;
+	Plugin(std::convertible_to<HandleType> auto&& Descriptor) {
+		auto PluginHandle = static_cast<HandleType>(Forward(Descriptor));
+		this->Handle = Utility::PointerDropQualifiers(PluginHandle);
+		for (auto FunctionMap = MapReference<false>{ VaporGlobals::API->getFunctions(this->Handle) }; auto x : Utility::Map::ListKeys(FunctionMap.Handle))
+			this->FunctionSignatures[std::string{ x }] = static_cast<std::string>(Utility::Map::AccessItem(FunctionMap.Handle, x)).erase(0, x.size() + 1);
+	}
+
+public:
+	auto operator[](std::convertible_to<std::string_view> auto&& FunctionName) const {
+		auto Name = static_cast<std::string>(Forward(FunctionName));
+		auto& Signature = Utility::PointerDropQualifiers(this)->FunctionSignatures[Name];
+		return Function{ .Handle = Handle, .Name = std::move(Name), .Signature = Signature };
+	}
+	auto ListFunctions() const & {
+		auto FunctionNames = std::vector<std::string_view>{};
+		FunctionNames.reserve(FunctionSignatures.size());
+		for (auto&& [x, _] : FunctionSignatures)
+			FunctionNames.push_back(x);
+		return FunctionNames;
+	}
+	auto ListFunctions() && {
+		auto FunctionNames = std::vector<std::string>{};
+		FunctionNames.reserve(FunctionSignatures.size());
+		for (auto&& [x, _] : FunctionSignatures)
+			FunctionNames.push_back(std::move(x));
+		return FunctionNames;
+	}
+	auto Path() const {
+		return std::filesystem::path{ VaporGlobals::API->getPluginPath(Handle) };
 	}
 };

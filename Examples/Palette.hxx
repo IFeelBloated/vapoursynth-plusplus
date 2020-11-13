@@ -19,7 +19,7 @@ struct Palette final {
 	}
 	auto RegisterMetadata(auto Core) {
 		auto Metadata = VideoInfo{
-			.Format = Core.FetchFormat(VSPresetFormat::pfGrayS),
+			.Format = Core.Query(VideoFormats::GrayS),
 			.FrameRateNumerator = 30000, .FrameRateDenominator = 1001,
 			.Width = Width, .Height = Height,
 			.FrameCount = 1
@@ -27,7 +27,7 @@ struct Palette final {
 		return std::vector{ Shades.size(), Metadata };
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
-		auto ProcessedFrame = VideoFrame<float>{ Core.AllocateFrame(VSPresetFormat::pfGrayS, Width, Height) };
+		auto ProcessedFrame = VideoFrame<float>{ Core.AllocateVideoFrame(VideoFormats::GrayS, Width, Height) };
 		for (auto y : Range{ Height })
 			for (auto x : Range{ Width })
 				ProcessedFrame[0][y][x] = Shades[FrameContext.QueryOutputIndex()];

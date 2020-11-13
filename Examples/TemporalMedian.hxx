@@ -23,7 +23,7 @@ struct TemporalMedian final {
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
 		auto InputFrames = InputClip.FetchFrames<const float>(Index, FrameContext);
-		auto ProcessedFrame = Core.CreateNewFrameFrom(InputFrames[0]);
+		auto ProcessedFrame = Core.CreateBlankFrameFrom(InputFrames[0]);
 		auto Samples = std::vector<float>{};
 		Samples.resize(2 * Radius + 1);
 		for (auto c : Range{ ProcessedFrame.PlaneCount })

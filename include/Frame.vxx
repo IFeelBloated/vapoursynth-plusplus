@@ -2,7 +2,19 @@
 #include "ResourceManager.vxx"
 #include "Metadata.vxx"
 
-using FrameReference = Owner<VSFrameRef>;
+struct FrameReference : Owner<VSFrameRef> {
+	using Owner::Owner;
+
+public:
+	template<SubtypeOf<FrameReference> FrameType>
+	operator FrameType() && {
+		return { this->Leak() };
+	}
+	template<SubtypeOf<FrameReference> FrameType>
+	operator FrameType() const & {
+		return { this->CloneHandle() };
+	}
+};
 
 template<typename SampleType>
 struct FramePrototype : FrameReference {
@@ -34,21 +46,15 @@ public:
 	auto Transfer() {
 		return FrameReference{ Leak() };
 	}
-	auto ListProperties() {
+	auto ListProperties() const {
 		return Utility::Map::ListKeys(PropertyMap);
 	}
 	auto operator[](std::convertible_to<std::string_view> auto&& Property) const {
 		return Utility::Map::AccessItem<Readonly>(PropertyMap, Forward(Property));
 	}
-
-public:
-	template<std::derived_from<FrameReference> FrameType>
-	operator FrameType() && {
-		return { this->Leak() };
-	}
-	template<std::derived_from<FrameReference> FrameType>
-	operator FrameType() const & {
-		return { this->CloneHandle() };
+	auto AbsorbPropertiesFrom(SubtypeOf<FrameReference> auto&& Source) const {
+		for (auto& Self = *this; auto x : Source.ListProperties())
+			Self[x] = Source[x];
 	}
 };
 

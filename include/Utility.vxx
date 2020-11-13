@@ -41,6 +41,14 @@ namespace Utility {
 	auto Min(auto x, auto y) {
 		return x < y ? x : y;
 	}
+	auto Log2(auto x) {
+		auto Exponent = 0;
+		while (x != 1) {
+			x >>= 1;
+			++Exponent;
+		}
+		return Exponent;
+	}
 	auto TypeEraseIterableToTriplet(auto&& Entity) {
 		if constexpr (Iterable<decltype(Entity)>) {
 			auto Buffer = [&] {
@@ -65,6 +73,14 @@ namespace Utility {
 		}
 		else
 			return std::array{ Entity, Entity, Forward(Entity) };
+	}
+	auto ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(auto&& GeneralizedString) {
+		if constexpr (SubtypeOf<decltype(GeneralizedString), std::string>)
+			return GeneralizedString.data();
+		else if constexpr (requires { { Forward(GeneralizedString) }->std::convertible_to<const char*>; })
+			return static_cast<const char*>(Forward(GeneralizedString));
+		else if constexpr (Iterable<decltype(GeneralizedString)> && requires { { *GeneralizedString.begin() }->SubtypeOf<char>; })
+			return std::string{ GeneralizedString.begin(), GeneralizedString.end() };
 	}
 }
 

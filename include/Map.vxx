@@ -88,19 +88,19 @@ public:
 	}
 
 public:
-	template<std::derived_from<NodeReference> TargetType>
+	template<SubtypeOf<NodeReference> TargetType>
 	operator TargetType() const {
 		return { VaporGlobals::API->propGetNode(Access->Handle, Access->Key.data(), Index, nullptr) };
 	}
 
 public:
-	template<std::derived_from<FrameReference> TargetType>
+	template<SubtypeOf<FrameReference> TargetType>
 	operator TargetType() const {
 		return { VaporGlobals::API->propGetFrame(Access->Handle, Access->Key.data(), Index, nullptr) };
 	}
 
 public:
-	template<std::derived_from<FunctionReference> TargetType>
+	template<SubtypeOf<FunctionReference> TargetType>
 	operator TargetType() const {
 		return { VaporGlobals::API->propGetFunc(Access->Handle, Access->Key.data(), Index, nullptr) };
 	}
@@ -115,7 +115,7 @@ private:
 	auto InjectString(auto&& Value) const {
 		VaporGlobals::API->propSetData(Access->Handle, Access->Key.data(), Value.data(), Value.size(), VSPropAppendMode::paAppend);
 	}
-	auto InjectNativeString(auto Value) const {
+	auto InjectCharArray(auto Value) const {
 		VaporGlobals::API->propSetData(Access->Handle, Access->Key.data(), Value, -1, VSPropAppendMode::paAppend);
 	}
 	auto InjectNode(auto&& Value) const {
@@ -135,17 +135,17 @@ private:
 		else if (Object.Type() == ItemTypes::Data)
 			InjectString(static_cast<std::string>(Object));
 		else if (Object.Type() == ItemTypes::VideoNode || Object.Type() == ItemTypes::AudioNode)
-			InjectNode(static_cast<Node>(Object));
+			InjectNode(static_cast<NodeReference>(Object));
 		else if (Object.Type() == ItemTypes::VideoFrame || Object.Type() == ItemTypes::AudioFrame)
-			InjectFrame(static_cast<Frame>(Object));
+			InjectFrame(static_cast<FrameReference>(Object));
 		else if (Object.Type() == ItemTypes::Function)
-			InjectFunction(static_cast<Function>(Object));
+			InjectFunction(static_cast<FunctionReference>(Object));
 	}
 
 private:
 	auto Insert(auto&& Entity, auto AppendMode) const {
 		constexpr auto IsIterable = Iterable<decltype(Entity)>;
-		constexpr auto IsCharArray = std::convertible_to<std::decay_t<decltype(Entity)>, const char*>;
+		constexpr auto IsCharArray = std::convertible_to<decltype(Entity), const char*>;
 		constexpr auto IsCharContainer = requires{ { *Entity.begin() }->SubtypeOf<char>; };
 		auto InjectValue = [this](auto&& Value) {
 			using ValueType = std::decay_t<decltype(Value)>;
@@ -153,8 +153,8 @@ private:
 				InjectFloat(Value);
 			else if constexpr (std::integral<ValueType>)
 				InjectInt(Value);
-			else if constexpr (std::convertible_to<ValueType, const char*>)
-				InjectNativeString(static_cast<const char*>(Value));
+			else if constexpr (requires { { Value }->std::convertible_to<const char*>; })
+				InjectCharArray(static_cast<const char*>(Value));
 			else if constexpr (requires { Value.size(); { Value.data() }->std::convertible_to<const char*>; })
 				InjectString(Value);
 			else if constexpr (SubtypeOf<ValueType, NodeReference>)

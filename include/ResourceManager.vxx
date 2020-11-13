@@ -53,6 +53,9 @@ public:
 		Handle = nullptr;
 		return Utility::PointerAddConstQualifier(TransferredHandle);
 	}
+	auto Observe() const {
+		return Utility::PointerAddConstQualifier(Handle);
+	}
 
 protected:
 	auto CloneHandle() const {

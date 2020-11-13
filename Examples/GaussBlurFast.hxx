@@ -37,7 +37,7 @@ struct GaussBlurFast final {
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
 		auto InputFrame = InputClip.FetchFrame<const float, true>(Index, FrameContext);
-		auto ProcessedFrame = Core.CreateNewFrameFrom(InputFrame);
+		auto ProcessedFrame = Core.CreateBlankFrameFrom(InputFrame);
 		for (auto c : Range{ InputFrame.PlaneCount }) {
 			for (auto y : Range{ 1, InputFrame[c].Height - 1 }) {
 				ProcessedFrame[c][y][0] = GaussKernel<false, false, true>(InputFrame[c], y, 0);

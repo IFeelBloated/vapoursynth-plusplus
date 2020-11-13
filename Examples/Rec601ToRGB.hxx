@@ -12,7 +12,7 @@ struct Rec601ToRGB final {
 	}
 	auto RegisterMetadata(auto Core) {
 		auto Metadata = InputClip.ExtractMetadata();
-		Metadata.Format = Core.FetchFormat(VSPresetFormat::pfRGBS);
+		Metadata.Format = Core.Query(VideoFormats::RGBS);
 		return Metadata;
 	}
 	auto RequestReferenceFrames(auto Index, auto FrameContext) {
@@ -20,7 +20,7 @@ struct Rec601ToRGB final {
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
 		auto InputFrame = InputClip.FetchFrame<const float>(Index, FrameContext);
-		auto ProcessedFrame = VideoFrame<float>{ Core.AllocateFrame(VSPresetFormat::pfRGBS, InputClip.Width, InputClip.Height) };
+		auto ProcessedFrame = VideoFrame<float>{ Core.AllocateVideoFrame(VideoFormats::RGBS, InputClip.Width, InputClip.Height) };
 		if (InputFrame["_Matrix"].Exists() == false)
 			throw RuntimeError{ "_Matrix property not found!" };
 		if (InputFrame["_ColorRange"].Exists() == false)
@@ -41,7 +41,7 @@ struct Rec601ToRGB final {
 				ProcessedFrame[1][y][x] = Y - (1 - Kb) * Kb / Kg * Cb - (1 - Kr) * Kr / Kg * Cr;
 				ProcessedFrame[2][y][x] = Y + (1 - Kb) * Cb;
 			}
-		Core.CopyFrameProperties(InputFrame, ProcessedFrame);
+		ProcessedFrame.AbsorbPropertiesFrom(InputFrame);
 		ProcessedFrame["_Matrix"] = 0;
 		ProcessedFrame["_ColorSpace"] = 0;
 		return ProcessedFrame.Leak();

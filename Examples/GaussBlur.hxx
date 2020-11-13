@@ -18,7 +18,7 @@ struct GaussBlur final {
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
 		auto InputFrame = InputClip.FetchFrame<const float>(Index, FrameContext);
-		auto ProcessedFrame = Core.CreateNewFrameFrom(InputFrame);
+		auto ProcessedFrame = Core.CreateBlankFrameFrom(InputFrame);
 		auto GaussKernel = [](auto Center) {
 			auto Conv = Center[-1][-1] + Center[-1][0] * 2 + Center[-1][1] +
 				Center[0][-1] * 2 + Center[0][0] * 4 + Center[0][1] * 2 +

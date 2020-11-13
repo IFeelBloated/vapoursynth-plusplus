@@ -5,7 +5,7 @@ namespace VaporInterface {
 	template<typename FilterType>
 	auto Initialize(auto, auto, auto InstanceData, auto Node, auto Core, auto...) {
 		auto Data = reinterpret_cast<FilterType*>(*InstanceData);
-		auto Metadata = Data->RegisterMetadata(VaporCore{ .Instance = Core });
+		auto Metadata = Data->RegisterMetadata(CoreWrapper{ .Handle = Core });
 		if constexpr (requires { Metadata.size(); })
 			if constexpr (requires { Metadata.data(); })
 				VaporGlobals::API->setVideoInfo(reinterpret_cast<const VSVideoInfo*>(Metadata.data()), Metadata.size(), Node);
@@ -33,9 +33,9 @@ namespace VaporInterface {
 			if constexpr (requires { Data->RequestReferenceFrames(0, FrameContext); })
 				Data->RequestReferenceFrames(Index, ContextHandle);
 			else
-				return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, ContextHandle);
+				return Data->DrawFrame(Index, CoreWrapper{ .Handle = Core }, ContextHandle);
 		else if (ActivationReason == VSActivationReason::arAllFramesReady)
-			return Data->DrawFrame(Index, VaporCore{ .Instance = Core }, ContextHandle);
+			return Data->DrawFrame(Index, CoreWrapper{ .Handle = Core }, ContextHandle);
 		return Frame::NullHandle;
 	}
 	catch (RuntimeError& ErrorMessage) {
@@ -55,7 +55,7 @@ namespace VaporInterface {
 				AssumedMultithreadingMode = FilterType::MultithreadingMode;
 			if constexpr (requires { &FilterType::CacheFlag; })
 				AssumedCacheFlag = FilterType::CacheFlag;
-			if constexpr (requires { Data.DrawFrame(0, VaporCore{}, FrameContextWrapper{}); })
+			if constexpr (requires { Data.DrawFrame(0, CoreWrapper{}, FrameContextWrapper{}); })
 				VaporGlobals::API->createFilter(AuxiliaryMap, EvaluatedMap, FilterType::Name, Initialize<FilterType>, Evaluate<FilterType>, Delete<FilterType>, AssumedMultithreadingMode, AssumedCacheFlag, InstanceData, Core);
 			VaporGlobals::API->freeMap(AuxiliaryMap);
 		};
@@ -64,8 +64,8 @@ namespace VaporInterface {
 			auto ArgumentMap = VaporGlobals::API->createMap();
 			auto EvaluatedMap = VaporGlobals::API->createMap();
 			auto MaterializeEvaluatedClips = [&]() {
-				if constexpr (requires { InstanceData->RegisterMetadata(VaporCore{}); }) {
-					using VideoInfoType = decltype(InstanceData->RegisterMetadata(VaporCore{}));
+				if constexpr (requires { InstanceData->RegisterMetadata(CoreWrapper{}); }) {
+					using VideoInfoType = decltype(InstanceData->RegisterMetadata(CoreWrapper{}));
 					auto VideoInfoPrototype = VideoInfoType{};
 					if constexpr (WithConstexprSize(VideoInfoPrototype))
 						return ExtractEvaluatedClips<true, VideoInfoPrototype.size()>(EvaluatedMap);
@@ -91,8 +91,8 @@ namespace VaporInterface {
 			VaporGlobals::API->freeMap(ArgumentMap);
 			return EvaluatedClips;
 		};
-		if constexpr (requires { Data.RegisterInvokingSequence(VaporCore{}, SelfInvoker); })
-			Console.Receive(Data.RegisterInvokingSequence(VaporCore{ .Instance = Core }, SelfInvoker));
+		if constexpr (requires { Data.RegisterInvokingSequence(CoreWrapper{}, SelfInvoker); })
+			Console.Receive(Data.RegisterInvokingSequence(CoreWrapper{ .Handle = Core }, SelfInvoker));
 		else
 			SelfEvaluator(OutputMap, new FilterType{ std::move(Data) });
 	}

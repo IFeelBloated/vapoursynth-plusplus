@@ -1,41 +1,129 @@
 #pragma once
 #include "Plugin.vxx"
 
-struct VaporCore final {
-	self(Instance, static_cast<VSCore*>(nullptr));
-	auto FetchFormat(auto FormatID) const {
-		return reinterpret_cast<const VideoFormat*>(VaporGlobals::API->getFormatPreset(FormatID, Instance));
+struct CoreWrapper {
+	field(Handle, static_cast<VSCore*>(nullptr));
+
+public:
+	auto Query(AnyOf<VideoFormats, VSPresetFormat> auto FormatID) const {
+		auto FormatHandle = VaporGlobals::API->getFormatPreset(static_cast<int>(FormatID), Handle);
+		return reinterpret_cast<const VideoFormat*>(FormatHandle);
 	}
-	auto AllocateFrame(std::convertible_to<const VideoFormat*> auto Format, auto Width, auto Height) const {
-		return VaporGlobals::API->newVideoFrame(reinterpret_cast<const VSFormat*>(Format), Width, Height, nullptr, Instance);
+	auto Query(AnyOf<VideoFormat, VSFormat> auto&& Format) const {
+		auto&& [_, __, ColorFamily, SampleType, BitsPerSample, ___, HorizontalSubsamplingFactor, VerticalSubsamplingFactor, ____] = Format;
+		auto FormatHandle = VaporGlobals::API->registerFormat(static_cast<int>(ColorFamily), static_cast<int>(SampleType), BitsPerSample, HorizontalSubsamplingFactor, VerticalSubsamplingFactor, Handle);
+		return reinterpret_cast<const VideoFormat*>(FormatHandle);
 	}
-	auto AllocateFrame(auto FormatID, auto Width, auto Height) const {
-		return VaporGlobals::API->newVideoFrame(reinterpret_cast<const VSFormat*>(FetchFormat(FormatID)), Width, Height, nullptr, Instance);
+	auto Query(auto&&) const {
+		//Placeholder for API v4.
+		return static_cast<const AudioFormat*>(nullptr);
 	}
-	auto CopyFrameProperties(auto&& Source, auto&& Destination) {
-		VaporGlobals::API->copyFrameProps(Source.Handle, Destination.Handle, Instance);
-	}
-	auto CreateNewFrameFrom(auto&& ReferenceFrame) {
-		using PixelType = std::decay_t<decltype(ReferenceFrame[0][0][0])>;
-		auto Format = ReferenceFrame.Format;
-		auto Width = ReferenceFrame[0].Width;
-		auto Height = ReferenceFrame[0].Height;
-		auto Properties = ReferenceFrame.Handle;
-		auto AllocatedFrame = VaporGlobals::API->newVideoFrame(reinterpret_cast<const VSFormat*>(Format), Width, Height, Properties, Instance);
-		return VideoFrame<PixelType>{ AllocatedFrame };
-	}
-	auto CopyFrame(auto&& ReferenceFrame) {
-		using PixelType = std::decay_t<decltype(ReferenceFrame[0][0][0])>;
-		auto CopiedFrame = VaporGlobals::API->copyFrame(ReferenceFrame.Handle, Instance);
-		return VideoFrame<PixelType>{ CopiedFrame };
-	}
-	auto operator[](auto&& Namespace) {
-		auto PluginHandle = VaporGlobals::API->getPluginByNs(ExposeCString(Namespace), Instance);
+	auto Query(std::convertible_to<std::string_view> auto&& PluginID) const {
+		auto ID = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(PluginID);
+		auto ASCIZFormattedID = [&] {
+			if constexpr (requires { ID.data(); })
+				return ID.data();
+			else
+				return ID;
+		}();
+		auto PluginHandle = VaporGlobals::API->getPluginById(ASCIZFormattedID, Handle);
 		if (PluginHandle == nullptr)
-			throw "No attribute with the name "s + Namespace + " exists. Missing plugin?";
+			throw "Query: plugin with the specified identifier "s + std::move(ID) + " not found.";
 		return Plugin{ PluginHandle };
 	}
-	operator auto() {
-		return Instance;
+	auto AllocateVideoFrame(auto&& FormatDescriptor, std::integral auto Width, std::integral auto Height) const {
+		auto FormatHandle = [&] {
+			if constexpr (requires { { *FormatDescriptor }->AnyOf<VideoFormat, VSFormat>; })
+				return FormatDescriptor;
+			else if constexpr (requires { { Query(FormatDescriptor) }->SubtypeOf<const VideoFormat*>; })
+				return Query(FormatDescriptor);
+			else
+				static_assert(sizeof(FormatDescriptor) == -1, "AllocateVideoFrame: failed to recognize the specified format descriptor.");
+		}();
+		return FrameReference{ VaporGlobals::API->newVideoFrame(reinterpret_cast<const VSFormat*>(FormatHandle), Width, Height, nullptr, Handle) };
+	}
+	auto AllocateAudioFrame(auto&&, auto) const {
+		//Placeholder for API v4.
+		return FrameReference{};
+	}
+	auto CreateBlankFrameFrom(SubtypeOf<FrameReference> auto&& ReferenceFrame) const {
+		if constexpr (requires { { *ReferenceFrame.Format }->SubtypeOf<VideoFormat>; }) {
+			using PixelType = std::decay_t<decltype(ReferenceFrame[0][0][0])>;
+			auto FormatHandle = reinterpret_cast<const VSFormat*>(ReferenceFrame.Format);
+			auto PropertyHandle = ReferenceFrame.Handle;
+			return VideoFrame<PixelType>{ VaporGlobals::API->newVideoFrame(FormatHandle, ReferenceFrame[0].Width, ReferenceFrame[0].Height, PropertyHandle, Handle) };
+		}
+		else if constexpr (requires { { *ReferenceFrame.Format }->SubtypeOf<AudioFormat>; })
+			//Placeholder for API v4.
+			return AudioFrame<void>{};
+		else
+			static_assert(sizeof(ReferenceFrame) == -1, "CreateBlankFrameFrom: failed to determine the type of the blank frame.");
+	}
+	auto ShufflePlanes(auto&& Frames, auto&& PlaneIndexes, AnyOf<ColorFamilies, VSColorFamily> auto ColorFamily) const {
+		auto ValidateInputs = [&](auto& MainFrame, auto PlaneIndex, auto& SubsidiaryPlane1, auto& SubsidiaryPlane2) {
+			static_assert(SubtypeOf<decltype(MainFrame), FrameReference>, "ShufflePlanes: you must specify a frame or any iterable frame container.");
+			static_assert(requires { { *MainFrame.Format }->SubtypeOf<VideoFormat>; }, "ShufflePlanes: specified frames must be video frames.");
+			static_assert(std::integral<decltype(PlaneIndex)>, "ShufflePlanes: plane index must be an integer.");
+			if (SubsidiaryPlane1.Width != SubsidiaryPlane2.Width || SubsidiaryPlane1.Height != SubsidiaryPlane2.Height)
+				throw RuntimeError{ "ShufflePlanes: subsidiary planes have inconsistent dimensions." };
+		};
+		auto DeduceFormat = [&](auto ReferenceFormat, auto& MainPlane, auto& SubsidiaryPlane) {
+			auto Format = VideoFormat{
+				.ColorFamily = static_cast<ColorFamilies>(ColorFamily),
+				.SampleType = ReferenceFormat->SampleType, .BitsPerSample = ReferenceFormat->BitsPerSample,
+				.HorizontalSubsamplingFactor = Utility::Log2(MainPlane.Width / SubsidiaryPlane.Width), .VerticalSubsamplingFactor = Utility::Log2(MainPlane.Height / SubsidiaryPlane.Height)
+			};
+			if (SubsidiaryPlane.Width << Format.HorizontalSubsamplingFactor != MainPlane.Width || SubsidiaryPlane.Height << Format.VerticalSubsamplingFactor != MainPlane.Height)
+				throw RuntimeError{ "ShufflePlanes: assembling specified planes leads to an invalid subsampling factor." };
+			if (Format.ColorFamily == ColorFamilies::RGB)
+				if (Format.HorizontalSubsamplingFactor != 0 || Format.VerticalSubsamplingFactor != 0)
+					throw RuntimeError{ "ShufflePlanes: RGB cannot be subsampled." };
+			return reinterpret_cast<const VSFormat*>(Query(Format));
+		};
+		auto&& [Frame1, Frame2, Frame3] = Utility::TypeEraseIterableToTriplet(Forward(Frames));
+		auto [x1, x2, x3] = Utility::TypeEraseIterableToTriplet(Forward(PlaneIndexes));
+		ValidateInputs(Frame1, x1, Frame2[x2], Frame3[x3]);
+		using PixelType = std::decay_t<decltype(Frame1[0][0][0])>;
+		auto FormatHandle = DeduceFormat(Frame1.Format, Frame1[x1], Frame2[x2]);
+		auto FrameHandles = std::array{ Frame1.Observe(), Frame2.Observe(), Frame3.Observe() };
+		auto Specifiers = std::array{ static_cast<int>(x1), static_cast<int>(x2), static_cast<int>(x3) };
+		auto PropertyHandle = Frame1.Handle;
+		return VideoFrame<PixelType>{ VaporGlobals::API->newVideoFrame2(FormatHandle, Frame1[x1].Width, Frame1[x1].Height, FrameHandles.data(), Specifiers.data(), PropertyHandle, Handle) };
+	}
+	auto ShuffleChannels(auto&&, auto&&, auto&&) const {
+		//Placeholder for API v4.
+		return AudioFrame<void>{};
+	}
+	auto CopyFrame(SubtypeOf<FrameReference> auto&& ReferenceFrame) const {
+		auto FrameHandle = VaporGlobals::API->copyFrame(ReferenceFrame.Handle, Handle);
+		if constexpr (requires { { *ReferenceFrame.Format }->SubtypeOf<VideoFormat>; })
+			return VideoFrame<std::decay_t<decltype(ReferenceFrame[0][0][0])>>{ FrameHandle };
+		else if constexpr (requires { { *ReferenceFrame.Format }->SubtypeOf<AudioFormat>; })
+			//Placeholder for API v4.
+			return AudioFrame<void>{};
+		else
+			Frame{ FrameHandle };
+	}
+	auto ListPlugins() const {
+		auto PluginSignatures = std::vector<std::string>{};
+		for (auto PluginMap = MapReference<false>{ VaporGlobals::API->getPlugins(Handle) }; auto x : Utility::Map::ListKeys(PluginMap.Handle))
+			PluginSignatures.push_back(Utility::Map::AccessItem(PluginMap.Handle, x));
+		return PluginSignatures;
+	}
+	auto operator[](std::convertible_to<std::string_view> auto&& PluginNamespace) const {
+		auto Namespace = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(PluginNamespace);
+		auto ASCIZFormattedNamespace = [&] {
+			if constexpr (requires { Namespace.data(); })
+				return Namespace.data();
+			else
+				return Namespace;
+		}();
+		auto PluginHandle = VaporGlobals::API->getPluginByNs(ASCIZFormattedNamespace, Handle);
+		if (PluginHandle == nullptr)
+			throw "Core: No attribute with the name "s + std::move(Namespace) + " exists. Missing plugin?";
+		return Plugin{ PluginHandle };
+	}
+	operator auto() const {
+		return Handle;
 	}
 };

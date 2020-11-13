@@ -42,8 +42,8 @@ struct Crop final {
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
 		auto DrawGenericFrame = [&](auto&& InputFrame) {
 			using PixelType = std::decay_t<decltype(InputFrame[0][0][0])>;
-			auto ProcessedFrame = VideoFrame<PixelType>{ Core.AllocateFrame(InputFrame.Format, CroppedWidth, CroppedHeight) };
-			Core.CopyFrameProperties(InputFrame, ProcessedFrame);
+			auto ProcessedFrame = VideoFrame<PixelType>{ Core.AllocateVideoFrame(InputFrame.Format, CroppedWidth, CroppedHeight) };
+			ProcessedFrame.AbsorbPropertiesFrom(InputFrame);
 			for (auto c : Range{ InputFrame.PlaneCount })
 				for (auto y : Range{ CroppedHeight })
 					for (auto x : Range{ CroppedWidth })

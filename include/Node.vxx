@@ -56,13 +56,13 @@ public:
 	}
 
 public:
-	template<std::derived_from<NodeReference> NodeType>
+	template<SubtypeOf<Node> NodeType>
 	operator NodeType() && {
 		auto TargetNode = NodeType{ this->Leak() };
 		TargetNode.RequestFunction = std::move(this->RequestFunction);
 		return TargetNode;
 	}
-	template<std::derived_from<NodeReference> NodeType>
+	template<SubtypeOf<Node> NodeType>
 	operator NodeType() const & {
 		auto TargetNode = NodeType{ this->CloneHandle() };
 		TargetNode.RequestFunction = this->RequestFunction;

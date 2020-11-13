@@ -51,7 +51,7 @@ private:
 public:
 	template<typename PixelType, auto DirectAccess = false>
 	auto FetchFrame(std::integral auto Index, auto FrameContext) const {
-		return VideoFrame<PixelType, DirectAccess>{ AccessFrame(Index, FrameContext).Leak() };
+		return VideoFrame<PixelType, DirectAccess>{ AccessFrame(Index, FrameContext) };
 	}
 	template<typename PixelType, auto DirectAccess = false>
 	auto FetchFrames(std::integral auto Index, auto FrameContext) const {
@@ -69,7 +69,7 @@ public:
 		return static_cast<const VideoInfo&>(*this);
 	}
 	auto PeekFrame(std::integral auto Index, auto FrameContext) const {
-		return Frame{ AccessFrame(Index, FrameContext).Leak() };
+		return Frame{ AccessFrame(Index, FrameContext) };
 	}
 	using Node::PeekFrame;
 };
@@ -79,7 +79,7 @@ namespace PaddingFunctions::VideoNode {
 		return [Core, Values = Utility::TypeEraseIterableToTriplet(Forward(Values))](auto& Clip, auto Index, auto...) {
 			if (!Clip.WithConstantFormat() || !Clip.WithConstantDimensions())
 				throw RuntimeError{ "PaddingFunctions::VideoNode::Constant: only clips with constant format and dimensions supported." };
-			auto FrameHandle = Core.AllocateFrame(Clip.Format, Clip.Width, Clip.Height);
+			auto AllocatedFrame = Core.AllocateVideoFrame(Clip.Format, Clip.Width, Clip.Height);
 			auto FillWithColor = [&](auto&& BlankFrame) {
 				using PixelType = std::decay_t<decltype(BlankFrame[0][0][0])>;
 				for (auto c : Range{ BlankFrame.PlaneCount })
@@ -89,11 +89,11 @@ namespace PaddingFunctions::VideoNode {
 				return BlankFrame.Transfer();
 			};
 			if (Clip.IsSinglePrecision())
-				return FillWithColor(VideoFrame<float>{ FrameHandle });
+				return FillWithColor(VideoFrame<float>{ AllocatedFrame.Leak() });
 			else if (Clip.BitsPerSample > 8)
-				return FillWithColor(VideoFrame<std::uint16_t>{ FrameHandle });
+				return FillWithColor(VideoFrame<std::uint16_t>{ AllocatedFrame.Leak() });
 			else
-				return FillWithColor(VideoFrame<std::uint8_t>{ FrameHandle });
+				return FillWithColor(VideoFrame<std::uint8_t>{ AllocatedFrame.Leak() });
 		};
 	}
 	auto Zero(auto Core) {

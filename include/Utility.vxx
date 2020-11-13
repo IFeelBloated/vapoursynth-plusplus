@@ -82,6 +82,12 @@ namespace Utility {
 		else if constexpr (Iterable<decltype(GeneralizedString)> && requires { { *GeneralizedString.begin() }->SubtypeOf<char>; })
 			return std::string{ GeneralizedString.begin(), GeneralizedString.end() };
 	}
+	auto ExtractCharPointerFromASCIZFormattedString(auto&& FormattedString) {
+		if constexpr (requires { FormattedString.data(); })
+			return FormattedString.data();
+		else
+			return FormattedString;
+	}
 }
 
 namespace Utility::Map {

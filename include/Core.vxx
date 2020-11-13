@@ -20,13 +20,7 @@ public:
 	}
 	auto Query(std::convertible_to<std::string_view> auto&& PluginID) const {
 		auto ID = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(PluginID);
-		auto ASCIZFormattedID = [&] {
-			if constexpr (requires { ID.data(); })
-				return ID.data();
-			else
-				return ID;
-		}();
-		auto PluginHandle = VaporGlobals::API->getPluginById(ASCIZFormattedID, Handle);
+		auto PluginHandle = VaporGlobals::API->getPluginById(Utility::ExtractCharPointerFromASCIZFormattedString(ID), Handle);
 		if (PluginHandle == nullptr)
 			throw "Query: plugin with the specified identifier "s + std::move(ID) + " not found.";
 		return Plugin{ PluginHandle };
@@ -112,13 +106,7 @@ public:
 	}
 	auto operator[](std::convertible_to<std::string_view> auto&& PluginNamespace) const {
 		auto Namespace = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(PluginNamespace);
-		auto ASCIZFormattedNamespace = [&] {
-			if constexpr (requires { Namespace.data(); })
-				return Namespace.data();
-			else
-				return Namespace;
-		}();
-		auto PluginHandle = VaporGlobals::API->getPluginByNs(ASCIZFormattedNamespace, Handle);
+		auto PluginHandle = VaporGlobals::API->getPluginByNs(Utility::ExtractCharPointerFromASCIZFormattedString(Namespace), Handle);
 		if (PluginHandle == nullptr)
 			throw "Core: No attribute with the name "s + std::move(Namespace) + " exists. Missing plugin?";
 		return Plugin{ PluginHandle };

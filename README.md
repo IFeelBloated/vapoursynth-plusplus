@@ -20,6 +20,7 @@ AudioNode
 Function
 Map (Partial)
 Plugin
+Core
 ```
 
 ## Compilation

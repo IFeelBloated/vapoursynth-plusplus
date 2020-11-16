@@ -4,7 +4,7 @@
 
 struct VideoNode : Node, VideoInfo, VideoFormat {
 private:
-	using PaddingFunctionInterface = auto(const VideoNode&, std::ptrdiff_t, FrameContextWrapper)->FrameReference;
+	using PaddingFunctionInterface = auto(const VideoNode&, std::ptrdiff_t, FrameContextProxy)->FrameReference;
 	using PaddingFunctionType = std::function<PaddingFunctionInterface>;
 
 public:

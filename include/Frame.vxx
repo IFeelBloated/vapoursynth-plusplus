@@ -60,7 +60,7 @@ public:
 
 using Frame = FramePrototype<const void>;
 
-struct FrameContextWrapper {
+struct FrameContextProxy {
 	field(Handle, static_cast<VSFrameContext*>(nullptr));
 
 public:

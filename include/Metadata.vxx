@@ -71,6 +71,15 @@ struct AudioInfo {
 	//Placeholder for API v4.
 };
 
+struct CoreInfo {
+	field(Version, ""sv);
+	field(CoreVersion, 0);
+	field(APIVersion, 0);
+	field(ThreadCount, 0);
+	field(MaxFrameBufferSize, 0_i64);
+	field(UsedFrameBufferSize, 0_i64);
+};
+
 enum struct ItemTypes {
 	Int = 'i',
 	Float = 'f',

@@ -15,11 +15,11 @@ private:
 	using EmptyType = struct {};
 	using PaddingFunctionInterface = auto(PixelType**, std::size_t, std::size_t, std::ptrdiff_t, std::ptrdiff_t)->PixelType;
 	using PaddingFunctionType = std::function<PaddingFunctionInterface>;
-	using PaddingFunctionWrapper = std::conditional_t<EnabledAutomaticPadding, PaddingFunctionType, EmptyType>;
+	using ReifiedPaddingFunctionType = std::conditional_t<EnabledAutomaticPadding, PaddingFunctionType, EmptyType>;
 
 public:
 	[[no_unique_address]]
-	field(PaddingFunction, PaddingFunctionWrapper{});
+	field(PaddingFunction, ReifiedPaddingFunctionType{});
 
 private:
 	struct PaddedAccess {

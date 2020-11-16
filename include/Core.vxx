@@ -1,10 +1,19 @@
 #pragma once
 #include "Plugin.vxx"
 
-struct CoreWrapper {
+struct CoreProxy {
 	field(Handle, static_cast<VSCore*>(nullptr));
 
 public:
+	auto Query() {
+		auto CoreInfoBuffer = VSCoreInfo{};
+		VaporGlobals::API->getCoreInfo2(Handle, &CoreInfoBuffer);
+		return CoreInfo{
+			.Version = CoreInfoBuffer.versionString, .CoreVersion = CoreInfoBuffer.core, .APIVersion = CoreInfoBuffer.api,
+			.ThreadCount = CoreInfoBuffer.numThreads,
+			.MaxFrameBufferSize = CoreInfoBuffer.maxFramebufferSize, .UsedFrameBufferSize = CoreInfoBuffer.usedFramebufferSize
+		};
+	}
 	auto Query(AnyOf<VideoFormats, VSPresetFormat> auto FormatID) const {
 		auto FormatHandle = VaporGlobals::API->getFormatPreset(static_cast<int>(FormatID), Handle);
 		return reinterpret_cast<const VideoFormat*>(FormatHandle);
@@ -25,6 +34,8 @@ public:
 			throw "Query: plugin with the specified identifier "s + std::move(ID) + " not found.";
 		return Plugin{ PluginHandle };
 	}
+
+public:
 	auto AllocateVideoFrame(auto&& FormatDescriptor, std::integral auto Width, std::integral auto Height) const {
 		auto FormatHandle = [&] {
 			if constexpr (requires { { *FormatDescriptor }->AnyOf<VideoFormat, VSFormat>; })
@@ -97,6 +108,14 @@ public:
 			return AudioFrame<void>{};
 		else
 			Frame{ FrameHandle };
+	}
+
+public:
+	auto SetMaxCacheSize(std::integral auto Bytes) const {
+		return VaporGlobals::API->setMaxCacheSize(Bytes, Handle);
+	}
+	auto SetThreadCount(std::integral auto Threads) const {
+		return VaporGlobals::API->setThreadCount(Threads, Handle);
 	}
 	auto ListPlugins() const {
 		auto PluginSignatures = std::vector<std::string>{};

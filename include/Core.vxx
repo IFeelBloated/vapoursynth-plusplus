@@ -111,6 +111,41 @@ public:
 	}
 
 public:
+	auto Mount(auto&& GeneralizedFunction) const {
+		using FunctionType = std::decay_t<decltype(GeneralizedFunction)>;
+		auto FunctionHandle = new auto{ Forward(GeneralizedFunction) };
+		auto FunctionRecycler = [](auto FunctionPointer) {
+			auto Garbage = reinterpret_cast<FunctionType*>(FunctionPointer);
+			delete Garbage;
+		};
+		auto FunctionProxy = [](auto InputMap, auto OutputMap, auto FunctionPointer, auto CoreHandle, auto...) {
+			auto Arguments = ArgumentList{ .Handle = InputMap };
+			auto FunctionHandle = reinterpret_cast<FunctionType*>(FunctionPointer);
+			auto Core = CoreProxy{ .Handle = CoreHandle };
+			auto FunctionInvoker = [&] {
+				if constexpr (auto& MountedFunction = *FunctionHandle; requires { MountedFunction(); })
+					return MountedFunction();
+				else if constexpr (requires { MountedFunction(Arguments); })
+					return MountedFunction(Arguments);
+				else if constexpr (requires { MountedFunction(Arguments, Core); })
+					return MountedFunction(Arguments, Core);
+				else
+					static_assert(sizeof(MountedFunction) == -1, "Mount: failed to mount the specified object, it is either not callable or has an incompatible signature.");
+			};
+			try {
+				if constexpr (auto ResultItem = Utility::Map::AccessItem<false>(OutputMap, "val"); requires { { FunctionInvoker() }->SubtypeOf<void>; })
+					FunctionInvoker();
+				else
+					ResultItem += FunctionInvoker();
+			}
+			catch (RuntimeError& ErrorMessage) {
+				VaporGlobals::API->setError(OutputMap, ErrorMessage.data());
+			}
+		};
+		return Function{ VaporGlobals::API->createFunc(FunctionProxy, FunctionHandle, FunctionRecycler, Handle, VaporGlobals::API) };
+	}
+
+public:
 	auto SetMaxCacheSize(std::integral auto Bytes) const {
 		return VaporGlobals::API->setMaxCacheSize(Bytes, Handle);
 	}

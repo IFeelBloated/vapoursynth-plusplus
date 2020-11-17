@@ -192,6 +192,15 @@ public:
 	}
 };
 
+struct ArgumentList {
+	field(Handle, static_cast<const VSMap*>(nullptr));
+
+public:
+	auto operator[](std::convertible_to<std::string_view> auto&& Parameter) const {
+		return Utility::Map::AccessItem(Handle, Forward(Parameter));
+	}
+};
+
 namespace Utility::Map {
 	auto Create() {
 		return MapReference<false>{ VaporGlobals::API->createMap() };
@@ -220,12 +229,7 @@ namespace Utility::Map {
 	}
 }
 
-struct ArgumentList final {
-	self(InputMap, static_cast<const VSMap*>(nullptr));
-	auto operator[](auto&& Parameter) {
-		return Utility::Map::AccessItem(InputMap, Forward(Parameter));
-	}
-};
+// anything below this line would be obsolete
 
 template<typename FilterType>
 struct Controller final {

@@ -39,8 +39,10 @@ namespace VaporInterface {
 		return Frame::NullHandle;
 	}
 	catch (RuntimeError& ErrorMessage) {
-		auto ContextHandle = FrameContextProxy{ .Handle = FrameContext };
-		return ContextHandle.RaiseError<FilterType>(ErrorMessage);
+		auto Caption = FilterType::Name + ": "s;
+		auto DecoratedMessage = Caption + ErrorMessage;
+		VaporGlobals::API->setFilterError(DecoratedMessage.data(), FrameContext);
+		return Frame::NullHandle;
 	}
 
 	template<typename FilterType>

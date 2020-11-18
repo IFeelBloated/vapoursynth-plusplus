@@ -23,7 +23,7 @@ public:
 		auto FormatHandle = VaporGlobals::API->registerFormat(static_cast<int>(ColorFamily), static_cast<int>(SampleType), BitsPerSample, HorizontalSubsamplingFactor, VerticalSubsamplingFactor, Handle);
 		return reinterpret_cast<const VideoFormat*>(FormatHandle);
 	}
-	auto Query(auto&&) const {
+	auto Query(AnyOf<AudioFormat> auto&&) const {
 		//Placeholder for API v4.
 		return static_cast<const AudioFormat*>(nullptr);
 	}
@@ -111,9 +111,9 @@ public:
 	}
 
 public:
-	auto Mount(auto&& GeneralizedFunction) const {
-		using FunctionType = std::decay_t<decltype(GeneralizedFunction)>;
-		auto FunctionHandle = new auto{ Forward(GeneralizedFunction) };
+	auto Mount(auto&& FunctionEntity) const {
+		using FunctionType = std::decay_t<decltype(FunctionEntity)>;
+		auto FunctionHandle = new auto{ Forward(FunctionEntity) };
 		auto FunctionRecycler = [](auto FunctionPointer) {
 			auto Garbage = reinterpret_cast<FunctionType*>(FunctionPointer);
 			delete Garbage;
@@ -133,10 +133,10 @@ public:
 					static_assert(sizeof(MountedFunction) == -1, "Mount: failed to mount the specified object, it is either not callable or has an incompatible signature.");
 			};
 			try {
-				if constexpr (auto ResultItem = Utility::Map::AccessItem<false>(OutputMap, "val"); requires { { FunctionInvoker() }->SubtypeOf<void>; })
-					FunctionInvoker();
-				else
+				if constexpr (auto ResultItem = Utility::Map::AccessItem<false>(OutputMap, "val"); requires { { FunctionInvoker() }->AnyBut<void>; })
 					ResultItem += FunctionInvoker();
+				else
+					FunctionInvoker();
 			}
 			catch (RuntimeError& ErrorMessage) {
 				VaporGlobals::API->setError(OutputMap, ErrorMessage.data());

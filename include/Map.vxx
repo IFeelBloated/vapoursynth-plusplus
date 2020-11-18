@@ -192,15 +192,6 @@ public:
 	}
 };
 
-struct ArgumentList {
-	field(Handle, static_cast<const VSMap*>(nullptr));
-
-public:
-	auto operator[](std::convertible_to<std::string_view> auto&& Parameter) const {
-		return Utility::Map::AccessItem(Handle, Forward(Parameter));
-	}
-};
-
 namespace Utility::Map {
 	auto Create() {
 		return MapReference<false>{ VaporGlobals::API->createMap() };
@@ -223,11 +214,31 @@ namespace Utility::Map {
 		auto ErrorMessage = VaporGlobals::API->getError(MapHandle);
 		return std::tuple{ ErrorMessage != nullptr, ErrorMessage };
 	}
+	auto DeduceReturnKey(auto MapHandle, auto Fallback) {
+		if (auto CandidateKeys = ListKeys(MapHandle); CandidateKeys.size() == 1) [[likely]]
+			return CandidateKeys[0];
+		else
+			return Fallback;
+	}
 	template<auto Readonly, auto Managed>
 	auto AccessItem(auto MapHandle, auto&& Key) {
 		return Item<Readonly, Managed>{  MapHandle, Forward(Key) };
 	}
 }
+
+struct ArgumentList {
+	field(Handle, static_cast<const VSMap*>(nullptr));
+
+public:
+	auto ListParameters() const {
+		return Utility::Map::ListKeys(Handle);
+	}
+	auto operator[](std::convertible_to<std::string_view> auto&& Parameter) const {
+		return Utility::Map::AccessItem(Handle, Forward(Parameter));
+	}
+};
+
+
 
 // anything below this line would be obsolete
 

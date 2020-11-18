@@ -13,7 +13,6 @@ private:
 		field(Handle, static_cast<VSPlugin*>(nullptr));
 		field(Name, ""s);
 		field(Signature, ""s);
-		field(ReturnKey, "clip"s);
 
 	public:
 		auto operator()(auto&& ...Arguments) const {
@@ -21,7 +20,7 @@ private:
 			if constexpr (sizeof...(Arguments) != 0)
 				Utility::Map::Fill(ArgumentMap.Handle, Forward(Arguments)...);
 			auto ResultMap = VaporGlobals::API->invoke(Handle, Name.data(), ArgumentMap.Handle);
-			auto ResultItem = Utility::Map::AccessItem<true, false>(ResultMap, ReturnKey);
+			auto ResultItem = Utility::Map::AccessItem<true, false>(ResultMap, Utility::Map::DeduceReturnKey(ResultMap, "clip"sv));
 			if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ResultMap); EvaluationFailed)
 				throw RuntimeError{ ErrorMessage };
 			return ResultItem;

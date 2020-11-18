@@ -74,13 +74,13 @@ namespace Utility {
 		else
 			return std::array{ Entity, Entity, Forward(Entity) };
 	}
-	auto ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(auto&& GeneralizedString) {
-		if constexpr (SubtypeOf<decltype(GeneralizedString), std::string>)
-			return GeneralizedString.data();
-		else if constexpr (requires { { Forward(GeneralizedString) }->std::convertible_to<const char*>; })
-			return static_cast<const char*>(Forward(GeneralizedString));
-		else if constexpr (Iterable<decltype(GeneralizedString)> && requires { { *GeneralizedString.begin() }->SubtypeOf<char>; })
-			return std::string{ GeneralizedString.begin(), GeneralizedString.end() };
+	auto ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(auto&& ReferenceString) {
+		if constexpr (SubtypeOf<decltype(ReferenceString), std::string>)
+			return ReferenceString.data();
+		else if constexpr (requires { { Forward(ReferenceString) }->std::convertible_to<const char*>; })
+			return static_cast<const char*>(Forward(ReferenceString));
+		else if constexpr (Iterable<decltype(ReferenceString)> && requires { { *ReferenceString.begin() }->SubtypeOf<char>; })
+			return std::string{ ReferenceString.begin(), ReferenceString.end() };
 	}
 	auto ExtractCharPointerFromASCIZFormattedString(auto&& FormattedString) {
 		if constexpr (requires { FormattedString.data(); })
@@ -95,6 +95,7 @@ namespace Utility::Map {
 	auto ListKeys(auto);
 	auto Fill(auto, auto&&, auto&&, auto&&...);
 	auto CheckForError(auto);
+	auto DeduceReturnKey(auto, auto);
 	template<auto = true, auto = true>
 	auto AccessItem(auto, auto&&);
 }

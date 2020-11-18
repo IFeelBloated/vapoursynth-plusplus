@@ -64,15 +64,6 @@ struct FrameContextProxy {
 	field(Handle, static_cast<VSFrameContext*>(nullptr));
 
 public:
-	template<typename FilterType>
-	auto RaiseError(auto&& ErrorMessage) const {
-		auto Caption = FilterType::Name + ": "s;
-		auto DecoratedMessage = Caption + Forward(ErrorMessage);
-		VaporGlobals::API->setFilterError(DecoratedMessage.data(), Handle);
-		return Frame::NullHandle;
-	}
-
-public:
 	auto QueryOutputIndex() const {
 		return VaporGlobals::API->getOutputIndex(Handle);
 	}

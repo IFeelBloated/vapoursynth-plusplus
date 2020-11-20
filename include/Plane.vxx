@@ -1,25 +1,34 @@
 #pragma once
 #include "Utility.vxx"
 
-template<typename PixelType, auto DirectAccess>
-struct Plane {
+template<typename PixelType>
+struct CanvasProxy {
 	field(Width, 0_size);
 	field(Height, 0_size);
-	field(Canvas, std::vector<PixelType*>{});
+	field(Stride, 0_ptrdiff);
+	field(Canvas, static_cast<PixelType*>(nullptr));
 
 public:
+	auto operator[](std::integral auto y) const {
+		return Canvas + y * Stride;
+	}
+};
+
+template<typename PixelType, auto DirectAccess>
+struct Plane : CanvasProxy<PixelType> {
 	static constexpr auto Readonly = std::is_const_v<PixelType>;
 	static constexpr auto EnabledAutomaticPadding = Readonly && !DirectAccess;
 
 private:
 	using EmptyType = struct {};
-	using PaddingFunctionInterface = auto(PixelType**, std::size_t, std::size_t, std::ptrdiff_t, std::ptrdiff_t)->PixelType;
+	using CanvasType = CanvasProxy<PixelType>;
+	using PaddingFunctionInterface = auto(const CanvasType&, std::ptrdiff_t, std::ptrdiff_t)->PixelType;
 	using PaddingFunctionType = std::function<PaddingFunctionInterface>;
-	using ReifiedPaddingFunctionType = std::conditional_t<EnabledAutomaticPadding, PaddingFunctionType, EmptyType>;
+	using PaddingFunctionProxy = std::conditional_t<EnabledAutomaticPadding, PaddingFunctionType, EmptyType>;
 
 public:
 	[[no_unique_address]]
-	field(PaddingFunction, ReifiedPaddingFunctionType{});
+	field(PaddingFunction, PaddingFunctionProxy{});
 
 private:
 	struct PaddedAccess {
@@ -29,14 +38,11 @@ private:
 
 	public:
 		auto operator[](std::integral auto x) const {
-			auto xAbsolute = x + xOffset;
-			auto PlaneWidth = TargetPlane->Width;
-			auto PlaneHeight = TargetPlane->Height;
-			auto Canvas = Utility::PointerDropQualifiers(TargetPlane)->Canvas.data();
-			if (xAbsolute < 0 || yAbsolute < 0 || xAbsolute >= PlaneWidth || yAbsolute >= PlaneHeight)
-				return TargetPlane->PaddingFunction(Canvas, PlaneWidth, PlaneHeight, yAbsolute, xAbsolute);
+			auto& Canvas = static_cast<const CanvasType&>(*TargetPlane);
+			if (auto xAbsolute = x + xOffset; xAbsolute < 0 || yAbsolute < 0 || xAbsolute >= Canvas.Width || yAbsolute >= Canvas.Height)
+				return TargetPlane->PaddingFunction(Canvas, yAbsolute, xAbsolute);
 			else [[likely]]
-				return TargetPlane->Canvas[yAbsolute][xAbsolute];
+				return Canvas[yAbsolute][xAbsolute];
 		}
 	};
 
@@ -59,23 +65,11 @@ private:
 	};
 
 public:
-	Plane() = default;
-	Plane(auto Pointer, auto Width, auto Height, auto Stride, auto&& PaddingFunction) {
-		this->Canvas.resize(Height);
-		this->Width = Width;
-		this->Height = Height;
-		if constexpr (EnabledAutomaticPadding)
-			this->PaddingFunction = Forward(PaddingFunction);
-		for (auto Origin = reinterpret_cast<PixelType*>(Pointer); auto y : Range{ Height })
-			this->Canvas[y] = Origin + y * Stride;
-	}
-
-public:
 	auto operator[](std::integral auto y) const {
 		if constexpr (EnabledAutomaticPadding)
 			return PaddedAccess{ .TargetPlane = this, .yAbsolute = y };
 		else
-			return Canvas[y];
+			return CanvasType::operator[](y);
 	}
 	auto View(std::integral auto y, std::integral auto x) const {
 		static_assert(EnabledAutomaticPadding, "View() is only available when automatic padding is enabled!");
@@ -85,19 +79,19 @@ public:
 
 namespace PaddingFunctions::Plane {
 	auto Constant(auto Value) {
-		return [=](auto Canvas, auto Width, auto Height, auto y, auto x) {
+		return [=](auto& Canvas, auto y, auto x) {
 			using PixelType = std::decay_t<decltype(Canvas[0][0])>;
 			return static_cast<PixelType>(Value);
 		};
 	}
-	auto Repeat = [](auto Canvas, auto Width, auto Height, auto y, auto x) {
-		x = Utility::Min(Utility::Max(x, 0), Width - 1);
-		y = Utility::Min(Utility::Max(y, 0), Height - 1);
+	auto Repeat = [](auto& Canvas, auto y, auto x) {
+		x = Utility::Min(Utility::Max(x, 0), Canvas.Width - 1);
+		y = Utility::Min(Utility::Max(y, 0), Canvas.Height - 1);
 		return Canvas[y][x];
 	};
-	auto Reflect = [](auto Canvas, auto Width, auto Height, auto y, auto x) {
-		x = Utility::PaddingFunctions::ReflectCoordinate(x, Width);
-		y = Utility::PaddingFunctions::ReflectCoordinate(y, Height);
+	auto Reflect = [](auto& Canvas, auto y, auto x) {
+		x = Utility::PaddingFunctions::ReflectCoordinate(x, Canvas.Width);
+		y = Utility::PaddingFunctions::ReflectCoordinate(y, Canvas.Height);
 		return Canvas[y][x];
 	};
 	auto Zero = Constant(0);

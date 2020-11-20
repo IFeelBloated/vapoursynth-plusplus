@@ -1,16 +1,73 @@
 #pragma once
-#include "ResourceManager.vxx"
+#include "Frame.vxx"
 #include "Metadata.vxx"
 
 using NodeReference = Owner<VSNodeRef>;
 
 struct Node : NodeReference {
+	static constexpr auto DefaultRequestFunction = [](auto Index) { return std::vector{ Index }; };
+
 private:
-	using RequestFunctionInterface = auto(std::ptrdiff_t)->std::vector<std::ptrdiff_t>;
-	using RequestFunctionType = std::function<RequestFunctionInterface>;
+	struct RequestFunctionProxy {
+		using RequestFunctionInterface = auto(std::ptrdiff_t)->std::vector<std::ptrdiff_t>;
+		using RequestFunctionType = std::function<RequestFunctionInterface>;
+
+	public:
+		field(HostedFunction, RequestFunctionType{});
+
+	public:
+		auto& operator=(AnyBut<RequestFunctionProxy> auto&& RequestFunction) {
+			if constexpr (requires { { RequestFunction(0_ptrdiff) }->std::same_as<std::vector<std::ptrdiff_t>>; })
+				HostedFunction = Forward(RequestFunction);
+			else
+				HostedFunction = [RequestFunction = Forward(RequestFunction)](auto Index) {
+					auto TypeErasedContainer = std::vector<std::ptrdiff_t>{};
+					if constexpr (requires { { RequestFunction(Index) }->Iterable; })
+						for (auto x : RequestFunction(Index))
+							if constexpr (std::integral<decltype(x)>)
+								TypeErasedContainer.push_back(x);
+							else
+								static_assert(sizeof(RequestFunction) == -1, "Node: frame index must be an integer.");
+					else
+						static_assert(sizeof(RequestFunction) == -1, "Node: RequestFunction must return an iterable container.");
+					return TypeErasedContainer;
+				};
+			return *this;
+		}
+		auto operator()(auto Index) const {
+			return HostedFunction(Index);
+		}
+	};
 
 protected:
-	field(RequestFunction, RequestFunctionType{});
+	template<typename NodeType>
+	struct PaddingFunctionProxy {
+		using PaddingFunctionInterface = auto(const NodeType&, std::ptrdiff_t, FrameContextProxy)->FrameReference;
+		using PaddingFunctionType = std::function<PaddingFunctionInterface>;
+
+	public:
+		field(HostedFunction, PaddingFunctionType{});
+
+	public:
+		auto& operator=(AnyBut<PaddingFunctionProxy> auto&& PaddingFunction) {
+			[[maybe_unused]] auto& PlaceholderNode = *static_cast<const NodeType*>(nullptr);
+			if constexpr (requires { { PaddingFunction(PlaceholderNode, 0_ptrdiff, FrameContextProxy{}) }->SubtypeOf<FrameReference>; })
+				HostedFunction = Forward(PaddingFunction);
+			else if constexpr (requires { { PaddingFunction(PlaceholderNode, 0_ptrdiff) }->SubtypeOf<FrameReference>; })
+				HostedFunction = [PaddingFunction = Forward(PaddingFunction)](auto& Clip, auto Index, auto...) {
+					return PaddingFunction(Clip, Index);
+				};
+			else
+				static_assert(sizeof(PaddingFunction) == -1, "Node: specified padding function has an incompatible signature.");
+			return *this;
+		}
+		auto operator()(auto& Clip, auto Index, auto FrameContext) const {
+			return HostedFunction(Clip, Index, FrameContext);
+		}
+	};
+
+public:
+	field(RequestFunction, RequestFunctionProxy{ DefaultRequestFunction });
 
 public:
 	Node() = default;
@@ -29,20 +86,6 @@ public:
 		if (FrameHandle == Frame::NullHandle)
 			throw RuntimeError{ ErrorMessageBuffer.data() };
 		return Frame{ FrameHandle };
-	}
-	auto WasRequestFunctionAlreadyCached() const {
-		return static_cast<bool>(RequestFunction);
-	}
-	auto CacheRequestFunction(auto&& RequestFunction) {
-		if constexpr (SubtypeOf<decltype(RequestFunction(0_ptrdiff)), std::vector<std::ptrdiff_t>>)
-			this->RequestFunction = Forward(RequestFunction);
-		else
-			this->RequestFunction = [RequestFunction = Forward(RequestFunction)](auto Index) {
-				auto TypeErasedContainer = std::vector<std::ptrdiff_t>{};
-				for (auto x : RequestFunction(Index))
-					TypeErasedContainer.push_back(x);
-				return TypeErasedContainer;
-			};
 	}
 	auto Type() const {
 		//Placeholder for API v4.

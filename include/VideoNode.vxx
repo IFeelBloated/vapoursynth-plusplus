@@ -3,12 +3,7 @@
 #include "Node.vxx"
 
 struct VideoNode : Node, VideoInfo, VideoFormat {
-private:
-	using PaddingFunctionInterface = auto(const VideoNode&, std::ptrdiff_t, FrameContextProxy)->FrameReference;
-	using PaddingFunctionType = std::function<PaddingFunctionInterface>;
-
-public:
-	field(PaddingFunction, PaddingFunctionType{});
+	field(PaddingFunction, PaddingFunctionProxy<VideoNode>{});
 
 public:
 	VideoNode() = default;
@@ -33,11 +28,9 @@ public:
 		if (Index >= 0 && Index < FrameCount)
 			RequestFrameUnchecked(Index, FrameContext);
 	}
-	auto RequestFrames(std::integral auto Index, auto FrameContext, auto&& RequestFunction) const {
+	auto RequestFrames(std::integral auto Index, auto FrameContext) const {
 		for (auto x : RequestFunction(Index))
 			RequestFrame(x, FrameContext);
-		if (WasRequestFunctionAlreadyCached() == false)
-			Utility::PointerDropQualifiers(this)->CacheRequestFunction(Forward(RequestFunction));
 	}
 
 private:
@@ -57,9 +50,9 @@ public:
 	auto FetchFrames(std::integral auto Index, auto FrameContext) const {
 		using FrameType = VideoFrame<PixelType, DirectAccess>;
 		auto FetchedFrames = std::unordered_map<std::ptrdiff_t, FrameType>{};
-		auto RequestedFrameIndexes = RequestFunction(Index);
-		FetchedFrames.rehash(RequestedFrameIndexes.size());
-		for (auto x : RequestedFrameIndexes)
+		auto RequestedIndexes = RequestFunction(Index);
+		FetchedFrames.rehash(RequestedIndexes.size());
+		for (auto x : RequestedIndexes)
 			FetchedFrames[x - Index] = FetchFrame<PixelType, DirectAccess>(x, FrameContext);
 		return FetchedFrames;
 	}
@@ -75,8 +68,8 @@ public:
 };
 
 namespace PaddingFunctions::VideoNode {
-	auto Constant(auto Core, auto&& Values) {
-		return [Core, Values = Utility::TypeEraseIterableToTriplet(Forward(Values))](auto& Clip, auto Index, auto...) {
+	auto Constant(auto&& Values, auto Core) {
+		return [Values = Utility::TypeEraseIterableToTriplet(Forward(Values)), Core](auto& Clip, auto Index) {
 			if (!Clip.WithConstantFormat() || !Clip.WithConstantDimensions())
 				throw RuntimeError{ "PaddingFunctions::VideoNode::Constant: only clips with constant format and dimensions supported." };
 			auto AllocatedFrame = Core.AllocateVideoFrame(Clip.Format, Clip.Width, Clip.Height);
@@ -97,11 +90,11 @@ namespace PaddingFunctions::VideoNode {
 		};
 	}
 	auto Zero(auto Core) {
-		return [=](auto& Clip, auto Index, auto...) {
+		return [=](auto& Clip, auto Index) {
 			if (Clip.IsRGB() || Clip.IsGray() || Clip.IsSinglePrecision())
-				return Constant(Core, 0)(Clip, Index);
+				return Constant(0, Core)(Clip, Index);
 			else
-				return Constant(Core, std::array{ 0, 1 << (Clip.BitsPerSample - 1) })(Clip, Index);
+				return Constant(std::array{ 0, 1 << (Clip.BitsPerSample - 1) }, Core)(Clip, Index);
 		};
 	}
 }

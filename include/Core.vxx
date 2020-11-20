@@ -31,7 +31,7 @@ public:
 		auto ID = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(PluginID);
 		auto PluginHandle = VaporGlobals::API->getPluginById(Utility::ExtractCharPointerFromASCIZFormattedString(ID), Handle);
 		if (PluginHandle == nullptr)
-			throw "Query: plugin with the specified identifier "s + std::move(ID) + " not found.";
+			throw RuntimeError{ "Query: plugin with the specified identifier "s + std::move(ID) + " not found." };
 		return Plugin{ PluginHandle };
 	}
 
@@ -162,7 +162,7 @@ public:
 		auto Namespace = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(PluginNamespace);
 		auto PluginHandle = VaporGlobals::API->getPluginByNs(Utility::ExtractCharPointerFromASCIZFormattedString(Namespace), Handle);
 		if (PluginHandle == nullptr)
-			throw "Core: No attribute with the name "s + std::move(Namespace) + " exists. Missing plugin?";
+			throw RuntimeError{ "Core: No attribute with the name "s + std::move(Namespace) + " exists. Missing plugin?" };
 		return Plugin{ PluginHandle };
 	}
 	operator auto() const {

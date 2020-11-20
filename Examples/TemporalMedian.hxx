@@ -10,6 +10,7 @@ struct TemporalMedian final {
 		InputClip = Arguments["clip"];
 		if (Arguments["radius"].Exists())
 			Radius = Arguments["radius"];
+		InputClip.RequestFunction = [Radius = Radius](auto Index) { return Range{ Index - Radius, Index + Radius + 1 }; };
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
 			throw RuntimeError{ "only single precision floating point clips with constant format and dimensions supported." };
 		if (Radius < 0)
@@ -19,7 +20,7 @@ struct TemporalMedian final {
 		return InputClip.ExtractMetadata();
 	}
 	auto RequestReferenceFrames(auto Index, auto FrameContext) {
-		InputClip.RequestFrames(Index, FrameContext, [this](auto x) { return Range{ x - Radius, x + Radius + 1 }; });
+		InputClip.RequestFrames(Index, FrameContext);
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
 		auto InputFrames = InputClip.FetchFrames<const float>(Index, FrameContext);

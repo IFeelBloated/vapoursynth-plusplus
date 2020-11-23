@@ -91,6 +91,14 @@ enum struct ItemTypes {
 	AudioFrame
 };
 
+enum struct MessageTypes {
+	Debug = 0,
+	Warning = 1,
+	Critical = 2,
+	Fatal = 3,
+	Information
+};
+
 enum struct VideoFormats {
 	None = 0,
 

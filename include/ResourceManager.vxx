@@ -97,11 +97,11 @@ public:
 	auto& operator=(MapReference&&) = delete;
 
 public:
-	~MapReference() {
-		if constexpr (Managed == false)
-			if (this->Handle != nullptr)
-				VaporGlobals::API->freeMap(this->Handle);
+	~MapReference() requires (Managed == false) {
+		if (this->Handle != nullptr)
+			VaporGlobals::API->freeMap(this->Handle);
 	}
+	~MapReference() = default;
 
 public:
 	auto Leak() {

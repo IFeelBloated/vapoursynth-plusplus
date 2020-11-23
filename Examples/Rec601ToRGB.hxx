@@ -21,13 +21,19 @@ struct Rec601ToRGB final {
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
 		auto InputFrame = InputClip.FetchFrame<const float>(Index, FrameContext);
 		auto ProcessedFrame = VideoFrame<float>{ Core.AllocateVideoFrame(VideoFormats::RGBS, InputClip.Width, InputClip.Height) };
+		auto Matrix = 6;
+		auto ColorRange = 0;
 		if (InputFrame["_Matrix"].Exists() == false)
-			throw RuntimeError{ "_Matrix property not found!" };
+			Core.Alert("_Matrix property not found, assuming Rec601.");
+		else
+			Matrix = InputFrame["_Matrix"];
 		if (InputFrame["_ColorRange"].Exists() == false)
-			throw RuntimeError{ "_ColorRange property not found!" };
-		if (auto Matrix = static_cast<int>(InputFrame["_Matrix"]); Matrix != 6)
+			Core.Alert("_ColorRange property not found, assuming full range.");
+		else
+			ColorRange = InputFrame["_ColorRange"];
+		if (Matrix != 6)
 			throw RuntimeError{ "unrecognized _Matrix!" };
-		if (auto ColorRange = static_cast<int>(InputFrame["_ColorRange"]); ColorRange != 0)
+		if (ColorRange != 0)
 			throw RuntimeError{ "only full range supported!" };
 		for (auto y : Range{ InputClip.Height })
 			for (auto x : Range{ InputClip.Width }) {

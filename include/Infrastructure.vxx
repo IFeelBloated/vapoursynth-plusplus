@@ -12,6 +12,7 @@
 #include <concepts>
 #include <utility>
 #include <filesystem>
+#include <future>
 #include <memory>
 #include <new>
 #include <cstring>

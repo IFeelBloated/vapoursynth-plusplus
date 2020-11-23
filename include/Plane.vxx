@@ -9,7 +9,7 @@ struct CanvasProxy {
 	field(Canvas, static_cast<PixelType*>(nullptr));
 
 public:
-	auto operator[](std::integral auto y) const {
+	auto operator[](auto y) const {
 		return Canvas + y * Stride;
 	}
 };

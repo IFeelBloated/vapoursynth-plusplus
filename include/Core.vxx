@@ -146,6 +146,27 @@ public:
 	}
 
 public:
+	auto LogMessage(AnyOf<MessageTypes, VSMessageType> auto MessageType, std::convertible_to<std::string_view> auto&& Message) const {
+		auto FormattedMessage = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(Message);
+		VaporGlobals::API->logMessage(static_cast<int>(MessageType), Utility::ExtractCharPointerFromASCIZFormattedString(FormattedMessage));
+	}
+	auto DebugPrint(std::convertible_to<std::string_view> auto&& Message) const {
+		LogMessage(MessageTypes::Debug, Message);
+	}
+	auto Print(std::convertible_to<std::string_view> auto&& Message) const {
+		LogMessage(MessageTypes::Information, Message);
+	}
+	auto Alert(std::convertible_to<std::string_view> auto&& Message) const {
+		LogMessage(MessageTypes::Warning, Message);
+	}
+	auto CriticalAlert(std::convertible_to<std::string_view> auto&& Message) const {
+		LogMessage(MessageTypes::Critical, Message);
+	}
+	auto Abort(std::convertible_to<std::string_view> auto&& Message) const {
+		LogMessage(MessageTypes::Fatal, Message);
+	}
+
+public:
 	auto SetMaxCacheSize(std::integral auto Bytes) const {
 		return VaporGlobals::API->setMaxCacheSize(Bytes, Handle);
 	}

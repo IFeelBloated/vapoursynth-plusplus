@@ -107,7 +107,7 @@ public:
 			//Placeholder for API v4.
 			return AudioFrame<void>{};
 		else
-			Frame{ FrameHandle };
+			return FramePrototype<void>{ FrameHandle };
 	}
 
 public:

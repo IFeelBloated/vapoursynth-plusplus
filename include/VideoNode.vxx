@@ -64,7 +64,6 @@ public:
 	auto PeekFrame(std::integral auto Index, auto FrameContext) const {
 		return Frame{ AccessFrame(Index, FrameContext) };
 	}
-	using Node::PeekFrame;
 };
 
 namespace PaddingFunctions::VideoNode {

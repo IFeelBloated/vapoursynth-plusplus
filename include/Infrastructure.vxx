@@ -27,7 +27,7 @@
 #define isinstance(Object, Type) (std::is_same_v<std::decay_t<decltype(Object)>, Type> || std::is_base_of_v<Type, std::decay_t<decltype(Object)>>)
 #define Forward(...) std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
 
-#define ConfigureForMultipleOutputs(...) __VA_OPT__(template) ConfigureForMultipleOutputsInternal __VA_OPT__(<) __VA_ARGS__ __VA_OPT__(>)()
+#define Unpack(...) template UnpackIntoArray<__VA_ARGS__>()
 
 using namespace std::literals;
 

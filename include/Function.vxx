@@ -9,7 +9,7 @@ struct Function : FunctionReference {
 	Function(std::convertible_to<HandleType> auto&& Descriptor) : FunctionReference{ Forward(Descriptor) } {}
 
 public:
-	auto operator()(auto&& ...Arguments) const {
+	auto operator()(auto&& ...Arguments) const requires (sizeof...(Arguments) % 2 == 0) {
 		auto ArgumentMap = Utility::Map::Create();
 		auto ResultMap = Utility::Map::Create();
 		auto ResultObserver = ResultMap.Handle;

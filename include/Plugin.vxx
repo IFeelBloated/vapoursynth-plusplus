@@ -15,7 +15,7 @@ private:
 		field(Signature, ""s);
 
 	public:
-		auto operator()(auto&& ...Arguments) const {
+		auto operator()(auto&& ...Arguments) const requires (sizeof...(Arguments) % 2 == 0) {
 			auto ArgumentMap = Utility::Map::Create();
 			if constexpr (sizeof...(Arguments) != 0)
 				Utility::Map::Fill(ArgumentMap.Handle, Forward(Arguments)...);

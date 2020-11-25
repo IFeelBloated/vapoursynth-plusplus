@@ -59,6 +59,7 @@ public:
 };
 
 using Frame = FramePrototype<const void>;
+using WritableFrame = FramePrototype<void>;
 
 struct FrameContextProxy {
 	field(Handle, static_cast<VSFrameContext*>(nullptr));

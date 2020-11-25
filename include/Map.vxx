@@ -190,6 +190,19 @@ public:
 		Insert(Entity, VSPropAppendMode::paAppend);
 		return *this;
 	}
+
+public:
+	template<auto CurrentIndex, auto Bound>
+	auto UnpackIntoArray(auto&& ...Items) const {
+		if constexpr (auto& Self = *this; CurrentIndex == Bound)
+			return std::array{ std::move(Items)... };
+		else
+			return UnpackIntoArray<CurrentIndex + 1, Bound>(std::move(Items)..., Self[CurrentIndex]);
+	}
+	template<auto Length>
+	auto UnpackIntoArray() const {
+		return UnpackIntoArray<0, Length>();
+	}
 };
 
 namespace Utility::Map {

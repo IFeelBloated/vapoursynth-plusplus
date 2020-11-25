@@ -21,7 +21,7 @@ struct ModifyFrame final {
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
 		auto InputFrame = InputClip.PeekFrame(Index, FrameContext);
-		auto EvaluatedFrame = static_cast<FrameReference>(Evaluator("src", InputFrame));
+		auto EvaluatedFrame = static_cast<Frame>(Evaluator("src", InputFrame));
 		return EvaluatedFrame.Leak();
 	}
 };

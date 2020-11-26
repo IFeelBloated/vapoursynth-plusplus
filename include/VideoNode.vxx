@@ -2,24 +2,14 @@
 #include "VideoFrame.vxx"
 #include "Node.vxx"
 
-struct VideoNode : Node, VideoInfo, VideoFormat {
+struct VideoNode : Node, VideoInfo {
 	field(PaddingFunction, PaddingFunctionProxy<VideoNode>{});
 
 public:
 	VideoNode() = default;
 	VideoNode(std::convertible_to<HandleType> auto&& Descriptor) : Node{ Forward(Descriptor) } {
-		auto SynchronizeFormat = [this] {
-			auto& FlattenedFormat = static_cast<VideoFormat&>(*this);
-			if (auto& ReferenceFormat = *this->Format; this->Format != nullptr)
-				FlattenedFormat = ReferenceFormat;
-		};
-		auto SynchronizeVideoInfo = [this] {
-			auto& ReferenceVideoInfo = this->QueryVideoInfo();
-			auto& FlattenedVideoInfo = static_cast<VideoInfo&>(*this);
-			FlattenedVideoInfo = ReferenceVideoInfo;
-		};
-		SynchronizeVideoInfo();
-		SynchronizeFormat();
+		auto& FlattenedVideoInfo = static_cast<VideoInfo&>(*this);
+		FlattenedVideoInfo = this->QueryVideoInfo();
 		this->PaddingFunction = PaddingFunctions::Node::Default;
 	}
 
@@ -80,9 +70,9 @@ namespace PaddingFunctions::VideoNode {
 							BlankFrame[c][y][x] = static_cast<PixelType>(Values[c]);
 				return BlankFrame.Transfer();
 			};
-			if (Clip.IsSinglePrecision())
+			if (Clip.Format.IsSinglePrecision())
 				return FillWithColor(VideoFrame<float>{ AllocatedFrame.Leak() });
-			else if (Clip.BitsPerSample > 8)
+			else if (Clip.Format.BitsPerSample > 8)
 				return FillWithColor(VideoFrame<std::uint16_t>{ AllocatedFrame.Leak() });
 			else
 				return FillWithColor(VideoFrame<std::uint8_t>{ AllocatedFrame.Leak() });
@@ -90,10 +80,10 @@ namespace PaddingFunctions::VideoNode {
 	}
 	auto Zero(auto Core) {
 		return [=](auto& Clip, auto Index) {
-			if (Clip.IsRGB() || Clip.IsGray() || Clip.IsSinglePrecision())
+			if (Clip.Format.IsRGB() || Clip.Format.IsGray() || Clip.Format.IsSinglePrecision())
 				return Constant(0, Core)(Clip, Index);
 			else
-				return Constant(std::array{ 0, 1 << (Clip.BitsPerSample - 1) }, Core)(Clip, Index);
+				return Constant(std::array{ 0, 1 << (Clip.Format.BitsPerSample - 1) }, Core)(Clip, Index);
 		};
 	}
 }

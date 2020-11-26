@@ -80,7 +80,7 @@ public:
 			};
 			if (SubsidiaryPlane.Width << Format.HorizontalSubsamplingFactor != MainPlane.Width || SubsidiaryPlane.Height << Format.VerticalSubsamplingFactor != MainPlane.Height)
 				throw RuntimeError{ "ShufflePlanes: assembling specified planes leads to an invalid subsampling factor." };
-			if (Format.ColorFamily == ColorFamilies::RGB)
+			if (Format.IsRGB())
 				if (Format.HorizontalSubsamplingFactor != 0 || Format.VerticalSubsamplingFactor != 0)
 					throw RuntimeError{ "ShufflePlanes: RGB cannot be subsampled." };
 			return reinterpret_cast<const VSFormat*>(Query(Format));

@@ -50,20 +50,28 @@ struct AudioFormat {
 };
 
 struct VideoInfo {
-	field(Format, static_cast<const VideoFormat*>(nullptr));
+	field(Format, VideoFormat{});
 	field(FrameRateNumerator, 0_i64);
 	field(FrameRateDenominator, 0_i64);
 	field(Width, 0);
 	field(Height, 0);
 	field(FrameCount, 0);
-	field(Flags, 0);
 
 public:
 	auto WithConstantDimensions() const {
 		return Width != 0 && Height != 0;
 	}
 	auto WithConstantFormat() const {
-		return Format != nullptr;
+		return Format.ID != pfNone;
+	}
+
+public:
+	auto ConvertToAPIv3CompatibleLayout(auto Core) const {
+		return VSVideoInfo{
+			.format = reinterpret_cast<const VSFormat*>(Core.Query(Format)),
+			.fpsNum = FrameRateNumerator, .fpsDen = FrameRateDenominator,
+			.width = Width, .height = Height, .numFrames = FrameCount, .flags = 0
+		};
 	}
 };
 

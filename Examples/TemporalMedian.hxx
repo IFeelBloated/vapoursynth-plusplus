@@ -11,7 +11,7 @@ struct TemporalMedian final {
 		if (Arguments["radius"].Exists())
 			Radius = Arguments["radius"];
 		InputClip.RequestFunction = [Radius = Radius](auto Index) { return Range{ Index - Radius, Index + Radius + 1 }; };
-		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
+		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.Format.IsSinglePrecision())
 			throw RuntimeError{ "only single precision floating point clips with constant format and dimensions supported." };
 		if (Radius < 0)
 			throw RuntimeError{ "radius cannot be negative!" };

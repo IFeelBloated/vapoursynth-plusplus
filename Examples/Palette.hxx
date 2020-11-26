@@ -19,7 +19,7 @@ struct Palette final {
 	}
 	auto RegisterMetadata(auto Core) {
 		auto Metadata = VideoInfo{
-			.Format = Core.Query(VideoFormats::GrayS),
+			.Format = *Core.Query(VideoFormats::GrayS),
 			.FrameRateNumerator = 30000, .FrameRateDenominator = 1001,
 			.Width = Width, .Height = Height,
 			.FrameCount = 1

@@ -23,7 +23,7 @@ struct Crop final {
 			Bottom = Arguments["bottom"];
 		CroppedWidth = InputClip.Width - Left - Right;
 		CroppedHeight = InputClip.Height - Top - Bottom;
-		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.Is444())
+		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.Format.Is444())
 			throw RuntimeError{ "clips with subsampled format not supported." };
 		if (Left < 0 || Right < 0 || Top < 0 || Bottom < 0)
 			throw RuntimeError{ "cannot crop negative measures!" };
@@ -50,9 +50,9 @@ struct Crop final {
 						ProcessedFrame[c][y][x] = InputFrame[c][y + Top][x + Left];
 			return ProcessedFrame.Leak();
 		};
-		if (InputClip.IsSinglePrecision())
+		if (InputClip.Format.IsSinglePrecision())
 			return DrawGenericFrame(InputClip.FetchFrame<const float>(Index, FrameContext));
-		else if (InputClip.BitsPerSample > 8)
+		else if (InputClip.Format.BitsPerSample > 8)
 			return DrawGenericFrame(InputClip.FetchFrame<const std::uint16_t>(Index, FrameContext));
 		else
 			return DrawGenericFrame(InputClip.FetchFrame<const std::uint8_t>(Index, FrameContext));

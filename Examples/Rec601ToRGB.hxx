@@ -7,7 +7,7 @@ struct Rec601ToRGB final {
 	self(InputClip, VideoNode{});
 	Rec601ToRGB(auto Arguments) {
 		InputClip = Arguments["clip"];
-		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.Format.IsSinglePrecision() || !InputClip.Format.IsYUV() || !InputClip.Format.Is444())
+		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision() || !InputClip.IsYUV() || !InputClip.Is444())
 			throw RuntimeError{ "only YUV444PS clips supported." };
 	}
 	auto RegisterMetadata(auto Core) {

@@ -2,14 +2,15 @@
 #include "VideoFrame.vxx"
 #include "Node.vxx"
 
-struct VideoNode : Node, VideoInfo {
+struct VideoNode : Node, FlattenedVideoInfo {
 	field(PaddingFunction, PaddingFunctionProxy<VideoNode>{});
 
 public:
 	VideoNode() = default;
 	VideoNode(std::convertible_to<HandleType> auto&& Descriptor) : Node{ Forward(Descriptor) } {
-		auto& FlattenedVideoInfo = static_cast<VideoInfo&>(*this);
-		FlattenedVideoInfo = this->QueryVideoInfo();
+		auto& Metadata = static_cast<FlattenedVideoInfo&>(*this);
+		auto ReferenceVideoInfo = this->QueryVideoInfo();
+		Metadata = reinterpret_cast<FlattenedVideoInfo&>(ReferenceVideoInfo);
 		this->PaddingFunction = PaddingFunctions::Node::Default;
 	}
 
@@ -49,7 +50,8 @@ public:
 
 public:
 	auto& ExtractMetadata() const {
-		return static_cast<const VideoInfo&>(*this);
+		auto& Metadata = static_cast<const FlattenedVideoInfo&>(*this);
+		return reinterpret_cast<const VideoInfo&>(Metadata);
 	}
 	auto PeekFrame(std::integral auto Index, auto FrameContext) const {
 		return Frame{ AccessFrame(Index, FrameContext) };
@@ -61,7 +63,7 @@ namespace PaddingFunctions::VideoNode {
 		return [Values = Utility::TypeEraseIterableToTriplet(Forward(Values)), Core](auto& Clip, auto Index) {
 			if (!Clip.WithConstantFormat() || !Clip.WithConstantDimensions())
 				throw RuntimeError{ "PaddingFunctions::VideoNode::Constant: only clips with constant format and dimensions supported." };
-			auto AllocatedFrame = Core.AllocateVideoFrame(Clip.Format, Clip.Width, Clip.Height);
+			auto AllocatedFrame = Core.AllocateVideoFrame(Clip.ExtractMetadata().Format, Clip.Width, Clip.Height);
 			auto FillWithColor = [&](auto&& BlankFrame) {
 				using PixelType = std::decay_t<decltype(BlankFrame[0][0][0])>;
 				for (auto c : Range{ BlankFrame.PlaneCount })
@@ -70,9 +72,9 @@ namespace PaddingFunctions::VideoNode {
 							BlankFrame[c][y][x] = static_cast<PixelType>(Values[c]);
 				return BlankFrame.Transfer();
 			};
-			if (Clip.Format.IsSinglePrecision())
+			if (Clip.IsSinglePrecision())
 				return FillWithColor(VideoFrame<float>{ AllocatedFrame.Leak() });
-			else if (Clip.Format.BitsPerSample > 8)
+			else if (Clip.BitsPerSample > 8)
 				return FillWithColor(VideoFrame<std::uint16_t>{ AllocatedFrame.Leak() });
 			else
 				return FillWithColor(VideoFrame<std::uint8_t>{ AllocatedFrame.Leak() });
@@ -80,10 +82,10 @@ namespace PaddingFunctions::VideoNode {
 	}
 	auto Zero(auto Core) {
 		return [=](auto& Clip, auto Index) {
-			if (Clip.Format.IsRGB() || Clip.Format.IsGray() || Clip.Format.IsSinglePrecision())
+			if (Clip.IsRGB() || Clip.IsGray() || Clip.IsSinglePrecision())
 				return Constant(0, Core)(Clip, Index);
 			else
-				return Constant(std::array{ 0, 1 << (Clip.Format.BitsPerSample - 1) }, Core)(Clip, Index);
+				return Constant(std::array{ 0, 1 << (Clip.BitsPerSample - 1) }, Core)(Clip, Index);
 		};
 	}
 }

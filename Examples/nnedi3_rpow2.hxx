@@ -19,7 +19,7 @@ struct nnedi3_rpow2 final {
     }
     nnedi3_rpow2(auto Arguments) {
         InputClip = Arguments["clip"];
-        if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.Format.Is444())
+        if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.Is444())
             throw RuntimeError{ "clips with subsampled format not supported!" };
         RFactor = Arguments["rfactor"];
         if (RFactor != 1 << LogarithmizeRFactor())
@@ -34,7 +34,7 @@ struct nnedi3_rpow2 final {
             EType = Arguments["etype"];
         if (Arguments["pscrn"].Exists())
             PSCRN = Arguments["pscrn"];
-        else if (InputClip.Format.IsSinglePrecision())
+        else if (InputClip.IsSinglePrecision())
             PSCRN = 1;
     }
     auto RegisterInvokingSequence(auto Core, auto&& SelfInvoker) {

@@ -75,6 +75,22 @@ public:
 	}
 };
 
+struct FlattenedVideoInfo : VideoFormat {
+	field(FrameRateNumerator, 0_i64);
+	field(FrameRateDenominator, 0_i64);
+	field(Width, 0);
+	field(Height, 0);
+	field(FrameCount, 0);
+
+public:
+	auto WithConstantDimensions() const {
+		return Width != 0 && Height != 0;
+	}
+	auto WithConstantFormat() const {
+		return ID != pfNone;
+	}
+};
+
 struct AudioInfo {
 	//Placeholder for API v4.
 };

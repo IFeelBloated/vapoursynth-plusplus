@@ -7,7 +7,7 @@ struct GaussBlurFast final {
 	self(InputClip, VideoNode{});
 	GaussBlurFast(auto Arguments) {
 		InputClip = Arguments["clip"];
-		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.Format.IsSinglePrecision())
+		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
 			throw RuntimeError{ "only single precision floating point clips with constant format and dimensions supported." };
 	}
 	auto RegisterMetadata(auto Core) {

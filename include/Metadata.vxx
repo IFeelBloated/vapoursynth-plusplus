@@ -84,8 +84,9 @@ public:
 
 public:
 	auto ConvertToAPIv3CompatibleLayout(auto Core) const {
+		auto& AnchoredFormat = Core.Query(Format);
 		return VSVideoInfo{
-			.format = &VideoFormat::AdjustToAPIv3CompatibleLayout(Core.Query(Format)),
+			.format = AnchoredFormat == Core.IndeterminateVideoFormat ? nullptr : &VideoFormat::AdjustToAPIv3CompatibleLayout(AnchoredFormat),
 			.fpsNum = FrameRateNumerator, .fpsDen = FrameRateDenominator,
 			.width = Width, .height = Height, .numFrames = FrameCount, .flags = 0
 		};

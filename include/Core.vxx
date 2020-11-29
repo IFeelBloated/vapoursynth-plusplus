@@ -5,6 +5,9 @@ struct CoreProxy {
 	field(Handle, static_cast<VSCore*>(nullptr));
 
 public:
+	static constexpr auto IndeterminateVideoFormat = VideoFormat{};
+
+public:
 	auto Query() {
 		auto CoreInfoBuffer = VSCoreInfo{};
 		VaporGlobals::API->getCoreInfo2(Handle, &CoreInfoBuffer);
@@ -15,13 +18,17 @@ public:
 		};
 	}
 	auto& Query(AnyOf<VideoFormats, VSPresetFormat> auto FormatID) const {
-		auto FormatHandle = VaporGlobals::API->getFormatPreset(static_cast<int>(FormatID), Handle);
-		return VideoFormat::AdjustToStandardLayout(*FormatHandle);
+		if (auto FormatHandle = VaporGlobals::API->getFormatPreset(static_cast<int>(FormatID), Handle); FormatHandle != nullptr)
+			return VideoFormat::AdjustToStandardLayout(*FormatHandle);
+		else
+			return IndeterminateVideoFormat;
 	}
 	auto& Query(AnyOf<VideoFormat, VSFormat> auto&& Format) const {
 		auto [ColorFamily, SampleType, BitsPerSample, _, HorizontalSubsamplingFactor, VerticalSubsamplingFactor, __] = VideoFormat::AdjustToStandardLayout(Format);
-		auto FormatHandle = VaporGlobals::API->registerFormat(static_cast<int>(ColorFamily), static_cast<int>(SampleType), BitsPerSample, HorizontalSubsamplingFactor, VerticalSubsamplingFactor, Handle);
-		return VideoFormat::AdjustToStandardLayout(*FormatHandle);
+		if (auto FormatHandle = VaporGlobals::API->registerFormat(static_cast<int>(ColorFamily), static_cast<int>(SampleType), BitsPerSample, HorizontalSubsamplingFactor, VerticalSubsamplingFactor, Handle); FormatHandle != nullptr)
+			return VideoFormat::AdjustToStandardLayout(*FormatHandle);
+		else
+			return IndeterminateVideoFormat;
 	}
 	auto Query(AnyOf<AudioFormat> auto&&) const {
 		//Placeholder for API v4.
@@ -63,20 +70,20 @@ public:
 			return WritableFrame{ VaporGlobals::API->copyFrame(ReferenceFrame.Handle, Handle) };
 	}
 	auto ShufflePlanes(auto&& Frames, auto&& PlaneIndexes, AnyOf<ColorFamilies, VSColorFamily> auto ColorFamily) const {
-		auto ValidateInputs = [&](auto& MainFrame, auto PlaneIndex, auto& SubsidiaryPlane1, auto& SubsidiaryPlane2) {
-			static_assert(SubtypeOf<decltype(MainFrame), FrameReference>, "ShufflePlanes: you must specify a frame or any iterable frame container.");
-			static_assert(requires { { MainFrame.ExtractFormat() }->SubtypeOf<VideoFormat>; }, "ShufflePlanes: specified frames must be video frames.");
+		auto ValidateInputs = [&](auto& PrimaryFrame, auto PlaneIndex, auto& SubsidiaryPlane1, auto& SubsidiaryPlane2) {
+			static_assert(SubtypeOf<decltype(PrimaryFrame), FrameReference>, "ShufflePlanes: you must specify a frame or any iterable frame container.");
+			static_assert(requires { { PrimaryFrame.ExtractFormat() }->SubtypeOf<VideoFormat>; }, "ShufflePlanes: specified frames must be video frames.");
 			static_assert(std::integral<decltype(PlaneIndex)>, "ShufflePlanes: plane index must be an integer.");
 			if (SubsidiaryPlane1.Width != SubsidiaryPlane2.Width || SubsidiaryPlane1.Height != SubsidiaryPlane2.Height)
 				throw RuntimeError{ "ShufflePlanes: subsidiary planes have inconsistent dimensions." };
 		};
-		auto DeduceFormat = [&](auto& ReferenceFormat, auto& MainPlane, auto& SubsidiaryPlane) {
+		auto DeduceFormat = [&](auto& ReferenceFormat, auto& PrimaryPlane, auto& SubsidiaryPlane) {
 			auto Format = VideoFormat{
 				.ColorFamily = static_cast<ColorFamilies>(ColorFamily),
 				.SampleType = ReferenceFormat.SampleType, .BitsPerSample = ReferenceFormat.BitsPerSample,
-				.HorizontalSubsamplingFactor = Utility::Log2(MainPlane.Width / SubsidiaryPlane.Width), .VerticalSubsamplingFactor = Utility::Log2(MainPlane.Height / SubsidiaryPlane.Height)
+				.HorizontalSubsamplingFactor = Utility::Log2(PrimaryPlane.Width / SubsidiaryPlane.Width), .VerticalSubsamplingFactor = Utility::Log2(PrimaryPlane.Height / SubsidiaryPlane.Height)
 			};
-			if (SubsidiaryPlane.Width << Format.HorizontalSubsamplingFactor != MainPlane.Width || SubsidiaryPlane.Height << Format.VerticalSubsamplingFactor != MainPlane.Height)
+			if (SubsidiaryPlane.Width << Format.HorizontalSubsamplingFactor != PrimaryPlane.Width || SubsidiaryPlane.Height << Format.VerticalSubsamplingFactor != PrimaryPlane.Height)
 				throw RuntimeError{ "ShufflePlanes: assembling specified planes leads to invalid subsampling factor." };
 			if (Format.IsRGB())
 				if (Format.HorizontalSubsamplingFactor != 0 || Format.VerticalSubsamplingFactor != 0)

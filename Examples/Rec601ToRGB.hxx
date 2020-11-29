@@ -12,7 +12,7 @@ struct Rec601ToRGB final {
 	}
 	auto RegisterMetadata(auto Core) {
 		auto Metadata = InputClip.ExtractMetadata();
-		Metadata.Format = *Core.Query(VideoFormats::RGBS);
+		Metadata.Format = Core.Query(VideoFormats::RGBS);
 		return Metadata;
 	}
 	auto RequestReferenceFrames(auto Index, auto FrameContext) {

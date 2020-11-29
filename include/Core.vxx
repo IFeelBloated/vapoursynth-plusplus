@@ -14,18 +14,18 @@ public:
 			.MaxFrameBufferSize = CoreInfoBuffer.maxFramebufferSize, .UsedFrameBufferSize = CoreInfoBuffer.usedFramebufferSize
 		};
 	}
-	auto Query(AnyOf<VideoFormats, VSPresetFormat> auto FormatID) const {
+	auto& Query(AnyOf<VideoFormats, VSPresetFormat> auto FormatID) const {
 		auto FormatHandle = VaporGlobals::API->getFormatPreset(static_cast<int>(FormatID), Handle);
-		return reinterpret_cast<const VideoFormat*>(FormatHandle);
+		return VideoFormat::AdjustToStandardLayout(*FormatHandle);
 	}
-	auto Query(AnyOf<VideoFormat, VSFormat> auto&& Format) const {
-		auto&& [_, __, ColorFamily, SampleType, BitsPerSample, ___, HorizontalSubsamplingFactor, VerticalSubsamplingFactor, ____] = Format;
+	auto& Query(AnyOf<VideoFormat, VSFormat> auto&& Format) const {
+		auto [ColorFamily, SampleType, BitsPerSample, _, HorizontalSubsamplingFactor, VerticalSubsamplingFactor, __] = VideoFormat::AdjustToStandardLayout(Format);
 		auto FormatHandle = VaporGlobals::API->registerFormat(static_cast<int>(ColorFamily), static_cast<int>(SampleType), BitsPerSample, HorizontalSubsamplingFactor, VerticalSubsamplingFactor, Handle);
-		return reinterpret_cast<const VideoFormat*>(FormatHandle);
+		return VideoFormat::AdjustToStandardLayout(*FormatHandle);
 	}
 	auto Query(AnyOf<AudioFormat> auto&&) const {
 		//Placeholder for API v4.
-		return static_cast<const AudioFormat*>(nullptr);
+		return AudioFormat{};
 	}
 	auto Query(std::convertible_to<std::string_view> auto&& PluginID) const {
 		auto ID = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(PluginID);
@@ -38,58 +38,56 @@ public:
 public:
 	auto AllocateVideoFrame(auto&& FormatDescriptor, std::integral auto Width, std::integral auto Height) const {
 		auto FormatHandle = [&] {
-			if constexpr (requires { { *FormatDescriptor }->AnyOf<VideoFormat, VSFormat>; })
-				return FormatDescriptor;
-			else if constexpr (requires { { Query(FormatDescriptor) }->SubtypeOf<const VideoFormat*>; })
-				return Query(FormatDescriptor);
+			if constexpr (requires { { Query(FormatDescriptor) }->SubtypeOf<VideoFormat>; })
+				return &VideoFormat::AdjustToAPIv3CompatibleLayout(Query(FormatDescriptor));
 			else
 				static_assert(sizeof(FormatDescriptor) == -1, "AllocateVideoFrame: failed to recognize the specified format descriptor.");
 		}();
-		return FrameReference{ VaporGlobals::API->newVideoFrame(reinterpret_cast<const VSFormat*>(FormatHandle), Width, Height, nullptr, Handle) };
+		return FrameReference{ VaporGlobals::API->newVideoFrame(FormatHandle, Width, Height, nullptr, Handle) };
 	}
 	auto AllocateAudioFrame(auto&&, auto) const {
 		//Placeholder for API v4.
 		return FrameReference{};
 	}
 	auto CreateBlankFrameFrom(SubtypeOf<FrameReference> auto&& ReferenceFrame) const {
-		if constexpr (requires { { *ReferenceFrame.Format }->SubtypeOf<VideoFormat>; }) {
+		if constexpr (requires { { ReferenceFrame.ExtractFormat() }->SubtypeOf<VideoFormat>; }) {
 			using PixelType = std::decay_t<decltype(ReferenceFrame[0][0][0])>;
-			auto FormatHandle = reinterpret_cast<const VSFormat*>(ReferenceFrame.Format);
+			auto FormatHandle = &VideoFormat::AdjustToAPIv3CompatibleLayout(Query(ReferenceFrame.ExtractFormat()));
 			auto PropertyHandle = ReferenceFrame.Handle;
 			return VideoFrame<PixelType>{ VaporGlobals::API->newVideoFrame(FormatHandle, ReferenceFrame[0].Width, ReferenceFrame[0].Height, PropertyHandle, Handle) };
 		}
-		else if constexpr (requires { { *ReferenceFrame.Format }->SubtypeOf<AudioFormat>; })
+		else if constexpr (requires { { ReferenceFrame.ExtractFormat() }->SubtypeOf<AudioFormat>; })
 			//Placeholder for API v4.
 			return AudioFrame<void>{};
 		else
-			static_assert(sizeof(ReferenceFrame) == -1, "CreateBlankFrameFrom: failed to determine the type of the blank frame.");
+			return WritableFrame{ VaporGlobals::API->copyFrame(ReferenceFrame.Handle, Handle) };
 	}
 	auto ShufflePlanes(auto&& Frames, auto&& PlaneIndexes, AnyOf<ColorFamilies, VSColorFamily> auto ColorFamily) const {
 		auto ValidateInputs = [&](auto& MainFrame, auto PlaneIndex, auto& SubsidiaryPlane1, auto& SubsidiaryPlane2) {
 			static_assert(SubtypeOf<decltype(MainFrame), FrameReference>, "ShufflePlanes: you must specify a frame or any iterable frame container.");
-			static_assert(requires { { *MainFrame.Format }->SubtypeOf<VideoFormat>; }, "ShufflePlanes: specified frames must be video frames.");
+			static_assert(requires { { MainFrame.ExtractFormat() }->SubtypeOf<VideoFormat>; }, "ShufflePlanes: specified frames must be video frames.");
 			static_assert(std::integral<decltype(PlaneIndex)>, "ShufflePlanes: plane index must be an integer.");
 			if (SubsidiaryPlane1.Width != SubsidiaryPlane2.Width || SubsidiaryPlane1.Height != SubsidiaryPlane2.Height)
 				throw RuntimeError{ "ShufflePlanes: subsidiary planes have inconsistent dimensions." };
 		};
-		auto DeduceFormat = [&](auto ReferenceFormat, auto& MainPlane, auto& SubsidiaryPlane) {
+		auto DeduceFormat = [&](auto& ReferenceFormat, auto& MainPlane, auto& SubsidiaryPlane) {
 			auto Format = VideoFormat{
 				.ColorFamily = static_cast<ColorFamilies>(ColorFamily),
-				.SampleType = ReferenceFormat->SampleType, .BitsPerSample = ReferenceFormat->BitsPerSample,
+				.SampleType = ReferenceFormat.SampleType, .BitsPerSample = ReferenceFormat.BitsPerSample,
 				.HorizontalSubsamplingFactor = Utility::Log2(MainPlane.Width / SubsidiaryPlane.Width), .VerticalSubsamplingFactor = Utility::Log2(MainPlane.Height / SubsidiaryPlane.Height)
 			};
 			if (SubsidiaryPlane.Width << Format.HorizontalSubsamplingFactor != MainPlane.Width || SubsidiaryPlane.Height << Format.VerticalSubsamplingFactor != MainPlane.Height)
-				throw RuntimeError{ "ShufflePlanes: assembling specified planes leads to an invalid subsampling factor." };
+				throw RuntimeError{ "ShufflePlanes: assembling specified planes leads to invalid subsampling factor." };
 			if (Format.IsRGB())
 				if (Format.HorizontalSubsamplingFactor != 0 || Format.VerticalSubsamplingFactor != 0)
 					throw RuntimeError{ "ShufflePlanes: RGB cannot be subsampled." };
-			return reinterpret_cast<const VSFormat*>(Query(Format));
+			return &VideoFormat::AdjustToAPIv3CompatibleLayout(Query(Format));
 		};
 		auto&& [Frame1, Frame2, Frame3] = Utility::TypeEraseIterableToTriplet(Forward(Frames));
 		auto [x1, x2, x3] = Utility::TypeEraseIterableToTriplet(Forward(PlaneIndexes));
 		ValidateInputs(Frame1, x1, Frame2[x2], Frame3[x3]);
 		using PixelType = std::decay_t<decltype(Frame1[0][0][0])>;
-		auto FormatHandle = DeduceFormat(Frame1.Format, Frame1[x1], Frame2[x2]);
+		auto FormatHandle = DeduceFormat(Frame1.ExtractFormat(), Frame1[x1], Frame2[x2]);
 		auto FrameHandles = std::array{ Frame1.Observe(), Frame2.Observe(), Frame3.Observe() };
 		auto Specifiers = std::array{ static_cast<int>(x1), static_cast<int>(x2), static_cast<int>(x3) };
 		auto PropertyHandle = Frame1.Handle;
@@ -101,9 +99,9 @@ public:
 	}
 	auto CopyFrame(SubtypeOf<FrameReference> auto&& ReferenceFrame) const {
 		auto FrameHandle = VaporGlobals::API->copyFrame(ReferenceFrame.Handle, Handle);
-		if constexpr (requires { { *ReferenceFrame.Format }->SubtypeOf<VideoFormat>; })
+		if constexpr (requires { { ReferenceFrame.ExtractFormat() }->SubtypeOf<VideoFormat>; })
 			return VideoFrame<std::decay_t<decltype(ReferenceFrame[0][0][0])>>{ FrameHandle };
-		else if constexpr (requires { { *ReferenceFrame.Format }->SubtypeOf<AudioFormat>; })
+		else if constexpr (requires { { ReferenceFrame.ExtractFormat() }->SubtypeOf<AudioFormat>; })
 			//Placeholder for API v4.
 			return AudioFrame<void>{};
 		else

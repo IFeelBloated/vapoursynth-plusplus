@@ -3,6 +3,7 @@
 #include "Utility.vxx"
 
 enum struct ColorFamilies : int {
+	Undefined = 0,
 	Gray = 1000000,
 	RGB = 2000000,
 	YUV = 3000000
@@ -14,15 +15,34 @@ enum struct SampleTypes : int {
 };
 
 struct VideoFormat {
-	field(Name, std::array<char, 32>{});
-	field(ID, 0);
-	field(ColorFamily, ColorFamilies{});
-	field(SampleType, SampleTypes{});
+	field(ColorFamily, ColorFamilies::Undefined);
+	field(SampleType, SampleTypes::Float);
 	field(BitsPerSample, 0);
 	field(BytesPerSample, 0);
 	field(HorizontalSubsamplingFactor, 0);
 	field(VerticalSubsamplingFactor, 0);
 	field(PlaneCount, 0);
+
+public:
+	static constexpr auto APIv3LayoutOffset = sizeof(VSFormat::name) + sizeof(VSFormat::id);
+
+public:
+	static auto& AdjustToStandardLayout(auto& FormatReference) {
+		if constexpr (SubtypeOf<decltype(FormatReference), VideoFormat>)
+			return FormatReference;
+		else {
+			auto FormatAddress = reinterpret_cast<const char*>(&FormatReference);
+			return *reinterpret_cast<const VideoFormat*>(FormatAddress + APIv3LayoutOffset);
+		}
+	}
+	static auto& AdjustToAPIv3CompatibleLayout(auto& FormatReference) {
+		if constexpr (SubtypeOf<decltype(FormatReference), VSFormat>)
+			return FormatReference;
+		else {
+			auto FormatAddress = reinterpret_cast<const char*>(&FormatReference);
+			return *reinterpret_cast<const VSFormat*>(FormatAddress - APIv3LayoutOffset);
+		}
+	}
 
 public:
 	auto IsSinglePrecision() const {
@@ -39,9 +59,6 @@ public:
 	}
 	auto Is444() const {
 		return HorizontalSubsamplingFactor == 0 && VerticalSubsamplingFactor == 0;
-	}
-	auto operator<=>(auto&& OtherFormat) const {
-		return ID <=> OtherFormat.ID;
 	}
 };
 
@@ -62,13 +79,13 @@ public:
 		return Width != 0 && Height != 0;
 	}
 	auto WithConstantFormat() const {
-		return Format.ID != pfNone;
+		return Format.ColorFamily != ColorFamilies::Undefined;
 	}
 
 public:
 	auto ConvertToAPIv3CompatibleLayout(auto Core) const {
 		return VSVideoInfo{
-			.format = reinterpret_cast<const VSFormat*>(Core.Query(Format)),
+			.format = &VideoFormat::AdjustToAPIv3CompatibleLayout(Core.Query(Format)),
 			.fpsNum = FrameRateNumerator, .fpsDen = FrameRateDenominator,
 			.width = Width, .height = Height, .numFrames = FrameCount, .flags = 0
 		};
@@ -87,7 +104,7 @@ public:
 		return Width != 0 && Height != 0;
 	}
 	auto WithConstantFormat() const {
-		return ID != pfNone;
+		return ColorFamily != ColorFamilies::Undefined;
 	}
 };
 
@@ -162,3 +179,12 @@ enum struct VideoFormats {
 	RGBH,
 	RGBS
 };
+
+auto operator==(AnyOf<VideoFormat, VSFormat> auto&& LeftHandSideOperand, AnyOf<VideoFormat, VSFormat> auto&& RightHandSideOperand) {
+	auto& PrimaryFormat = VideoFormat::AdjustToStandardLayout(LeftHandSideOperand);
+	auto& ReferenceFormat = VideoFormat::AdjustToStandardLayout(RightHandSideOperand);
+	auto OfSameColorFamily = PrimaryFormat.ColorFamily == ReferenceFormat.ColorFamily;
+	auto WithSameQuantizationScheme = PrimaryFormat.SampleType == ReferenceFormat.SampleType && PrimaryFormat.BitsPerSample == ReferenceFormat.BitsPerSample;
+	auto WithSameSamplingScheme = PrimaryFormat.HorizontalSubsamplingFactor == ReferenceFormat.HorizontalSubsamplingFactor && PrimaryFormat.VerticalSubsamplingFactor == ReferenceFormat.VerticalSubsamplingFactor;
+	return OfSameColorFamily && WithSameQuantizationScheme && WithSameSamplingScheme;
+}

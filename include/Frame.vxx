@@ -38,7 +38,7 @@ public:
 	}
 	auto& QueryVideoFormat() const {
 		auto FormatHandle = VaporGlobals::API->getFrameFormat(Handle);
-		return reinterpret_cast<const VideoFormat&>(*FormatHandle);
+		return VideoFormat::AdjustToStandardLayout(*FormatHandle);
 	}
 	auto QueryAudioFormat() const {
 		//Placeholder for API v4.

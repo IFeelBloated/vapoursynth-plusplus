@@ -43,8 +43,8 @@ public:
 	}
 
 public:
-	auto& operator[](std::integral auto x) const {
-		return Planes[x];
+	auto& operator[](IntegralOrEnumerable auto x) const {
+		return Planes[static_cast<std::size_t>(x)];
 	}
 	auto& ExtractFormat() const {
 		return static_cast<const VideoFormat&>(*this);

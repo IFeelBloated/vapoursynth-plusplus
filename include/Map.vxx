@@ -53,9 +53,9 @@ public:
 	auto Type() const {
 		return static_cast<ItemTypes>(VaporGlobals::API->propGetType(Access->Handle, Access->Key.data()));
 	}
-	auto operator[](std::integral auto Index) const {
+	auto operator[](IntegralOrEnumerable auto Index) const {
 		auto Replica = *this;
-		Replica.Index = Index;
+		Replica.Index = static_cast<std::ptrdiff_t>(Index);
 		return Replica;
 	}
 
@@ -77,9 +77,9 @@ public:
 	}
 
 public:
-	template<std::integral TargetType>
+	template<IntegralOrEnumerable TargetType>
 	operator TargetType() const {
-		return VaporGlobals::API->propGetInt(Access->Handle, Access->Key.data(), Index, nullptr);
+		return static_cast<TargetType>(VaporGlobals::API->propGetInt(Access->Handle, Access->Key.data(), Index, nullptr));
 	}
 
 public:
@@ -107,7 +107,7 @@ public:
 
 private:
 	auto InjectInt(auto Value) const {
-		VaporGlobals::API->propSetInt(Access->Handle, Access->Key.data(), Value, VSPropAppendMode::paAppend);
+		VaporGlobals::API->propSetInt(Access->Handle, Access->Key.data(), static_cast<std::int64_t>(Value), VSPropAppendMode::paAppend);
 	}
 	auto InjectFloat(auto Value) const {
 		VaporGlobals::API->propSetFloat(Access->Handle, Access->Key.data(), Value, VSPropAppendMode::paAppend);
@@ -151,7 +151,7 @@ private:
 			using ValueType = std::decay_t<decltype(Value)>;
 			if constexpr (std::floating_point<ValueType>)
 				InjectFloat(Value);
-			else if constexpr (std::integral<ValueType>)
+			else if constexpr (IntegralOrEnumerable<ValueType>)
 				InjectInt(Value);
 			else if constexpr (requires { { Value }->std::convertible_to<const char*>; })
 				InjectCharArray(static_cast<const char*>(Value));

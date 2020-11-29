@@ -17,6 +17,9 @@ concept Iterable = NativeArray<UnknownType> || requires(UnknownType x) {
 	x.begin() != x.end();
 };
 
+template<typename UnknownType>
+concept IntegralOrEnumerable = std::integral<UnknownType> || std::is_enum_v<UnknownType>;
+
 template<typename UnknownType, typename ReferenceType>
 concept SubtypeOf = std::same_as<std::decay_t<UnknownType>, ReferenceType> || std::derived_from<std::decay_t<UnknownType>, ReferenceType>;
 

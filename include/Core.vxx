@@ -73,7 +73,7 @@ public:
 		auto ValidateInputs = [&](auto& PrimaryFrame, auto PlaneIndex, auto& SubsidiaryPlane1, auto& SubsidiaryPlane2) {
 			static_assert(SubtypeOf<decltype(PrimaryFrame), FrameReference>, "ShufflePlanes: you must specify a frame or any iterable frame container.");
 			static_assert(requires { { PrimaryFrame.ExtractFormat() }->SubtypeOf<VideoFormat>; }, "ShufflePlanes: specified frames must be video frames.");
-			static_assert(std::integral<decltype(PlaneIndex)>, "ShufflePlanes: plane index must be an integer.");
+			static_assert(IntegralOrEnumerable<decltype(PlaneIndex)>, "ShufflePlanes: plane index must be an integer.");
 			if (SubsidiaryPlane1.Width != SubsidiaryPlane2.Width || SubsidiaryPlane1.Height != SubsidiaryPlane2.Height)
 				throw RuntimeError{ "ShufflePlanes: subsidiary planes have inconsistent dimensions." };
 		};

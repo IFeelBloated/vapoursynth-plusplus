@@ -46,7 +46,12 @@ namespace VaporInterface {
 
 	template<typename FilterType>
 	auto Create(auto InputMap, auto OutputMap, auto, auto Core, auto...) try {
-		auto Data = FilterType{ ArgumentList{ InputMap } };
+		auto Data = [&] {
+			if constexpr (requires { FilterType{ ArgumentList{} }; })
+				return FilterType{ ArgumentList{ InputMap } };
+			else
+				return FilterType{ ArgumentList{ InputMap }, CoreProxy{ .Handle = Core } };
+		}();
 		auto Console = Controller<FilterType>{ OutputMap };
 		auto SelfEvaluator = [&](auto EvaluatedMap, auto InstanceData) {
 			auto AuxiliaryMap = VaporGlobals::API->createMap();
@@ -79,7 +84,10 @@ namespace VaporInterface {
 			if constexpr (sizeof...(Arguments) != 0)
 				Utility::Map::Fill(ArgumentMap, Forward(Arguments)...);
 			try {
-				InstanceData = new FilterType{ ArgumentList{ ArgumentMap } };
+				if constexpr (requires { FilterType{ ArgumentList{} }; })
+					InstanceData = new FilterType{ ArgumentList{ ArgumentMap } };
+				else
+					InstanceData = new FilterType{ ArgumentList{ ArgumentMap }, CoreProxy{ .Handle = Core } };
 			}
 			catch (...) {
 				VaporGlobals::API->freeMap(EvaluatedMap);

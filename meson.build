@@ -1,6 +1,7 @@
 project('vsFilterScript', 'cpp', 
     default_options: ['buildtype=release', 'b_ndebug=if-release', 'cpp_std=c++2a'],
-    version : '1')
+    version : '2'
+)
 
 if host_machine.cpu_family().startswith('x86')
   add_project_arguments('-mfpmath=sse', '-msse2', language : 'cpp')
@@ -14,20 +15,24 @@ incdir = include_directories('include')
 test_plug = ['Examples/EntryPoint.cxx']
 
 headers = [
-    'include/Clip.vxx',
+    'include/AudioFrame.vxx',
+    'include/AudioNode.vxx',
     'include/Core.vxx',
-    'include/Format.vxx',
     'include/Frame.vxx',
     'include/Function.vxx',
     'include/Globals.vxx',
     'include/Infrastructure.vxx',
     'include/Interface.vxx',
     'include/Map.vxx',
+    'include/Metadata.vxx',
+    'include/Node.vxx',
     'include/Plane.vxx',
     'include/Plugin.vxx',
     'include/Range.vxx',
-    'include/SpatialPaddingPolicies.vxx',
-    'include/TemporalPaddingPolicies.vxx'
+    'include/ResourceManager.vxx',
+    'include/Utility.vxx',
+    'include/VideoFrame.vxx',
+    'include/VideoNode.vxx',
 ]
 
 examples = [
@@ -40,7 +45,7 @@ examples = [
     'Examples/nnedi3_rpow2.hxx',
     'Examples/Palette.hxx',
     'Examples/Rec601ToRGB.hxx',
-    'Examples/TemporalMedian.hxx'
+    'Examples/TemporalMedian.hxx',
 ]
 
 if get_option('install_examples')
@@ -48,7 +53,8 @@ if get_option('install_examples')
 endif
 
 if get_option('build_examples')
-    shared_module('vsfilterscriptexample', test_plug,
+    shared_module('vsfilterscriptexample',
+        test_plug,
         include_directories : incdir,
         dependencies : deps,
         gnu_symbol_visibility : 'hidden',

@@ -256,8 +256,8 @@ public:
 // anything below this line would be obsolete
 
 template<typename FilterType>
-struct Controller final {
-	self(OutputMap, static_cast<VSMap*>(nullptr));
+struct Controller {
+	field(OutputMap, static_cast<VSMap*>(nullptr));
 	auto RaiseError(auto&& ErrorMessage) {
 		auto Caption = FilterType::Name + ": "s;
 		auto DecoratedMessage = Caption + ErrorMessage;

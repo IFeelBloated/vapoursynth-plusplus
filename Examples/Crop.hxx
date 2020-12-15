@@ -1,14 +1,18 @@
 #pragma once
 #include "Interface.vxx"
 
-struct Crop final {
+struct Crop {
+	field(InputClip, VideoNode{});
+	field(Left, 0);
+	field(Top, 0);
+	field(CroppedWidth, 0);
+	field(CroppedHeight, 0);
+
+public:
 	static constexpr auto Name = "Crop";
-	static constexpr auto Parameters = "clip:clip;left:int:opt;right:int:opt;top:int:opt;bottom:int:opt;";
-	self(InputClip, VideoNode{});
-	self(Left, 0);
-	self(Top, 0);
-	self(CroppedWidth, 0);
-	self(CroppedHeight, 0);
+	static constexpr auto Signature = "clip:clip;left:int:opt;right:int:opt;top:int:opt;bottom:int:opt;";
+
+public:
 	Crop(auto Arguments) {
 		auto Right = 0;
 		auto Bottom = 0;

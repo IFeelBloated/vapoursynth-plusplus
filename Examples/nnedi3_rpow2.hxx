@@ -1,16 +1,20 @@
 #pragma once
 #include "Interface.vxx"
 
-struct nnedi3_rpow2 final {
+struct nnedi3_rpow2 {
+    field(InputClip, VideoNode{});
+    field(RFactor, 0);
+    field(NSize, 0);
+    field(NNS, 3);
+    field(Qual, 1);
+    field(EType, 0);
+    field(PSCRN, 2);
+
+public:
     static constexpr auto Name = "nnedi3_rpow2";
-    static constexpr auto Parameters = "clip:clip;rfactor:int;nsize:int:opt;nns:int:opt;qual:int:opt;etype:int:opt;pscrn:int:opt;";
-    self(InputClip, VideoNode{});
-    self(RFactor, 0);
-    self(NSize, 0);
-    self(NNS, 3);
-    self(Qual, 1);
-    self(EType, 0);
-    self(PSCRN, 2);
+    static constexpr auto Signature = "clip:clip;rfactor:int;nsize:int:opt;nns:int:opt;qual:int:opt;etype:int:opt;pscrn:int:opt;";
+
+public:
     auto LogarithmizeRFactor() {
         auto LinearFactor = 0;
         for (auto ExponentialFactor = 1; ExponentialFactor < RFactor; ExponentialFactor <<= 1)

@@ -1,10 +1,14 @@
 #pragma once
 #include "Interface.vxx"
 
-struct Rec601ToRGB final {
+struct Rec601ToRGB {
+	field(InputClip, VideoNode{});
+
+public:
 	static constexpr auto Name = "Rec601ToRGB";
-	static constexpr auto Parameters = "clip:clip;";
-	self(InputClip, VideoNode{});
+	static constexpr auto Signature = "clip:clip;";
+	
+public:
 	Rec601ToRGB(auto Arguments) {
 		InputClip = Arguments["clip"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision() || !InputClip.IsYUV() || !InputClip.Is444())

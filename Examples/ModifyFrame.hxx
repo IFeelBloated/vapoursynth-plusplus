@@ -1,12 +1,16 @@
 #pragma once
 #include "Interface.vxx"
 
-struct ModifyFrame final {
+struct ModifyFrame {
+	field(InputClip, VideoNode{});
+	field(Evaluator, Function{});
+
+public:
 	static constexpr auto Name = "ModifyFrame";
-	static constexpr auto Parameters = "clip:clip;evaluator:func;";
+	static constexpr auto Signature = "clip:clip;evaluator:func;";
 	static constexpr auto MultithreadingMode = VSFilterMode::fmParallelRequests;
-	self(InputClip, VideoNode{});
-	self(Evaluator, Function{});
+
+public:
 	ModifyFrame(auto Arguments) {
 		InputClip = Arguments["clip"];
 		Evaluator = Arguments["evaluator"];

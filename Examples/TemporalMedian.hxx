@@ -1,11 +1,15 @@
 #pragma once
 #include "Interface.vxx"
 
-struct TemporalMedian final {
+struct TemporalMedian {
+	field(InputClip, VideoNode{});
+	field(Radius, 1);
+
+public:
 	static constexpr auto Name = "TemporalMedian";
-	static constexpr auto Parameters = "clip:clip;radius:int:opt;";
-	self(InputClip, VideoNode{});
-	self(Radius, 1);
+	static constexpr auto Signature = "clip:clip;radius:int:opt;";
+
+public:
 	TemporalMedian(auto Arguments) {
 		InputClip = Arguments["clip"];
 		if (Arguments["radius"].Exists())

@@ -1,10 +1,14 @@
 #pragma once
 #include "Interface.vxx"
 
-struct GaussBlur final {
+struct GaussBlur {
+	field(InputClip, VideoNode{});
+
+public:
 	static constexpr auto Name = "GaussBlur";
-	static constexpr auto Parameters = "clip:clip;";
-	self(InputClip, VideoNode{});
+	static constexpr auto Signature = "clip:clip;";
+	
+public:
 	GaussBlur(auto Arguments) {
 		InputClip = Arguments["clip"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())

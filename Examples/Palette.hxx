@@ -1,12 +1,16 @@
 #pragma once
 #include "Interface.vxx"
 
-struct Palette final {
+struct Palette {
+	field(Shades, std::vector<double>{});
+	field(Width, 640);
+	field(Height, 480);
+
+public:
 	static constexpr auto Name = "Palette";
-	static constexpr auto Parameters = "shades:float[];width:int:opt;height:int:opt;";
-	self(Shades, std::vector<double>{});
-	self(Width, 640);
-	self(Height, 480);
+	static constexpr auto Signature = "shades:float[];width:int:opt;height:int:opt;";
+
+public:
 	Palette(auto Arguments) {
 		for (auto&& x : Arguments["shades"])
 			Shades.push_back(x);

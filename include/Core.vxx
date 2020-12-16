@@ -5,9 +5,6 @@ struct CoreProxy {
 	field(Handle, static_cast<VSCore*>(nullptr));
 
 public:
-	static constexpr auto IndeterminateVideoFormat = VideoFormat{};
-
-public:
 	auto Query() {
 		auto CoreInfoBuffer = VSCoreInfo{};
 		VaporGlobals::API->getCoreInfo2(Handle, &CoreInfoBuffer);
@@ -21,14 +18,14 @@ public:
 		if (auto FormatHandle = VaporGlobals::API->getFormatPreset(static_cast<int>(FormatID), Handle); FormatHandle != nullptr)
 			return VideoFormat::AdjustToStandardLayout(*FormatHandle);
 		else
-			return IndeterminateVideoFormat;
+			return VaporGlobals::IndeterminateVideoFormat;
 	}
 	auto& Query(AnyOf<VideoFormat, VSFormat> auto&& Format) const {
 		auto [ColorFamily, SampleType, BitsPerSample, _, HorizontalSubsamplingFactor, VerticalSubsamplingFactor, __] = VideoFormat::AdjustToStandardLayout(Format);
 		if (auto FormatHandle = VaporGlobals::API->registerFormat(static_cast<int>(ColorFamily), static_cast<int>(SampleType), BitsPerSample, HorizontalSubsamplingFactor, VerticalSubsamplingFactor, Handle); FormatHandle != nullptr)
 			return VideoFormat::AdjustToStandardLayout(*FormatHandle);
 		else
-			return IndeterminateVideoFormat;
+			return VaporGlobals::IndeterminateVideoFormat;
 	}
 	auto Query(AnyOf<AudioFormat> auto&&) const {
 		//Placeholder for API v4.
@@ -46,7 +43,7 @@ public:
 	auto AllocateVideoFrame(auto&& FormatDescriptor, std::integral auto Width, std::integral auto Height) const {
 		auto FormatHandle = [&] {
 			if constexpr (requires { { Query(FormatDescriptor) }->SubtypeOf<VideoFormat>; })
-				return &VideoFormat::AdjustToAPIv3CompatibleLayout(Query(FormatDescriptor));
+				return &VideoFormat::AdjustToLegacyLayout(Query(FormatDescriptor));
 			else
 				static_assert(sizeof(FormatDescriptor) == -1, "AllocateVideoFrame: failed to recognize the specified format descriptor.");
 		}();
@@ -59,7 +56,7 @@ public:
 	auto CreateBlankFrameFrom(SubtypeOf<FrameReference> auto&& ReferenceFrame) const {
 		if constexpr (requires { { ReferenceFrame.ExtractFormat() }->SubtypeOf<VideoFormat>; }) {
 			using PixelType = std::decay_t<decltype(ReferenceFrame[0][0][0])>;
-			auto FormatHandle = &VideoFormat::AdjustToAPIv3CompatibleLayout(Query(ReferenceFrame.ExtractFormat()));
+			auto FormatHandle = &VideoFormat::AdjustToLegacyLayout(Query(ReferenceFrame.ExtractFormat()));
 			auto PropertyHandle = ReferenceFrame.Handle;
 			return VideoFrame<PixelType>{ VaporGlobals::API->newVideoFrame(FormatHandle, ReferenceFrame[0].Width, ReferenceFrame[0].Height, PropertyHandle, Handle) };
 		}
@@ -88,7 +85,7 @@ public:
 			if (Format.IsRGB())
 				if (Format.HorizontalSubsamplingFactor != 0 || Format.VerticalSubsamplingFactor != 0)
 					throw RuntimeError{ "ShufflePlanes: RGB cannot be subsampled." };
-			return &VideoFormat::AdjustToAPIv3CompatibleLayout(Query(Format));
+			return &VideoFormat::AdjustToLegacyLayout(Query(Format));
 		};
 		auto&& [Frame1, Frame2, Frame3] = Utility::TypeEraseIterableToTriplet(Forward(Frames));
 		auto [x1, x2, x3] = Utility::TypeEraseIterableToTriplet(Forward(PlaneIndexes));

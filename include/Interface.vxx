@@ -9,12 +9,12 @@ namespace VaporInterface {
 		if constexpr (auto Metadata = Data->RegisterMetadata(Core); Iterable<decltype(Metadata)>) {
 			auto AggregatedMetadata = std::vector<VSVideoInfo>{};
 			for (auto&& x : Metadata)
-				AggregatedMetadata.push_back(x.ConvertToAPIv3CompatibleLayout(Core));
+				AggregatedMetadata.push_back(x.ConvertToLegacyLayout(Core));
 			VaporGlobals::API->setVideoInfo(AggregatedMetadata.data(), AggregatedMetadata.size(), Node);
 		}
 		else {
-			auto APIv3CompatibleMetadata = Metadata.ConvertToAPIv3CompatibleLayout(Core);
-			VaporGlobals::API->setVideoInfo(&APIv3CompatibleMetadata, 1, Node);
+			auto CompatibleMetadata = Metadata.ConvertToLegacyLayout(Core);
+			VaporGlobals::API->setVideoInfo(&CompatibleMetadata, 1, Node);
 		}
 	}
 

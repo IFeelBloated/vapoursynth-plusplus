@@ -1,5 +1,4 @@
 #pragma once
-#include "Globals.vxx"
 #include "Range.vxx"
 
 using RuntimeError = std::string;

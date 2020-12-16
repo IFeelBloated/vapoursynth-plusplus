@@ -16,7 +16,7 @@ enum struct SampleTypes : int {
 
 struct VideoFormat {
 	field(ColorFamily, ColorFamilies::Undefined);
-	field(SampleType, SampleTypes::Float);
+	field(SampleType, SampleTypes::Int);
 	field(BitsPerSample, 0);
 	field(BytesPerSample, 0);
 	field(HorizontalSubsamplingFactor, 0);
@@ -24,7 +24,8 @@ struct VideoFormat {
 	field(PlaneCount, 0);
 
 public:
-	static constexpr auto APIv3LayoutOffset = sizeof(VSFormat::name) + sizeof(VSFormat::id);
+	static constexpr auto LegacyLayoutOffset = sizeof(VSFormat::name) + sizeof(VSFormat::id);
+	static constexpr auto IndeterminateID = 0;
 
 public:
 	static auto& AdjustToStandardLayout(auto& FormatReference) {
@@ -32,19 +33,28 @@ public:
 			return FormatReference;
 		else {
 			auto FormatAddress = reinterpret_cast<const char*>(&FormatReference);
-			return *reinterpret_cast<const VideoFormat*>(FormatAddress + APIv3LayoutOffset);
+			return *reinterpret_cast<const VideoFormat*>(FormatAddress + LegacyLayoutOffset);
 		}
 	}
-	static auto& AdjustToAPIv3CompatibleLayout(auto& FormatReference) {
+	static auto& AdjustToLegacyLayout(auto& FormatReference) {
 		if constexpr (SubtypeOf<decltype(FormatReference), VSFormat>)
 			return FormatReference;
 		else {
 			auto FormatAddress = reinterpret_cast<const char*>(&FormatReference);
-			return *reinterpret_cast<const VSFormat*>(FormatAddress - APIv3LayoutOffset);
+			return *reinterpret_cast<const VSFormat*>(FormatAddress - LegacyLayoutOffset);
 		}
 	}
 
 public:
+	auto QueryID() const {
+		auto NormalizedColorFamilyTag = static_cast<int>(ColorFamily) / 1000000;
+		auto ColorFamilyFlag = (NormalizedColorFamilyTag & 0xF) << 28;
+		auto SampleTypeFlag = (static_cast<int>(SampleType) & 0xF) << 24;
+		auto BitdepthFlag = (BitsPerSample & 0xFF) << 16;
+		auto HorizontalSubsamplingFlag = (HorizontalSubsamplingFactor & 0xFF) << 8;
+		auto VerticalSubsamplingFlag = VerticalSubsamplingFactor & 0xFF;
+		return ColorFamilyFlag | SampleTypeFlag | BitdepthFlag | HorizontalSubsamplingFlag | VerticalSubsamplingFlag;
+	}
 	auto IsSinglePrecision() const {
 		return SampleType == SampleTypes::Float && BitsPerSample == 32;
 	}
@@ -61,6 +71,18 @@ public:
 		return HorizontalSubsamplingFactor == 0 && VerticalSubsamplingFactor == 0;
 	}
 };
+
+auto operator==(AnyOf<VideoFormat, VSFormat> auto&& LeftHandSideOperand, AnyOf<VideoFormat, VSFormat> auto&& RightHandSideOperand) {
+	auto& PrimaryFormat = VideoFormat::AdjustToStandardLayout(LeftHandSideOperand);
+	auto& ReferenceFormat = VideoFormat::AdjustToStandardLayout(RightHandSideOperand);
+	return PrimaryFormat.QueryID() == ReferenceFormat.QueryID();
+}
+
+auto operator<=>(AnyOf<VideoFormat, VSFormat> auto&& LeftHandSideOperand, AnyOf<VideoFormat, VSFormat> auto&& RightHandSideOperand) {
+	auto& PrimaryFormat = VideoFormat::AdjustToStandardLayout(LeftHandSideOperand);
+	auto& ReferenceFormat = VideoFormat::AdjustToStandardLayout(RightHandSideOperand);
+	return PrimaryFormat.QueryID() <=> ReferenceFormat.QueryID();
+}
 
 struct AudioFormat {
 	//Placeholder for API v4.
@@ -79,14 +101,14 @@ public:
 		return Width != 0 && Height != 0;
 	}
 	auto WithConstantFormat() const {
-		return Format.ColorFamily != ColorFamilies::Undefined;
+		return Format.QueryID() != VideoFormat::IndeterminateID;
 	}
 
 public:
-	auto ConvertToAPIv3CompatibleLayout(auto Core) const {
+	auto ConvertToLegacyLayout(auto Core) const {
 		auto& AnchoredFormat = Core.Query(Format);
 		return VSVideoInfo{
-			.format = AnchoredFormat == Core.IndeterminateVideoFormat ? nullptr : &VideoFormat::AdjustToAPIv3CompatibleLayout(AnchoredFormat),
+			.format = AnchoredFormat.QueryID() == VideoFormat::IndeterminateID ? nullptr : &VideoFormat::AdjustToLegacyLayout(AnchoredFormat),
 			.fpsNum = FrameRateNumerator, .fpsDen = FrameRateDenominator,
 			.width = Width, .height = Height, .numFrames = FrameCount, .flags = 0
 		};
@@ -105,7 +127,7 @@ public:
 		return Width != 0 && Height != 0;
 	}
 	auto WithConstantFormat() const {
-		return ColorFamily != ColorFamilies::Undefined;
+		return QueryID() != IndeterminateID;
 	}
 };
 
@@ -180,12 +202,3 @@ enum struct VideoFormats {
 	RGBH,
 	RGBS
 };
-
-auto operator==(AnyOf<VideoFormat, VSFormat> auto&& LeftHandSideOperand, AnyOf<VideoFormat, VSFormat> auto&& RightHandSideOperand) {
-	auto& PrimaryFormat = VideoFormat::AdjustToStandardLayout(LeftHandSideOperand);
-	auto& ReferenceFormat = VideoFormat::AdjustToStandardLayout(RightHandSideOperand);
-	auto OfSameColorFamily = PrimaryFormat.ColorFamily == ReferenceFormat.ColorFamily;
-	auto WithSameQuantizationScheme = PrimaryFormat.SampleType == ReferenceFormat.SampleType && PrimaryFormat.BitsPerSample == ReferenceFormat.BitsPerSample;
-	auto WithSameSamplingScheme = PrimaryFormat.HorizontalSubsamplingFactor == ReferenceFormat.HorizontalSubsamplingFactor && PrimaryFormat.VerticalSubsamplingFactor == ReferenceFormat.VerticalSubsamplingFactor;
-	return OfSameColorFamily && WithSameQuantizationScheme && WithSameSamplingScheme;
-}

@@ -1,8 +1,9 @@
 #pragma once
-#include "VapourSynth.h"
+#include "Metadata.vxx"
 
 namespace VaporGlobals {
 	auto API = static_cast<const VSAPI*>(nullptr);
+	constexpr auto IndeterminateVideoFormat = VideoFormat{};
 	auto Identifier = "";
 	auto Namespace = "";
 	auto Description = "";

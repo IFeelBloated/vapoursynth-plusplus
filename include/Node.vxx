@@ -106,7 +106,7 @@ public:
 	auto QueryVideoInfo() const {
 		auto [FormatHandle, FrameRateNumerator, FrameRateDenominator, Width, Height, FrameCount, _] = *VaporGlobals::API->getVideoInfo(Handle);
 		return VideoInfo{
-			.Format = FormatHandle == nullptr ? VideoFormat{} : VideoFormat::AdjustToStandardLayout(*FormatHandle),
+			.Format = FormatHandle == nullptr ? VaporGlobals::IndeterminateVideoFormat : VideoFormat::AdjustToStandardLayout(*FormatHandle),
 			.FrameRateNumerator = FrameRateNumerator, .FrameRateDenominator = FrameRateDenominator,
 			.Width = Width, .Height = Height, .FrameCount = FrameCount
 		};

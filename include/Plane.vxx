@@ -71,9 +71,8 @@ public:
 		else
 			return CanvasType::operator[](y);
 	}
-	auto View(std::integral auto y, std::integral auto x) const {
-		static_assert(EnabledAutomaticPadding, "View() is only available when automatic padding is enabled!");
-		return PlaneView{ .TargetPlane = this, .yOffset = y, .xOffset = x };
+	auto View(std::integral auto y, std::integral auto x) const requires EnabledAutomaticPadding {
+		return PlaneView{.TargetPlane = this, .yOffset = y, .xOffset = x };
 	}
 };
 

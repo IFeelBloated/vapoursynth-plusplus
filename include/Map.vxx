@@ -8,12 +8,12 @@ struct Item {
 	field(Index, 0_ptrdiff);
 
 private:
-	struct SharedAccess : MapReference<Managed> {
+	struct SharedState : MapReference<Managed> {
 		field(Key, ""s);
 
 	public:
-		SharedAccess() = default;
-		SharedAccess(auto&& Descriptor, auto&& Key) : MapReference<Managed>{ Forward(Descriptor) } {
+		SharedState() = default;
+		SharedState(auto&& Descriptor, auto&& Key) : MapReference<Managed>{ Forward(Descriptor) } {
 			this->Key = static_cast<std::string>(Forward(Key));
 		}
 	};
@@ -38,12 +38,12 @@ private:
 	};
 
 public:
-	field(Access, std::shared_ptr<SharedAccess>{});
+	field(Access, std::shared_ptr<SharedState>{});
 
 public:
 	Item() = default;
 	Item(auto&& Descriptor, std::convertible_to<std::string_view> auto&& Key) {
-		this->Access = std::make_shared<SharedAccess>(Forward(Descriptor), Forward(Key));
+		this->Access = std::make_shared<SharedState>(Forward(Descriptor), Forward(Key));
 	}
 
 public:
@@ -178,15 +178,14 @@ private:
 	}
 
 public:
-	auto Erase() const {
-		static_assert(Readonly == false, "Item: cannot modify readonly item.");
+	auto Erase() const requires (Readonly == false) {
 		return VaporGlobals::API->propDeleteKey(Access->Handle, Access->Key.data()) == 1;
 	}
-	auto& operator=(AnyBut<Item> auto&& Entity) const {
+	auto& operator=(AnyBut<Item> auto&& Entity) const requires (Readonly == false) {
 		Insert(Entity, VSPropAppendMode::paReplace);
 		return *this;
 	}
-	auto& operator+=(auto&& Entity) const {
+	auto& operator+=(auto&& Entity) const requires (Readonly == false) {
 		Insert(Entity, VSPropAppendMode::paAppend);
 		return *this;
 	}

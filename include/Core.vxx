@@ -1,5 +1,6 @@
 #pragma once
 #include "Plugin.vxx"
+#include "Logger.vxx"
 
 struct CoreProxy {
 	field(Handle, static_cast<VSCore*>(nullptr));
@@ -148,6 +149,32 @@ public:
 	}
 
 public:
+	auto InstallLogger(auto&& MessageLogger) const {
+		using LoggerType = std::decay_t<decltype(MessageLogger)>;
+		auto LoggerHandle = new auto{ Forward(MessageLogger) };
+		auto LoggerRecycler = [](auto LoggerPointer) {
+			auto Garbage = reinterpret_cast<LoggerType*>(LoggerPointer);
+			delete Garbage;
+		};
+		auto LoggerProxy = [](auto MessageType, auto Message, auto LoggerPointer) {
+			auto LoggerHandle = reinterpret_cast<LoggerType*>(LoggerPointer);
+			if constexpr (auto& InstalledLogger = *LoggerHandle; requires { InstalledLogger(""sv); })
+				InstalledLogger(std::string_view{ Message });
+			else if constexpr (requires { InstalledLogger(Message); })
+				InstalledLogger(Message);
+			else if constexpr (requires { InstalledLogger(MessageTypes::Debug, ""sv); })
+				InstalledLogger(static_cast<MessageTypes>(MessageType), std::string_view{ Message });
+			else if constexpr (requires { InstalledLogger(MessageTypes::Debug, Message); })
+				InstalledLogger(static_cast<MessageTypes>(MessageType), Message);
+			else if constexpr (requires { InstalledLogger(VSMessageType::mtDebug, ""sv); })
+				InstalledLogger(static_cast<VSMessageType>(MessageType), std::string_view{ Message });
+			else if constexpr (requires { InstalledLogger(VSMessageType::mtDebug, Message); })
+				InstalledLogger(static_cast<VSMessageType>(MessageType), Message);
+			else
+				static_assert(sizeof(InstalledLogger) == -1, "InstallLogger: failed to install the specified logger, it is either not callable or has an incompatible signature.");
+		};
+		return Logger{ .ID = VaporGlobals::API->addMessageHandler(LoggerProxy, LoggerRecycler, LoggerHandle) };
+	}
 	auto LogMessage(AnyOf<MessageTypes, VSMessageType> auto MessageType, std::convertible_to<std::string_view> auto&& Message) const {
 		auto FormattedMessage = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(Message);
 		VaporGlobals::API->logMessage(static_cast<int>(MessageType), Utility::ExtractCharPointerFromASCIZFormattedString(FormattedMessage));

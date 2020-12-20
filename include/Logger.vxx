@@ -1,0 +1,11 @@
+#pragma once
+#include "Globals.vxx"
+
+struct Logger {
+	field(ID, 0);
+
+public:
+	auto Eject() const {
+		return VaporGlobals::API->removeMessageHandler(ID) != 0;
+	}
+};

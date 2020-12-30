@@ -25,7 +25,7 @@ public:
 
 public:
 	FramePrototype() = default;
-	FramePrototype(std::convertible_to<HandleType> auto&& Descriptor) : FrameReference{ Forward(Descriptor) } {
+	FramePrototype(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) : FrameReference{ Forward(Descriptor) } {
 		if constexpr (Readonly)
 			this->PropertyMap = Utility::PointerDropQualifiers(VaporGlobals::API->getFramePropsRO(this->Handle));
 		else
@@ -49,7 +49,7 @@ public:
 	auto ListProperties() const {
 		return Utility::Map::ListKeys(PropertyMap);
 	}
-	auto operator[](std::convertible_to<std::string_view> auto&& Property) const {
+	auto operator[](ExplicitlyConvertibleTo<std::string> auto&& Property) const {
 		return Utility::Map::AccessItem<Readonly>(PropertyMap, Forward(Property));
 	}
 	auto AbsorbPropertiesFrom(SubtypeOf<FrameReference> auto&& Source) const {

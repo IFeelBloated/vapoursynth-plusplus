@@ -6,7 +6,7 @@ using FunctionReference = Owner<VSFuncRef>;
 
 struct Function : FunctionReference {
 	Function() = default;
-	Function(std::convertible_to<HandleType> auto&& Descriptor) : FunctionReference{ Forward(Descriptor) } {}
+	Function(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) : FunctionReference{ Forward(Descriptor) } {}
 
 public:
 	auto operator()(auto&& ...Arguments) const requires (sizeof...(Arguments) % 2 == 0) {

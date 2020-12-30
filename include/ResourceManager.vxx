@@ -2,6 +2,8 @@
 #include "Utility.vxx"
 #include "Globals.vxx"
 
+using VSLogHandle = struct {};
+
 template<typename ManagedType>
 struct Owner {
 	field(Handle, static_cast<ManagedType*>(nullptr));
@@ -14,7 +16,7 @@ public:
 
 public:
 	Owner() = default;
-	Owner(std::convertible_to<HandleType> auto&& Descriptor) {
+	Owner(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) {
 		auto ManagedHandle = static_cast<HandleType>(Forward(Descriptor));
 		this->Handle = Utility::PointerDropQualifiers(ManagedHandle);
 	}
@@ -76,37 +78,45 @@ protected:
 	}
 };
 
-template<auto Managed>
-struct MapReference {
-	field(Handle, static_cast<VSMap*>(nullptr));
+template<typename ManagedType, auto Managed>
+struct ExclusiveOwner {
+	field(Handle, static_cast<ManagedType*>(nullptr));
 
 private:
-	using HandleType = const VSMap*;
+	using HandleType = const ManagedType*;
 
 public:
-	MapReference() = default;
-	MapReference(std::convertible_to<HandleType> auto&& Descriptor) {
-		auto MapHandle = static_cast<HandleType>(Forward(Descriptor));
-		this->Handle = Utility::PointerDropQualifiers(MapHandle);
+	ExclusiveOwner() = default;
+	ExclusiveOwner(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) {
+		auto ManagedHandle = static_cast<HandleType>(Forward(Descriptor));
+		this->Handle = Utility::PointerDropQualifiers(ManagedHandle);
 	}
 
 public:
-	MapReference(const MapReference&) = delete;
-	MapReference(MapReference&&) = delete;
-	auto& operator=(const MapReference&) = delete;
-	auto& operator=(MapReference&&) = delete;
+	ExclusiveOwner(const ExclusiveOwner&) = delete;
+	ExclusiveOwner(ExclusiveOwner&&) = delete;
+	auto& operator=(const ExclusiveOwner&) = delete;
+	auto& operator=(ExclusiveOwner&&) = delete;
 
 public:
-	~MapReference() requires (Managed == false) {
+	~ExclusiveOwner() requires (Managed == false) {
 		if (this->Handle != nullptr)
-			VaporGlobals::API->freeMap(this->Handle);
+			this->ReleaseHandle();
 	}
-	~MapReference() = default;
+	~ExclusiveOwner() = default;
 
 public:
 	auto Leak() {
 		auto TransferredHandle = Handle;
 		Handle = nullptr;
 		return Utility::PointerAddConstQualifier(TransferredHandle);
+	}
+
+private:
+	auto ReleaseHandle() {
+		if constexpr (SubtypeOf<HandleType, const VSMap*>)
+			VaporGlobals::API->freeMap(Handle);
+		if constexpr (auto MangledLoggerID = reinterpret_cast<std::intptr_t>(Handle); SubtypeOf<HandleType, const VSLogHandle*>)
+			VaporGlobals::API->removeMessageHandler(~static_cast<int>(MangledLoggerID));
 	}
 };

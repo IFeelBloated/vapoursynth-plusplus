@@ -3,6 +3,9 @@
 #include "AudioNode.vxx"
 #include "Function.vxx"
 
+template<auto Managed>
+using MapReference = ExclusiveOwner<VSMap, Managed>;
+
 template<auto Readonly, auto Managed>
 struct Item {
 	field(Index, 0_ptrdiff);
@@ -42,7 +45,7 @@ public:
 
 public:
 	Item() = default;
-	Item(auto&& Descriptor, std::convertible_to<std::string_view> auto&& Key) {
+	Item(auto&& Descriptor, ExplicitlyConvertibleTo<std::string> auto&& Key) {
 		this->Access = std::make_shared<SharedState>(Forward(Descriptor), Forward(Key));
 	}
 
@@ -245,7 +248,7 @@ public:
 	auto ListParameters() const {
 		return Utility::Map::ListKeys(Handle);
 	}
-	auto operator[](std::convertible_to<std::string_view> auto&& Parameter) const {
+	auto operator[](ExplicitlyConvertibleTo<std::string> auto&& Parameter) const {
 		return Utility::Map::AccessItem(Handle, Forward(Parameter));
 	}
 };

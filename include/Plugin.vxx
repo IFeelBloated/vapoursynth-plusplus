@@ -29,7 +29,7 @@ private:
 
 public:
 	Plugin() = default;
-	Plugin(std::convertible_to<HandleType> auto&& Descriptor) {
+	Plugin(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) {
 		auto PluginHandle = static_cast<HandleType>(Forward(Descriptor));
 		this->Handle = Utility::PointerDropQualifiers(PluginHandle);
 		for (auto FunctionMap = MapReference<false>{ VaporGlobals::API->getFunctions(this->Handle) }; auto x : Utility::Map::ListKeys(FunctionMap.Handle))
@@ -37,7 +37,7 @@ public:
 	}
 
 public:
-	auto operator[](std::convertible_to<std::string_view> auto&& FunctionName) const {
+	auto operator[](ExplicitlyConvertibleTo<std::string> auto&& FunctionName) const {
 		auto Name = static_cast<std::string>(Forward(FunctionName));
 		auto& Signature = Utility::PointerDropQualifiers(this)->FunctionSignatures[Name];
 		return Function{ .Handle = Handle, .Name = std::move(Name), .Signature = Signature };

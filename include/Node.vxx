@@ -71,7 +71,7 @@ public:
 
 public:
 	Node() = default;
-	Node(std::convertible_to<HandleType> auto&& Descriptor) : NodeReference{ Forward(Descriptor) } {}
+	Node(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) : NodeReference{ Forward(Descriptor) } {}
 
 public:
 	auto RequestFrameUnchecked(std::integral auto Index, auto FrameContext) const {

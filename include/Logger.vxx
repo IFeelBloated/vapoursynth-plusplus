@@ -1,11 +1,34 @@
 #pragma once
-#include "Globals.vxx"
+#include "ResourceManager.vxx"
 
 struct Logger {
-	field(ID, 0);
+	field(Handle, static_cast<void*>(nullptr));
+	field(Proxy, static_cast<VSMessageHandler>(nullptr));
+
+private:
+	using SharedState = ExclusiveOwner<VSLogHandle, false>;
 
 public:
-	auto Eject() const {
-		return VaporGlobals::API->removeMessageHandler(ID) != 0;
+	field(Anchor, std::shared_ptr<SharedState>{});
+
+public:
+	Logger() = default;
+	Logger(auto&& Descriptor, ExplicitlyConvertibleTo<void*> auto&& Handle, ExplicitlyConvertibleTo<VSMessageHandler> auto&& Proxy) {
+		this->Handle = static_cast<void*>(Forward(Handle));
+		this->Proxy = static_cast<VSMessageHandler>(Forward(Proxy));
+		this->Anchor = std::make_shared<SharedState>(Forward(Descriptor));
+	}
+
+public:
+	auto Detach() const {
+		Anchor->Handle = nullptr;
+	}
+	auto Untether() const {
+		if (auto MangledID = reinterpret_cast<std::intptr_t>(Anchor->Handle); Anchor->Handle != nullptr) {
+			Anchor->Handle = nullptr;
+			return VaporGlobals::API->removeMessageHandler(~static_cast<int>(MangledID)) != 0;
+		}
+		else
+			return false;
 	}
 };

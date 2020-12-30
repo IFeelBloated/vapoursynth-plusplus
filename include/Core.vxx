@@ -32,7 +32,7 @@ public:
 		//Placeholder for API v4.
 		return AudioFormat{};
 	}
-	auto Query(std::convertible_to<std::string_view> auto&& PluginID) const {
+	auto Query(ExplicitlyConvertibleTo<std::string> auto&& PluginID) const {
 		auto ID = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(PluginID);
 		auto PluginHandle = VaporGlobals::API->getPluginById(Utility::ExtractCharPointerFromASCIZFormattedString(ID), Handle);
 		if (PluginHandle == nullptr)
@@ -149,7 +149,7 @@ public:
 	}
 
 public:
-	auto InstallLogger(auto&& MessageLogger) const {
+	auto TetherLogger(auto&& MessageLogger) const {
 		using LoggerType = std::decay_t<decltype(MessageLogger)>;
 		auto LoggerHandle = new auto{ Forward(MessageLogger) };
 		auto LoggerRecycler = [](auto LoggerPointer) {
@@ -158,40 +158,48 @@ public:
 		};
 		auto LoggerProxy = [](auto MessageType, auto Message, auto LoggerPointer) {
 			auto LoggerHandle = reinterpret_cast<LoggerType*>(LoggerPointer);
-			if constexpr (auto& InstalledLogger = *LoggerHandle; requires { InstalledLogger(""sv); })
-				InstalledLogger(std::string_view{ Message });
-			else if constexpr (requires { InstalledLogger(Message); })
-				InstalledLogger(Message);
-			else if constexpr (requires { InstalledLogger(MessageTypes::Debug, ""sv); })
-				InstalledLogger(static_cast<MessageTypes>(MessageType), std::string_view{ Message });
-			else if constexpr (requires { InstalledLogger(MessageTypes::Debug, Message); })
-				InstalledLogger(static_cast<MessageTypes>(MessageType), Message);
-			else if constexpr (requires { InstalledLogger(VSMessageType::mtDebug, ""sv); })
-				InstalledLogger(static_cast<VSMessageType>(MessageType), std::string_view{ Message });
-			else if constexpr (requires { InstalledLogger(VSMessageType::mtDebug, Message); })
-				InstalledLogger(static_cast<VSMessageType>(MessageType), Message);
+			if constexpr (auto& TetheredLogger = *LoggerHandle; requires { TetheredLogger(""sv); })
+				TetheredLogger(std::string_view{ Message });
+			else if constexpr (requires { TetheredLogger(Message); })
+				TetheredLogger(Message);
+			else if constexpr (requires { TetheredLogger(MessageTypes::Debug, ""sv); })
+				TetheredLogger(static_cast<MessageTypes>(MessageType), std::string_view{ Message });
+			else if constexpr (requires { TetheredLogger(MessageTypes::Debug, Message); })
+				TetheredLogger(static_cast<MessageTypes>(MessageType), Message);
+			else if constexpr (requires { TetheredLogger(VSMessageType::mtDebug, ""sv); })
+				TetheredLogger(static_cast<VSMessageType>(MessageType), std::string_view{ Message });
+			else if constexpr (requires { TetheredLogger(VSMessageType::mtDebug, Message); })
+				TetheredLogger(static_cast<VSMessageType>(MessageType), Message);
 			else
-				static_assert(sizeof(InstalledLogger) == -1, "InstallLogger: failed to install the specified logger, it is either not callable or has an incompatible signature.");
+				static_assert(sizeof(TetheredLogger) == -1, "TetherLogger: failed to tether the specified logger, it is either not callable or has an incompatible signature.");
 		};
-		return Logger{ .ID = VaporGlobals::API->addMessageHandler(LoggerProxy, LoggerRecycler, LoggerHandle) };
+		auto LoggerID = VaporGlobals::API->addMessageHandler(LoggerProxy, LoggerRecycler, LoggerHandle);
+		auto MangledLoggerID = static_cast<std::intptr_t>(~LoggerID);
+		auto LoggerDescriptor = reinterpret_cast<VSLogHandle*>(MangledLoggerID);
+		return Logger{ LoggerDescriptor, LoggerHandle, LoggerProxy };
 	}
-	auto LogMessage(AnyOf<MessageTypes, VSMessageType> auto MessageType, std::convertible_to<std::string_view> auto&& Message) const {
+	auto InstallLogger(auto&& MessageLogger) const {
+		auto InstalledLogger = TetherLogger(Forward(MessageLogger));
+		InstalledLogger.Detach();
+		return InstalledLogger;
+	}
+	auto LogMessage(AnyOf<MessageTypes, VSMessageType> auto MessageType, ExplicitlyConvertibleTo<std::string> auto&& Message) const {
 		auto FormattedMessage = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(Message);
 		VaporGlobals::API->logMessage(static_cast<int>(MessageType), Utility::ExtractCharPointerFromASCIZFormattedString(FormattedMessage));
 	}
-	auto DebugPrint(std::convertible_to<std::string_view> auto&& Message) const {
+	auto DebugPrint(ExplicitlyConvertibleTo<std::string> auto&& Message) const {
 		LogMessage(MessageTypes::Debug, Message);
 	}
-	auto Print(std::convertible_to<std::string_view> auto&& Message) const {
+	auto Print(ExplicitlyConvertibleTo<std::string> auto&& Message) const {
 		LogMessage(MessageTypes::Information, Message);
 	}
-	auto Alert(std::convertible_to<std::string_view> auto&& Message) const {
+	auto Alert(ExplicitlyConvertibleTo<std::string> auto&& Message) const {
 		LogMessage(MessageTypes::Warning, Message);
 	}
-	auto CriticalAlert(std::convertible_to<std::string_view> auto&& Message) const {
+	auto CriticalAlert(ExplicitlyConvertibleTo<std::string> auto&& Message) const {
 		LogMessage(MessageTypes::Critical, Message);
 	}
-	auto Abort(std::convertible_to<std::string_view> auto&& Message) const {
+	auto Abort(ExplicitlyConvertibleTo<std::string> auto&& Message) const {
 		LogMessage(MessageTypes::Fatal, Message);
 	}
 
@@ -208,7 +216,7 @@ public:
 			PluginSignatures.push_back(Utility::Map::AccessItem(PluginMap.Handle, x));
 		return PluginSignatures;
 	}
-	auto operator[](std::convertible_to<std::string_view> auto&& PluginNamespace) const {
+	auto operator[](ExplicitlyConvertibleTo<std::string> auto&& PluginNamespace) const {
 		auto Namespace = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(PluginNamespace);
 		auto PluginHandle = VaporGlobals::API->getPluginByNs(Utility::ExtractCharPointerFromASCIZFormattedString(Namespace), Handle);
 		if (PluginHandle == nullptr)

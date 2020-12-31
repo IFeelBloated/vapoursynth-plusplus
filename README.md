@@ -21,6 +21,7 @@ Function
 Map (Partial)
 Plugin
 Core
+Logger
 ```
 
 ## Compilation

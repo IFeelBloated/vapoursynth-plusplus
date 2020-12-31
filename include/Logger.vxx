@@ -1,12 +1,18 @@
 #pragma once
 #include "ResourceManager.vxx"
+#include "Metadata.vxx"
 
 struct Logger {
 	field(Handle, static_cast<void*>(nullptr));
 	field(Proxy, static_cast<VSMessageHandler>(nullptr));
 
 private:
-	using SharedState = ExclusiveOwner<VSLogHandle, false>;
+	struct SharedState : ExclusiveOwner<VSLogHandle, false> {
+		field(SynchronizationLock, std::mutex{});
+
+	public:
+		using ExclusiveOwner::ExclusiveOwner;
+	};
 
 public:
 	field(Anchor, std::shared_ptr<SharedState>{});
@@ -21,14 +27,42 @@ public:
 
 public:
 	auto Detach() const {
+		[[maybe_unused]] auto SynchronizationGuard = std::lock_guard{ Anchor->SynchronizationLock };
 		Anchor->Handle = nullptr;
 	}
 	auto Untether() const {
+		[[maybe_unused]] auto SynchronizationGuard = std::lock_guard{ Anchor->SynchronizationLock };
 		if (auto MangledID = reinterpret_cast<std::intptr_t>(Anchor->Handle); Anchor->Handle != nullptr) {
 			Anchor->Handle = nullptr;
 			return VaporGlobals::API->removeMessageHandler(~static_cast<int>(MangledID)) != 0;
 		}
 		else
 			return false;
+	}
+
+public:
+	auto LogMessage(AnyOf<MessageTypes, VSMessageType> auto MessageType, ExplicitlyConvertibleTo<std::string> auto&& Message) const {
+		[[maybe_unused]] auto SynchronizationGuard = std::lock_guard{ Anchor->SynchronizationLock };
+		auto FormattedMessage = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(Message);
+		Proxy(static_cast<int>(MessageType), Utility::ExtractCharPointerFromASCIZFormattedString(FormattedMessage), Handle);
+		if (auto UniformedMessageType = static_cast<MessageTypes>(MessageType); UniformedMessageType == MessageTypes::Fatal) {
+			std::cerr << "VaporSynth encountered a fatal error: " << Message << std::endl;
+			std::terminate();
+		}
+	}
+	auto DebugPrint(ExplicitlyConvertibleTo<std::string> auto&& Message) const {
+		LogMessage(MessageTypes::Debug, Message);
+	}
+	auto Print(ExplicitlyConvertibleTo<std::string> auto&& Message) const {
+		LogMessage(MessageTypes::Information, Message);
+	}
+	auto Alert(ExplicitlyConvertibleTo<std::string> auto&& Message) const {
+		LogMessage(MessageTypes::Warning, Message);
+	}
+	auto CriticalAlert(ExplicitlyConvertibleTo<std::string> auto&& Message) const {
+		LogMessage(MessageTypes::Critical, Message);
+	}
+	auto Abort(ExplicitlyConvertibleTo<std::string> auto&& Message) const {
+		LogMessage(MessageTypes::Fatal, Message);
 	}
 };

@@ -4,7 +4,7 @@
 #include "TemporalMedian.hxx"
 #include "Crop.hxx"
 #include "Rec601ToRGB.hxx"
-#include "nnedi3_rpow2.hxx"
+#include "SeparableConvolution.hxx"
 #include "ModifyFrame.hxx"
 #include "Palette.hxx"
 
@@ -18,7 +18,7 @@ VS_EXTERNAL_API(auto) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegiste
 	VaporInterface::RegisterFilter<TemporalMedian>(registerFunc, plugin);
 	VaporInterface::RegisterFilter<Crop>(registerFunc, plugin);
 	VaporInterface::RegisterFilter<Rec601ToRGB>(registerFunc, plugin);
-	VaporInterface::RegisterFilter<nnedi3_rpow2>(registerFunc, plugin);
+	VaporInterface::RegisterFilter<SeparableConvolution>(registerFunc, plugin);
 	VaporInterface::RegisterFilter<ModifyFrame>(registerFunc, plugin);
 	VaporInterface::RegisterFilter<Palette>(registerFunc, plugin);
 }

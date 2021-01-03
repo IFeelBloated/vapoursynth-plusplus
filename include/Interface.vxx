@@ -100,8 +100,8 @@ namespace VaporInterface {
 			VaporGlobals::API->freeMap(ArgumentMap);
 			return EvaluatedClips;
 		};
-		if constexpr (requires { Data.RegisterInvokingSequence(CoreProxy{}, SelfInvoker); })
-			Console.Receive(Data.RegisterInvokingSequence(CoreProxy{ .Handle = Core }, SelfInvoker));
+		if constexpr (requires { Data.RegisterInvokingSequence(SelfInvoker, CoreProxy{}); })
+			Console.Receive(Data.RegisterInvokingSequence(SelfInvoker, CoreProxy{ .Handle = Core }));
 		else
 			SelfEvaluator(OutputMap, new FilterType{ std::move(Data) });
 	}

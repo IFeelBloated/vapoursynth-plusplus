@@ -34,10 +34,10 @@ public:
 			Left = 0;
 		if constexpr (ClampRight)
 			Right = Channel.Width - 1;
-		auto Conv = Channel[Above][Left] + Channel[Above][x] * 2 + Channel[Above][Right] +
+		auto WeightedSum = Channel[Above][Left] + Channel[Above][x] * 2 + Channel[Above][Right] +
 			Channel[y][Left] * 2 + Channel[y][x] * 4 + Channel[y][Right] * 2 +
 			Channel[Below][Left] + Channel[Below][x] * 2 + Channel[Below][Right];
-		return Conv / 16;
+		return WeightedSum / 16;
 	}
 	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
 		auto InputFrame = InputClip.FetchFrame<const float, true>(Index, FrameContext);

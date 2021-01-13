@@ -6,6 +6,9 @@ using RuntimeError = std::string;
 template<typename UnknownType, typename ReferenceType>
 concept ExplicitlyConvertibleTo = requires(UnknownType x) { static_cast<ReferenceType>(Forward(x)); };
 
+template<typename UnknownType, typename ReferenceType>
+concept ConstructibleFrom = ExplicitlyConvertibleTo<ReferenceType, UnknownType>;
+
 template<typename UnknownType>
 concept NativeArray = std::is_array_v<std::remove_cvref_t<UnknownType>>;
 

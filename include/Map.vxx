@@ -86,7 +86,8 @@ public:
 	}
 
 public:
-	operator std::string() const {
+	template<ConstructibleFrom<const char*> TargetType>
+	operator TargetType() const {
 		return { VaporGlobals::API->propGetData(Access->Handle, Access->Key.data(), Index, nullptr) };
 	}
 
@@ -106,6 +107,39 @@ public:
 	template<SubtypeOf<FunctionReference> TargetType>
 	operator TargetType() const {
 		return { VaporGlobals::API->propGetFunc(Access->Handle, Access->Key.data(), Index, nullptr) };
+	}
+
+public:
+	template<Iterable TargetType>
+	operator TargetType() const requires requires(TargetType x) {
+		{ x }->AnyBut<std::initializer_list<std::decay_t<decltype(*x.begin())>>>;
+		{ *x.begin() }->AnyBut<char>;
+		requires (requires { { x.Type() }->SubtypeOf<ItemTypes>; } == false);
+	} {
+		auto TargetSequence = TargetType{};
+		using ElementType = std::decay_t<decltype(*TargetSequence.begin())>;
+		auto ValidateElementType = [] {
+			constexpr auto IsNumber = std::floating_point<ElementType> || IntegralOrEnumerable<ElementType>;
+			constexpr auto IsString = ConstructibleFrom<ElementType, const char*>;
+			constexpr auto IsIntrinsicObject = AnyOf<ElementType, NodeReference, FrameReference, FunctionReference>;
+			static_assert(IsNumber || IsString || IsIntrinsicObject, "Item: cannot convert an item to a container of unrecognized type.");
+		};
+		ValidateElementType();
+		if constexpr (auto& Self = *this; requires { TargetSequence.push_back(static_cast<ElementType>(Self)); })
+			for (auto&& x : Self)
+				TargetSequence.push_back(static_cast<ElementType>(x));
+		else if constexpr (requires { TargetSequence.push_front(static_cast<ElementType>(Self)); })
+			for (auto x : Range{ size() - 1, -1 })
+				TargetSequence.push_front(static_cast<ElementType>(Self[x]));
+		else if constexpr (requires { TargetSequence.insert(static_cast<ElementType>(Self)); })
+			for (auto&& x : Self)
+				TargetSequence.insert(static_cast<ElementType>(x));
+		else
+			for (auto Cursor = TargetSequence.begin(); auto x : Range{ Utility::Min(size(), std::distance(TargetSequence.begin(), TargetSequence.end())) }) {
+				*Cursor = static_cast<ElementType>(Self[x]);
+				++Cursor;
+			}
+		return TargetSequence;
 	}
 
 private:
@@ -191,19 +225,6 @@ public:
 	auto& operator+=(auto&& Entity) const requires (Readonly == false) {
 		Insert(Entity, VSPropAppendMode::paAppend);
 		return *this;
-	}
-
-public:
-	template<auto CurrentIndex, auto Bound>
-	auto UnpackIntoArray(auto&& ...Items) const {
-		if constexpr (auto& Self = *this; CurrentIndex == Bound)
-			return std::array{ std::move(Items)... };
-		else
-			return UnpackIntoArray<CurrentIndex + 1, Bound>(std::move(Items)..., Self[CurrentIndex]);
-	}
-	template<auto Length>
-	auto UnpackIntoArray() const {
-		return UnpackIntoArray<0, Length>();
 	}
 };
 

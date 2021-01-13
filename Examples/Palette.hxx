@@ -12,8 +12,7 @@ public:
 
 public:
 	Palette(auto Arguments) {
-		for (auto&& x : Arguments["shades"])
-			Shades.push_back(x);
+		Shades = Arguments["shades"];
 		if (Arguments["width"].Exists())
 			Width = Arguments["width"];
 		if (Arguments["height"].Exists())

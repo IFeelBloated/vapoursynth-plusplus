@@ -24,10 +24,10 @@ public:
 		auto InputFrame = InputClip.FetchFrame<const float>(Index, FrameContext);
 		auto ProcessedFrame = Core.CreateBlankFrameFrom(InputFrame);
 		auto GaussKernel = [](auto Center) {
-			auto Conv = Center[-1][-1] + Center[-1][0] * 2 + Center[-1][1] +
+			auto WeightedSum = Center[-1][-1] + Center[-1][0] * 2 + Center[-1][1] +
 				Center[0][-1] * 2 + Center[0][0] * 4 + Center[0][1] * 2 +
 				Center[1][-1] + Center[1][0] * 2 + Center[1][1];
-			return Conv / 16;
+			return WeightedSum / 16;
 		};
 		for (auto c : Range{ InputFrame.PlaneCount })
 			for (auto y : Range{ InputFrame[c].Height })

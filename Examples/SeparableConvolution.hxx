@@ -17,14 +17,12 @@ public:
             throw RuntimeError{ "only single precision floating point clips with constant format and dimensions supported." };
         if (Arguments["h_kernel"].Exists())
             if (Arguments["h_kernel"].size() == HorizontalKernel.size())
-                for (auto x : Range{ HorizontalKernel.size() })
-                    HorizontalKernel[x] = Arguments["h_kernel"][x];
+                HorizontalKernel = Arguments["h_kernel"];
             else
                 throw RuntimeError{ "h_kernel must contain 3 scalar values." };
         if (Arguments["v_kernel"].Exists())
             if (Arguments["v_kernel"].size() == VerticalKernel.size())
-                for (auto x : Range{ VerticalKernel.size() })
-                    VerticalKernel[x] = Arguments["v_kernel"][x];
+                VerticalKernel = Arguments["v_kernel"];
             else
                 throw RuntimeError{ "v_kernel must contain 3 scalar values." };
         else
@@ -42,8 +40,8 @@ public:
         auto HorizontalConvolution = [this](auto Center) {
             auto [LeftWeight, CenterWeight, RightWeight] = HorizontalKernel;
             auto NormalizationFactor = LeftWeight + CenterWeight + RightWeight;
-            auto Conv = Center[0][-1] * LeftWeight + Center[0][0] * CenterWeight + Center[0][1] * RightWeight;
-            return Conv / NormalizationFactor;
+            auto WeightedSum = LeftWeight * Center[0][-1] + CenterWeight * Center[0][0] + RightWeight * Center[0][1];
+            return WeightedSum / NormalizationFactor;
         };
         for (auto c : Range{ InputFrame.PlaneCount })
             for (auto y : Range{ InputFrame[c].Height })

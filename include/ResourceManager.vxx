@@ -116,6 +116,8 @@ private:
 	auto ReleaseHandle() {
 		if constexpr (SubtypeOf<HandleType, const VSMap*>)
 			VaporGlobals::API->freeMap(Handle);
+		if constexpr (SubtypeOf<HandleType, const VSCore*>)
+			VaporGlobals::API->freeCore(Handle);
 		if constexpr (auto MangledLoggerID = reinterpret_cast<std::intptr_t>(Handle); SubtypeOf<HandleType, const VSLogHandle*>)
 			VaporGlobals::API->removeMessageHandler(~static_cast<int>(MangledLoggerID));
 	}

@@ -227,3 +227,18 @@ public:
 		return Handle;
 	}
 };
+
+struct CoreInstantiator : CoreProxy {
+private:
+	using CoreReference = ExclusiveOwner<VSCore, false>;
+
+public:
+	field(Anchor, std::shared_ptr<CoreReference>{});
+
+public:
+	CoreInstantiator() : CoreInstantiator{ 0 } {}
+	CoreInstantiator(std::integral auto Threads) {
+		this->Handle = VaporGlobals::API->createCore(Threads);
+		this->Anchor = std::make_shared<CoreReference>(this->Handle);
+	}
+};

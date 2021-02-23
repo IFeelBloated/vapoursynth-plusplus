@@ -20,7 +20,7 @@ public:
 		if (Width <= 0 || Height <= 0)
 			throw RuntimeError{ "spatial dimensions must be positive!" };
 	}
-	auto RegisterMetadata(auto Core) {
+	auto SpecifyMetadata(auto Core) {
 		auto Metadata = VideoInfo{
 			.Format = Core.Query(VideoFormats::GrayS),
 			.FrameRateNumerator = 30000, .FrameRateDenominator = 1001,
@@ -29,11 +29,11 @@ public:
 		};
 		return std::vector{ Shades.size(), Metadata };
 	}
-	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
+	auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
 		auto ProcessedFrame = VideoFrame<float>{ Core.AllocateVideoFrame(VideoFormats::GrayS, Width, Height) };
 		for (auto y : Range{ Height })
 			for (auto x : Range{ Width })
 				ProcessedFrame[0][y][x] = Shades[FrameContext.QueryOutputIndex()];
-		return ProcessedFrame.Leak();
+		return ProcessedFrame;
 	}
 };

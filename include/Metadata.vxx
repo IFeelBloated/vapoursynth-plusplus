@@ -97,21 +97,25 @@ struct VideoInfo {
 	field(FrameCount, 0);
 
 public:
+	static decltype(auto) AdjustToLegacyLayout(auto& MetadataReference, auto Core) {
+		if constexpr (SubtypeOf<decltype(MetadataReference), VSVideoInfo>)
+			return MetadataReference;
+		else {
+			auto& AnchoredFormat = Core.Query(MetadataReference.Format);
+			return VSVideoInfo{
+				.format = AnchoredFormat.QueryID() == VideoFormat::IndeterminateID ? nullptr : &VideoFormat::AdjustToLegacyLayout(AnchoredFormat),
+				.fpsNum = MetadataReference.FrameRateNumerator, .fpsDen = MetadataReference.FrameRateDenominator,
+				.width = MetadataReference.Width, .height = MetadataReference.Height, .numFrames = MetadataReference.FrameCount, .flags = 0
+			};
+		}
+	}
+
+public:
 	auto WithConstantDimensions() const {
 		return Width != 0 && Height != 0;
 	}
 	auto WithConstantFormat() const {
 		return Format.QueryID() != VideoFormat::IndeterminateID;
-	}
-
-public:
-	auto ConvertToLegacyLayout(auto Core) const {
-		auto& AnchoredFormat = Core.Query(Format);
-		return VSVideoInfo{
-			.format = AnchoredFormat.QueryID() == VideoFormat::IndeterminateID ? nullptr : &VideoFormat::AdjustToLegacyLayout(AnchoredFormat),
-			.fpsNum = FrameRateNumerator, .fpsDen = FrameRateDenominator,
-			.width = Width, .height = Height, .numFrames = FrameCount, .flags = 0
-		};
 	}
 };
 

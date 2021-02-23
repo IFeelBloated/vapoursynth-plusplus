@@ -14,10 +14,10 @@ public:
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
 			throw RuntimeError{ "only single precision floating point clips with constant format and dimensions supported." };
 	}
-	auto RegisterMetadata(auto Core) {
+	auto SpecifyMetadata() {
 		return InputClip.ExtractMetadata();
 	}
-	auto RequestReferenceFrames(auto Index, auto FrameContext) {
+	auto AcquireResourcesForFrameGenerator(auto Index, auto FrameContext) {
 		InputClip.RequestFrame(Index, FrameContext);
 	}
 	template<auto ClampAbove = false, auto ClampBelow = false, auto ClampLeft = false, auto ClampRight = false>
@@ -39,7 +39,7 @@ public:
 			Channel[Below][Left] + Channel[Below][x] * 2 + Channel[Below][Right];
 		return WeightedSum / 16;
 	}
-	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
+	auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
 		auto InputFrame = InputClip.FetchFrame<const float, true>(Index, FrameContext);
 		auto ProcessedFrame = Core.CreateBlankFrameFrom(InputFrame);
 		for (auto c : Range{ InputFrame.PlaneCount }) {
@@ -58,6 +58,6 @@ public:
 			ProcessedFrame[c][InputFrame[c].Height - 1][0] = GaussKernel<false, true, true>(InputFrame[c], InputFrame[c].Height - 1, 0);
 			ProcessedFrame[c][InputFrame[c].Height - 1][InputFrame[c].Width - 1] = GaussKernel<false, true, false, true>(InputFrame[c], InputFrame[c].Height - 1, InputFrame[c].Width - 1);
 		}
-		return ProcessedFrame.Leak();
+		return ProcessedFrame;
 	}
 };

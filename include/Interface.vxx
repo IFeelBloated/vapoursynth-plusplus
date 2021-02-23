@@ -1,49 +1,137 @@
 #pragma once
 #include "Core.vxx"
 
-namespace VaporInterface {
+namespace FilterEngine {
 	template<typename FilterType>
-	auto Initialize(auto, auto, auto InstanceData, auto Node, auto CoreHandle, auto...) {
-		auto Data = reinterpret_cast<FilterType*>(*InstanceData);
-		auto Core = CoreProxy{ .Handle = CoreHandle };
-		if constexpr (auto Metadata = Data->RegisterMetadata(Core); Iterable<decltype(Metadata)>) {
-			auto AggregatedMetadata = std::vector<VSVideoInfo>{};
-			for (auto&& x : Metadata)
-				AggregatedMetadata.push_back(x.ConvertToLegacyLayout(Core));
-			VaporGlobals::API->setVideoInfo(AggregatedMetadata.data(), AggregatedMetadata.size(), Node);
-		}
-		else {
-			auto CompatibleMetadata = Metadata.ConvertToLegacyLayout(Core);
-			VaporGlobals::API->setVideoInfo(&CompatibleMetadata, 1, Node);
-		}
+	auto FilterRecycler(auto FilterPointer, auto...) {
+		auto Garbage = reinterpret_cast<FilterType*>(FilterPointer);
+		delete Garbage;
 	}
 
 	template<typename FilterType>
-	auto Delete(auto InstanceData, auto...) {
-		auto Data = reinterpret_cast<FilterType*>(InstanceData);
-		delete Data;
-	}
-
-	template<typename FilterType>
-	[[gnu::flatten]] auto Evaluate(auto Index, auto ActivationReason, auto InstanceData, auto, auto FrameContext, auto Core, auto...) try {
-		auto Data = reinterpret_cast<FilterType*>(*InstanceData);
-		auto ContextHandle = FrameContextProxy{ .Handle = FrameContext };
-		if (ActivationReason == VSActivationReason::arInitial)
-			if constexpr (requires { Data->RequestReferenceFrames(0, FrameContext); })
-				Data->RequestReferenceFrames(Index, ContextHandle);
+	auto NodeInitializer(auto, auto ConsoleHandle, auto FilterPointer, auto NodeHandle, auto CoreHandle, auto...) {
+		auto FilterHandle = reinterpret_cast<FilterType*>(*FilterPointer);
+		try {
+			auto Core = CoreProxy{ .Handle = CoreHandle };
+			auto Metadata = [&] {
+				if constexpr (requires { { FilterHandle->SpecifyMetadata() }->AnyBut<void>; })
+					return FilterHandle->SpecifyMetadata();
+				else if constexpr (requires { { FilterHandle->SpecifyMetadata(Core) }->AnyBut<void>; })
+					return FilterHandle->SpecifyMetadata(Core);
+				else
+					static_assert(sizeof(FilterType) == -1, "FilterEngine: SpecifyMetadata() is either missing or has an incompatible signature.");
+			}();
+			if constexpr (requires { { Metadata }->Iterable; })
+				if constexpr (requires { { *Metadata.begin() }->AnyOf<VideoInfo, VSVideoInfo>; }) {
+					auto SyncretizedMetadata = std::vector<VSVideoInfo>{};
+					for (auto&& x : Metadata)
+						SyncretizedMetadata.push_back(VideoInfo::AdjustToLegacyLayout(x, Core));
+					VaporGlobals::API->setVideoInfo(SyncretizedMetadata.data(), SyncretizedMetadata.size(), NodeHandle);
+				}
+				else if constexpr (requires { { *Metadata.begin() }->AnyOf<AudioInfo>; })
+					//Placeholder for API v4.
+					VaporGlobals::API->setVideoInfo(nullptr, 0, nullptr);
+				else
+					static_assert(sizeof(FilterType) == -1, "FilterEngine: failed to initialize the output node with a container of unrecognized metadata type.");
+			else if constexpr (requires { { Metadata }->AnyOf<VideoInfo, VSVideoInfo>; }) {
+				auto&& SyncretizedMetadata = VideoInfo::AdjustToLegacyLayout(Metadata, Core);
+				VaporGlobals::API->setVideoInfo(&SyncretizedMetadata, 1, NodeHandle);
+			}
+			else if constexpr (requires { { Metadata }->AnyOf<AudioInfo>; })
+				//Placeholder for API v4.
+				VaporGlobals::API->setVideoInfo(nullptr, 0, nullptr);
 			else
-				return Data->DrawFrame(Index, CoreProxy{ .Handle = Core }, ContextHandle);
-		else if (ActivationReason == VSActivationReason::arAllFramesReady)
-			return Data->DrawFrame(Index, CoreProxy{ .Handle = Core }, ContextHandle);
-		return Frame::NullHandle;
-	}
-	catch (RuntimeError& ErrorMessage) {
-		auto Caption = FilterType::Name + ": "s;
-		auto DecoratedMessage = Caption + ErrorMessage;
-		VaporGlobals::API->setFilterError(DecoratedMessage.data(), FrameContext);
-		return Frame::NullHandle;
+				static_assert(sizeof(FilterType) == -1, "FilterEngine: failed to initialize the output node with metadata of unrecognized type.");
+		}
+		catch (RuntimeError& ErrorMessage) {
+			auto Console = ConsoleProxy{ .Handle = ConsoleHandle };
+			delete FilterHandle;
+			Console.RaiseError(ErrorMessage);
+		}
 	}
 
+	template<typename FilterType>
+	auto FrameGenerator(auto Index, auto ActivationReason, auto FilterPointer, auto ResourcePointer, auto FrameContextHandle, auto CoreHandle, auto...) {
+		auto FrameContext = FrameContextProxy{ .Handle = FrameContextHandle };
+		auto InitiateFrameGenerator = [&](auto ...Arguments) {
+			if constexpr (auto Core = CoreProxy{ .Handle = CoreHandle }; sizeof...(Arguments) > 1)
+				if constexpr (auto [FilterHandle, ResourceHandle] = std::tuple{ Arguments... }; requires { { FilterHandle->GenerateFrame(Index, FrameContext, *ResourceHandle, Core) }->SubtypeOf<FrameReference>; })
+					return FilterHandle->GenerateFrame(Index, FrameContext, *ResourceHandle, Core);
+				else
+					static_assert(sizeof(FilterType) == -1, "FilterEngine: the signature of the frame generator must be \"auto GenerateFrame(auto Index, auto FrameContext, auto& AttachedResources, auto Core)\" when there're attachments available.");
+			else
+				if constexpr (auto [FilterHandle] = std::tuple{ Arguments... }; requires { { FilterHandle->GenerateFrame(Index, FrameContext, Core) }->SubtypeOf<FrameReference>; })
+					return FilterHandle->GenerateFrame(Index, FrameContext, Core);
+				else if constexpr (requires { { FilterHandle->GenerateFrame(Index, Core) }->SubtypeOf<FrameReference>; })
+					return FilterHandle->GenerateFrame(Index, Core);
+				else if constexpr (requires { { FilterHandle->GenerateFrame(Core) }->SubtypeOf<FrameReference>; })
+					return FilterHandle->GenerateFrame(Core);
+				else
+					static_assert(sizeof(FilterType) == -1, "FilterEngine: GenerateFrame() is either missing or has an incompatible signature.");
+		};
+		auto InitiateFrameGeneratingSequenceForSourceFilter = [&](auto FilterHandle) {
+			if (ActivationReason == VSActivationReason::arInitial)
+				return InitiateFrameGenerator(FilterHandle).Leak();
+			return Frame::NullHandle;
+		};
+		auto InitiateFrameGeneratingSequenceForStandardFilter = [&](auto FilterHandle) {
+			using ResourceType = decltype(FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext));
+			if (auto& ResourceHandle = reinterpret_cast<ResourceType*&>(*ResourcePointer); ActivationReason == VSActivationReason::arInitial)
+				if constexpr (requires { { ResourceHandle }->AnyBut<void*>; })
+					ResourceHandle = new auto{ FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext) };
+				else
+					FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext);
+			else if (ActivationReason == VSActivationReason::arAllFramesReady)
+				if constexpr (requires { { ResourceHandle }->AnyBut<void*>; }) {
+					[[maybe_unused]] auto ResourceGuard = std::unique_ptr<ResourceType>{ ResourceHandle };
+					return InitiateFrameGenerator(FilterHandle, ResourceHandle).Leak();
+				}
+				else
+					return InitiateFrameGenerator(FilterHandle).Leak();
+			else if (ActivationReason == VSActivationReason::arError) [[unlikely]]
+				if constexpr (requires { { ResourceHandle }->AnyBut<void*>; })
+					delete ResourceHandle;
+			return Frame::NullHandle;
+		};
+		auto InitiateFrameGeneratingSequenceForFilterRequiringLatentResourceAcquisition = [&](auto FilterHandle) {
+			using LatentResourceType = decltype(FilterHandle->AcquireLatentResources(Index, FrameContext));
+			using ResourceType = decltype(FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext));
+			static_assert(SubtypeOf<LatentResourceType, void>, "FilterEngine: attaching latent resources to AcquireResourcesForFrameGenerator() is not currently supported, open an issue if you have a valid use case that requires this functionality.");
+			if (ActivationReason == VSActivationReason::arInitial)
+				FilterHandle->AcquireLatentResources(Index, FrameContext);
+			else if (auto& ResourceHandle = reinterpret_cast<ResourceType*&>(*ResourcePointer); ActivationReason == VSActivationReason::arAllFramesReady && ResourceHandle == nullptr)
+				if constexpr (requires { { ResourceHandle }->AnyBut<void*>; })
+					ResourceHandle = new auto{ FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext) };
+				else
+					FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext);
+			else if (ActivationReason == VSActivationReason::arAllFramesReady)
+				if constexpr (requires { { ResourceHandle }->AnyBut<void*>; }) {
+					[[maybe_unused]] auto ResourceGuard = std::unique_ptr<ResourceType>{ ResourceHandle };
+					return InitiateFrameGenerator(FilterHandle, ResourceHandle).Leak();
+				}
+				else
+					return InitiateFrameGenerator(FilterHandle).Leak();
+			else if (ActivationReason == VSActivationReason::arError) [[unlikely]]
+				if constexpr (requires { { ResourceHandle }->AnyBut<void*>; })
+					delete ResourceHandle;
+			return Frame::NullHandle;
+		};
+		try {
+			if constexpr (auto FilterHandle = reinterpret_cast<FilterType*>(*FilterPointer); requires { FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext); })
+				if constexpr (requires { FilterHandle->AcquireLatentResources(Index, FrameContext); })
+					return InitiateFrameGeneratingSequenceForFilterRequiringLatentResourceAcquisition(FilterHandle);
+				else
+					return InitiateFrameGeneratingSequenceForStandardFilter(FilterHandle);
+			else
+				return InitiateFrameGeneratingSequenceForSourceFilter(FilterHandle);
+		}
+		catch (RuntimeError& ErrorMessage) {
+			return FrameContext.RaiseError(ErrorMessage);
+		}
+	}
+}
+
+namespace VaporInterface {
 	template<typename FilterType>
 	auto Create(auto InputMap, auto OutputMap, auto, auto Core, auto...) try {
 		auto Data = [&] {
@@ -61,8 +149,8 @@ namespace VaporInterface {
 				AssumedMultithreadingMode = FilterType::MultithreadingMode;
 			if constexpr (requires { &FilterType::CacheFlag; })
 				AssumedCacheFlag = FilterType::CacheFlag;
-			if constexpr (requires { Data.DrawFrame(0, CoreProxy{}, FrameContextProxy{}); })
-				VaporGlobals::API->createFilter(AuxiliaryMap, EvaluatedMap, FilterType::Name, Initialize<FilterType>, Evaluate<FilterType>, Delete<FilterType>, AssumedMultithreadingMode, AssumedCacheFlag, InstanceData, Core);
+			if constexpr (requires { Data.GenerateFrame(0, FrameContextProxy{}, CoreProxy{}); })
+				VaporGlobals::API->createFilter(AuxiliaryMap, EvaluatedMap, FilterType::Name, FilterEngine::NodeInitializer<FilterType>, FilterEngine::FrameGenerator<FilterType>, FilterEngine::FilterRecycler<FilterType>, AssumedMultithreadingMode, AssumedCacheFlag, InstanceData, Core);
 			VaporGlobals::API->freeMap(AuxiliaryMap);
 		};
 		auto SelfInvoker = [&](auto&& ...Arguments) {
@@ -70,8 +158,16 @@ namespace VaporInterface {
 			auto ArgumentMap = VaporGlobals::API->createMap();
 			auto EvaluatedMap = VaporGlobals::API->createMap();
 			auto MaterializeEvaluatedClips = [&]() {
-				if constexpr (requires { InstanceData->RegisterMetadata(CoreProxy{}); }) {
-					using VideoInfoType = decltype(InstanceData->RegisterMetadata(CoreProxy{}));
+				if constexpr (requires { InstanceData->SpecifyMetadata(CoreProxy{}); }) {
+					using VideoInfoType = decltype(InstanceData->SpecifyMetadata(CoreProxy{}));
+					auto VideoInfoPrototype = VideoInfoType{};
+					if constexpr (WithConstexprSize(VideoInfoPrototype))
+						return ExtractEvaluatedClips<true, VideoInfoPrototype.size()>(EvaluatedMap);
+					else
+						return ExtractEvaluatedClips<requires { VideoInfoPrototype.size(); }, IndeterminateSize>(EvaluatedMap);
+				}
+				else if constexpr (requires { InstanceData->SpecifyMetadata(); }) {
+					using VideoInfoType = decltype(InstanceData->SpecifyMetadata());
 					auto VideoInfoPrototype = VideoInfoType{};
 					if constexpr (WithConstexprSize(VideoInfoPrototype))
 						return ExtractEvaluatedClips<true, VideoInfoPrototype.size()>(EvaluatedMap);

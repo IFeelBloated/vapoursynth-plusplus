@@ -19,7 +19,7 @@ template<typename UnknownType>
 concept Iterable = NativeArray<UnknownType> || requires(UnknownType x) {
 	{ x.begin() }->Advanceable;
 	*x.begin();
-	x.begin() != x.end();
+	{ x.begin() != x.end() }->ExplicitlyConvertibleTo<bool>;
 };
 
 template<typename UnknownType>

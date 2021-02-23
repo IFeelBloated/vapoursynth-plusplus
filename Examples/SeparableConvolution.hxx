@@ -28,13 +28,13 @@ public:
         else
             VerticalKernel = HorizontalKernel;
     }
-    auto RegisterMetadata(auto Core) {
+    auto SpecifyMetadata() {
         return InputClip.ExtractMetadata();
     }
-    auto RequestReferenceFrames(auto Index, auto FrameContext) {
+    auto AcquireResourcesForFrameGenerator(auto Index, auto FrameContext) {
         InputClip.RequestFrame(Index, FrameContext);
     }
-    auto DrawFrame(auto Index, auto Core, auto FrameContext) {
+    auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
         auto InputFrame = InputClip.FetchFrame<const float>(Index, FrameContext);
         auto ProcessedFrame = Core.CreateBlankFrameFrom(InputFrame);
         auto HorizontalConvolution = [this](auto Center) {
@@ -47,7 +47,7 @@ public:
             for (auto y : Range{ InputFrame[c].Height })
                 for (auto x : Range{ InputFrame[c].Width })
                     ProcessedFrame[c][y][x] = HorizontalConvolution(InputFrame[c].View(y, x));
-        return ProcessedFrame.Leak();
+        return ProcessedFrame;
     }
     auto RegisterInvokingSequence(auto&& Self, auto Core) {
         InputClip = Self("clip", InputClip, "h_kernel", HorizontalKernel);

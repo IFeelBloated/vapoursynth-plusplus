@@ -112,7 +112,7 @@ public:
 public:
 	template<Iterable TargetType>
 	operator TargetType() const requires requires(TargetType x) {
-		{ x }->AnyBut<std::initializer_list<std::decay_t<decltype(*x.begin())>>>;
+		{ x }->AnyBut<std::initializer_list<std::decay_t<decltype(*x.begin())>>, std::initializer_list<const std::decay_t<decltype(*x.begin())>>>;
 		requires (requires { { x }->ConstructibleFrom<const char*>; } == false);
 		requires (requires { { x.Type() }->SubtypeOf<ItemTypes>; } == false);
 	} {
@@ -273,6 +273,24 @@ public:
 		return Utility::Map::AccessItem(Handle, Forward(Parameter));
 	}
 };
+
+
+
+
+
+struct ConsoleProxy {
+	field(Handle, static_cast<VSMap*>(nullptr));
+
+public:
+	auto RaiseError(ExplicitlyConvertibleTo<std::string> auto&& ErrorMessage) const {
+
+
+
+
+	}
+};
+
+
 
 
 

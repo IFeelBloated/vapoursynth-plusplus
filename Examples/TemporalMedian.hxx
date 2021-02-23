@@ -20,13 +20,13 @@ public:
 		if (Radius < 0)
 			throw RuntimeError{ "radius cannot be negative!" };
 	}
-	auto RegisterMetadata(auto Core) {
+	auto SpecifyMetadata() {
 		return InputClip.ExtractMetadata();
 	}
-	auto RequestReferenceFrames(auto Index, auto FrameContext) {
+	auto AcquireResourcesForFrameGenerator(auto Index, auto FrameContext) {
 		InputClip.RequestFrames(Index, FrameContext);
 	}
-	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
+	auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
 		auto InputFrames = InputClip.FetchFrames<const float>(Index, FrameContext);
 		auto ProcessedFrame = Core.CreateBlankFrameFrom(InputFrames[0]);
 		auto Samples = std::vector<float>{};
@@ -39,6 +39,6 @@ public:
 					std::nth_element(Samples.begin(), Samples.begin() + Radius, Samples.end());
 					ProcessedFrame[c][y][x] = Samples[Radius];
 				}
-		return ProcessedFrame.Leak();
+		return ProcessedFrame;
 	}
 };

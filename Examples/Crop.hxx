@@ -34,16 +34,16 @@ public:
 		if (CroppedWidth <= 0 || CroppedHeight <= 0)
 			throw RuntimeError{ "dimensions must be positive after cropping!" };
 	}
-	auto RegisterMetadata(auto Core) {
+	auto SpecifyMetadata() {
 		auto Metadata = InputClip.ExtractMetadata();
 		Metadata.Width = CroppedWidth;
 		Metadata.Height = CroppedHeight;
 		return Metadata;
 	}
-	auto RequestReferenceFrames(auto Index, auto FrameContext) {
+	auto AcquireResourcesForFrameGenerator(auto Index, auto FrameContext) {
 		InputClip.RequestFrame(Index, FrameContext);
 	}
-	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
+	auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
 		auto DrawGenericFrame = [&](auto&& InputFrame) {
 			using PixelType = std::decay_t<decltype(InputFrame[0][0][0])>;
 			auto ProcessedFrame = VideoFrame<PixelType>{ Core.AllocateVideoFrame(InputFrame.ExtractFormat(), CroppedWidth, CroppedHeight) };
@@ -52,7 +52,7 @@ public:
 				for (auto y : Range{ CroppedHeight })
 					for (auto x : Range{ CroppedWidth })
 						ProcessedFrame[c][y][x] = InputFrame[c][y + Top][x + Left];
-			return ProcessedFrame.Leak();
+			return ProcessedFrame.Transfer();
 		};
 		if (InputClip.IsSinglePrecision())
 			return DrawGenericFrame(InputClip.FetchFrame<const float>(Index, FrameContext));

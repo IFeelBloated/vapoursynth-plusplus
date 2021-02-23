@@ -14,15 +14,15 @@ public:
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision() || !InputClip.IsYUV() || !InputClip.Is444())
 			throw RuntimeError{ "only YUV444PS clips supported." };
 	}
-	auto RegisterMetadata(auto Core) {
+	auto SpecifyMetadata(auto Core) {
 		auto Metadata = InputClip.ExtractMetadata();
 		Metadata.Format = Core.Query(VideoFormats::RGBS);
 		return Metadata;
 	}
-	auto RequestReferenceFrames(auto Index, auto FrameContext) {
+	auto AcquireResourcesForFrameGenerator(auto Index, auto FrameContext) {
 		InputClip.RequestFrame(Index, FrameContext);
 	}
-	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
+	auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
 		auto InputFrame = InputClip.FetchFrame<const float>(Index, FrameContext);
 		auto ProcessedFrame = VideoFrame<float>{ Core.AllocateVideoFrame(VideoFormats::RGBS, InputClip.Width, InputClip.Height) };
 		if (InputFrame["_Matrix"].Exists() == false)
@@ -48,6 +48,6 @@ public:
 		ProcessedFrame.AbsorbPropertiesFrom(InputFrame);
 		ProcessedFrame["_Matrix"] = 0;
 		ProcessedFrame["_ColorSpace"] = 0;
-		return ProcessedFrame.Leak();
+		return ProcessedFrame;
 	}
 };

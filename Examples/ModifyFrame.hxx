@@ -17,15 +17,14 @@ public:
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions())
 			throw RuntimeError{ "only clips with constant format and dimensions supported." };
 	}
-	auto RegisterMetadata(auto Core) {
+	auto SpecifyMetadata() {
 		return InputClip.ExtractMetadata();
 	}
-	auto RequestReferenceFrames(auto Index, auto FrameContext) {
+	auto AcquireResourcesForFrameGenerator(auto Index, auto FrameContext) {
 		InputClip.RequestFrame(Index, FrameContext);
 	}
-	auto DrawFrame(auto Index, auto Core, auto FrameContext) {
+	auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
 		auto InputFrame = InputClip.PeekFrame(Index, FrameContext);
-		auto EvaluatedFrame = static_cast<Frame>(Evaluator("src", InputFrame));
-		return EvaluatedFrame.Leak();
+		return static_cast<FrameReference>(Evaluator("src", InputFrame));
 	}
 };

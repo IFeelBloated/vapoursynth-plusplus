@@ -142,6 +142,7 @@ namespace VaporInterface {
 		}();
 		auto Console = Controller<FilterType>{ OutputMap };
 		auto SelfEvaluator = [&](auto EvaluatedMap, auto InstanceData) {
+			auto FilterName = std::string{ Utility::Reflection::ReifyTypeNameIntoString<FilterType>() };
 			auto AuxiliaryMap = VaporGlobals::API->createMap();
 			auto AssumedMultithreadingMode = VSFilterMode::fmParallel;
 			auto AssumedCacheFlag = 0;
@@ -150,7 +151,7 @@ namespace VaporInterface {
 			if constexpr (requires { &FilterType::CacheFlag; })
 				AssumedCacheFlag = FilterType::CacheFlag;
 			if constexpr (requires { Data.GenerateFrame(0, FrameContextProxy{}, CoreProxy{}); })
-				VaporGlobals::API->createFilter(AuxiliaryMap, EvaluatedMap, FilterType::Name, FilterEngine::NodeInitializer<FilterType>, FilterEngine::FrameGenerator<FilterType>, FilterEngine::FilterRecycler<FilterType>, AssumedMultithreadingMode, AssumedCacheFlag, InstanceData, Core);
+				VaporGlobals::API->createFilter(AuxiliaryMap, EvaluatedMap, FilterName.data(), FilterEngine::NodeInitializer<FilterType>, FilterEngine::FrameGenerator<FilterType>, FilterEngine::FilterRecycler<FilterType>, AssumedMultithreadingMode, AssumedCacheFlag, InstanceData, Core);
 			VaporGlobals::API->freeMap(AuxiliaryMap);
 		};
 		auto SelfInvoker = [&](auto&& ...Arguments) {
@@ -208,7 +209,8 @@ namespace VaporInterface {
 
 	template<typename FilterType>
 	auto RegisterFilter(auto Broker, auto Plugin) {
-		Broker(FilterType::Name, FilterType::Signature, Create<FilterType>, nullptr, Plugin);
+		auto FilterName = std::string{ Utility::Reflection::ReifyTypeNameIntoString<FilterType>() };
+		Broker(FilterName.data(), FilterType::Signature, Create<FilterType>, nullptr, Plugin);
 	}
 
 	auto RegisterPlugin(auto Broker, auto Plugin) {

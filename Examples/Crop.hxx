@@ -9,7 +9,6 @@ struct Crop {
 	field(CroppedHeight, 0);
 
 public:
-	static constexpr auto Name = "Crop";
 	static constexpr auto Signature = "clip:clip;left:int:opt;right:int:opt;top:int:opt;bottom:int:opt;";
 
 public:

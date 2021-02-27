@@ -3,7 +3,7 @@
 #include "AudioNode.vxx"
 #include "Function.vxx"
 
-template<auto Managed>
+template<auto Managed = false>
 using MapReference = ExclusiveOwner<VSMap, Managed>;
 
 template<auto Readonly, auto Managed>
@@ -230,7 +230,7 @@ public:
 
 namespace Utility::Map {
 	auto Create() {
-		return MapReference<false>{ VaporGlobals::API->createMap() };
+		return MapReference{ VaporGlobals::API->createMap() };
 	}
 	auto ListKeys(auto MapHandle) {
 		auto ItemCount = VaporGlobals::API->propNumKeys(MapHandle);
@@ -300,7 +300,8 @@ template<typename FilterType>
 struct Controller {
 	field(OutputMap, static_cast<VSMap*>(nullptr));
 	auto RaiseError(auto&& ErrorMessage) {
-		auto Caption = FilterType::Name + ": "s;
+		auto FilterName = std::string{ Utility::Reflection::ReifyTypeNameIntoString<FilterType>() };
+		auto Caption = FilterName + ": "s;
 		auto DecoratedMessage = Caption + ErrorMessage;
 		VaporGlobals::API->setError(OutputMap, ExposeCString(DecoratedMessage));
 	}

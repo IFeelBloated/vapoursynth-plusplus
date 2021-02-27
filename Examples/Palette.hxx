@@ -7,7 +7,6 @@ struct Palette {
 	field(Height, 480);
 
 public:
-	static constexpr auto Name = "Palette";
 	static constexpr auto Signature = "shades:float[];width:int:opt;height:int:opt;";
 
 public:

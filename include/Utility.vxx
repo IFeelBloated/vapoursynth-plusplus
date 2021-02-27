@@ -98,6 +98,21 @@ namespace Utility {
 	}
 }
 
+namespace Utility::Reflection {
+	template<typename>
+	consteval auto EmbedTypeNameIntoSignature() {
+		return std::string_view{ std::source_location::current().function_name() };
+	}
+	template<typename UnknownType>
+	auto ReifyTypeNameIntoString() {
+		auto SignatureTemplate = EmbedTypeNameIntoSignature<double>();
+		auto EmbeddingSignature = EmbedTypeNameIntoSignature<UnknownType>();
+		auto CaptionLength = SignatureTemplate.find("double");
+		auto EnclosureLength = SignatureTemplate.size() - CaptionLength - "double"sv.size();
+		return EmbeddingSignature.substr(CaptionLength, EmbeddingSignature.size() - CaptionLength - EnclosureLength);
+	}
+}
+
 namespace Utility::Map {
 	auto Create();
 	auto ListKeys(auto);

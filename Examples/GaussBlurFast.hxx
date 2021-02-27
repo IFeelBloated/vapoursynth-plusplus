@@ -5,7 +5,6 @@ struct GaussBlurFast {
 	field(InputClip, VideoNode{});
 
 public:
-	static constexpr auto Name = "GaussBlurFast";
 	static constexpr auto Signature = "clip:clip;";
 	
 public:

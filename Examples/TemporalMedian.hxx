@@ -6,7 +6,6 @@ struct TemporalMedian {
 	field(Radius, 1);
 
 public:
-	static constexpr auto Name = "TemporalMedian";
 	static constexpr auto Signature = "clip:clip;radius:int:opt;";
 
 public:

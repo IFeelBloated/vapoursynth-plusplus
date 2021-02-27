@@ -32,7 +32,7 @@ public:
 	Plugin(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) {
 		auto PluginHandle = static_cast<HandleType>(Forward(Descriptor));
 		this->Handle = Utility::PointerDropQualifiers(PluginHandle);
-		for (auto FunctionMap = MapReference<false>{ VaporGlobals::API->getFunctions(this->Handle) }; auto x : Utility::Map::ListKeys(FunctionMap.Handle))
+		for (auto FunctionMap = MapReference{ VaporGlobals::API->getFunctions(this->Handle) }; auto x : Utility::Map::ListKeys(FunctionMap.Handle))
 			this->FunctionSignatures[std::string{ x }] = static_cast<std::string>(Utility::Map::AccessItem(FunctionMap.Handle, x)).erase(0, x.size() + 1);
 	}
 

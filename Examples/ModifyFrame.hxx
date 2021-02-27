@@ -6,7 +6,6 @@ struct ModifyFrame {
 	field(Evaluator, Function{});
 
 public:
-	static constexpr auto Name = "ModifyFrame";
 	static constexpr auto Signature = "clip:clip;evaluator:func;";
 	static constexpr auto MultithreadingMode = VSFilterMode::fmParallelRequests;
 

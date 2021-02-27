@@ -5,7 +5,6 @@ struct Rec601ToRGB {
 	field(InputClip, VideoNode{});
 
 public:
-	static constexpr auto Name = "Rec601ToRGB";
 	static constexpr auto Signature = "clip:clip;";
 	
 public:

@@ -16,6 +16,7 @@
 #include <mutex>
 #include <memory>
 #include <initializer_list>
+#include <source_location>
 #include <new>
 #include <cstring>
 #include <cstdint>

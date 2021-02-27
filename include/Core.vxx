@@ -212,7 +212,7 @@ public:
 	}
 	auto ListPlugins() const {
 		auto PluginSignatures = std::vector<std::string>{};
-		for (auto PluginMap = MapReference<false>{ VaporGlobals::API->getPlugins(Handle) }; auto x : Utility::Map::ListKeys(PluginMap.Handle))
+		for (auto PluginMap = MapReference{ VaporGlobals::API->getPlugins(Handle) }; auto x : Utility::Map::ListKeys(PluginMap.Handle))
 			PluginSignatures.push_back(Utility::Map::AccessItem(PluginMap.Handle, x));
 		return PluginSignatures;
 	}

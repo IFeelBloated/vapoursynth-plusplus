@@ -1,5 +1,5 @@
 # vsFilterScript
-C++ wrapper for VSAPI to help you sketch your filter in the fastest possible way.
+C++ wrapper for VSAPI to help you sketch your filter in the fastest possible way. (now requires GCC11!!)
 
 ## Progress
 

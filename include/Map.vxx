@@ -266,7 +266,7 @@ struct ArgumentList {
 	field(Handle, static_cast<const VSMap*>(nullptr));
 
 public:
-	auto ListParameters() const {
+	auto ListSpecifiedParameters() const {
 		return Utility::Map::ListKeys(Handle);
 	}
 	auto operator[](ExplicitlyConvertibleTo<std::string> auto&& Parameter) const {
@@ -300,7 +300,7 @@ template<typename FilterType>
 struct Controller {
 	field(OutputMap, static_cast<VSMap*>(nullptr));
 	auto RaiseError(auto&& ErrorMessage) {
-		auto FilterName = std::string{ Utility::Reflection::ReifyTypeNameIntoString<FilterType>() };
+		auto FilterName = std::string{};
 		auto Caption = FilterName + ": "s;
 		auto DecoratedMessage = Caption + ErrorMessage;
 		VaporGlobals::API->setError(OutputMap, ExposeCString(DecoratedMessage));

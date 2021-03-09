@@ -1,25 +1,22 @@
 #pragma once
 #include "Map.vxx"
 
-struct Plugin {
+struct Plugin : PluginInfo {
 	field(Handle, static_cast<VSPlugin*>(nullptr));
-	field(FunctionSignatures, std::unordered_map<std::string, std::string>{});
-
-private:
-	using HandleType = const VSPlugin*;
+	field(FilePath, std::filesystem::path{});
 
 private:
 	struct Function {
-		field(Handle, static_cast<VSPlugin*>(nullptr));
+		field(PluginHandle, static_cast<const Plugin*>(nullptr));
 		field(Name, ""s);
-		field(Signature, ""s);
+		field(ParameterList, ""s);
 
 	public:
 		auto operator()(auto&& ...Arguments) const requires (sizeof...(Arguments) % 2 == 0) {
 			auto ArgumentMap = Utility::Map::Create();
 			if constexpr (sizeof...(Arguments) != 0)
 				Utility::Map::Fill(ArgumentMap.Handle, Forward(Arguments)...);
-			auto ResultMap = VaporGlobals::API->invoke(Handle, Name.data(), ArgumentMap.Handle);
+			auto ResultMap = VaporGlobals::API->invoke(PluginHandle->Handle, Name.data(), ArgumentMap.Handle);
 			auto ResultItem = Utility::Map::AccessItem<true, false>(ResultMap, Utility::Map::DeduceReturnKey(ResultMap, "clip"sv));
 			if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ResultMap); EvaluationFailed)
 				throw RuntimeError{ ErrorMessage };
@@ -28,35 +25,15 @@ private:
 	};
 
 public:
-	Plugin() = default;
-	Plugin(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) {
-		auto PluginHandle = static_cast<HandleType>(Forward(Descriptor));
-		this->Handle = Utility::PointerDropQualifiers(PluginHandle);
-		for (auto FunctionMap = MapReference{ VaporGlobals::API->getFunctions(this->Handle) }; auto x : Utility::Map::ListKeys(FunctionMap.Handle))
-			this->FunctionSignatures[std::string{ x }] = static_cast<std::string>(Utility::Map::AccessItem(FunctionMap.Handle, x)).erase(0, x.size() + 1);
-	}
-
-public:
 	auto operator[](ExplicitlyConvertibleTo<std::string> auto&& FunctionName) const {
 		auto Name = static_cast<std::string>(Forward(FunctionName));
-		auto& Signature = Utility::PointerDropQualifiers(this)->FunctionSignatures[Name];
-		return Function{ .Handle = Handle, .Name = std::move(Name), .Signature = Signature };
+		auto ParameterList = static_cast<std::string>(Utility::Map::AccessItem<true, false>(VaporGlobals::API->getFunctions(Handle), Name)).erase(0, Name.size() + 1);
+		return Function{ .PluginHandle = this, .Name = std::move(Name), .ParameterList = std::move(ParameterList) };
 	}
-	auto ListFunctions() const & {
-		auto FunctionNames = std::vector<std::string_view>{};
-		FunctionNames.reserve(FunctionSignatures.size());
-		for (auto&& [x, _] : FunctionSignatures)
-			FunctionNames.push_back(x);
-		return FunctionNames;
-	}
-	auto ListFunctions() && {
+	auto ListFunctions() const {
 		auto FunctionNames = std::vector<std::string>{};
-		FunctionNames.reserve(FunctionSignatures.size());
-		for (auto&& [x, _] : FunctionSignatures)
-			FunctionNames.push_back(std::move(x));
+		for (auto FunctionMap = MapReference{ VaporGlobals::API->getFunctions(Handle) }; auto&& x : Utility::Map::ListKeys(FunctionMap.Handle))
+			FunctionNames.push_back(std::string{ x });
 		return FunctionNames;
-	}
-	auto Path() const {
-		return std::filesystem::path{ VaporGlobals::API->getPluginPath(Handle) };
 	}
 };

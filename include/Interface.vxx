@@ -51,14 +51,14 @@ namespace FilterEngine {
 	}
 
 	template<typename FilterType>
-	auto FrameGenerator(auto Index, auto ActivationReason, auto FilterPointer, auto ResourcePointer, auto FrameContextHandle, auto CoreHandle, auto...) {
+	auto FrameGenerator(auto Index, auto ActivationReason, auto FilterPointer, auto AttachmentPointer, auto FrameContextHandle, auto CoreHandle, auto...) {
 		auto FrameContext = FrameContextProxy{ .Handle = FrameContextHandle };
 		auto InitiateFrameGenerator = [&](auto ...Arguments) {
 			if constexpr (auto Core = CoreProxy{ .Handle = CoreHandle }; sizeof...(Arguments) > 1)
-				if constexpr (auto [FilterHandle, ResourceHandle] = std::tuple{ Arguments... }; requires { { FilterHandle->GenerateFrame(Index, FrameContext, *ResourceHandle, Core) }->SubtypeOf<FrameReference>; })
-					return FilterHandle->GenerateFrame(Index, FrameContext, *ResourceHandle, Core);
+				if constexpr (auto [FilterHandle, AttachmentHandle] = std::tuple{ Arguments... }; requires { { FilterHandle->GenerateFrame(Index, FrameContext, *AttachmentHandle, Core) }->SubtypeOf<FrameReference>; })
+					return FilterHandle->GenerateFrame(Index, FrameContext, *AttachmentHandle, Core);
 				else
-					static_assert(sizeof(FilterType) == -1, "FilterEngine: the signature of the frame generator must be \"auto GenerateFrame(auto Index, auto FrameContext, auto& AttachedResources, auto Core)\" when there're attachments available.");
+					static_assert(sizeof(FilterType) == -1, "FilterEngine: the signature of the frame generator must be \"auto GenerateFrame(auto Index, auto FrameContext, auto& Attachments, auto Core)\" when there're attachments available.");
 			else
 				if constexpr (auto [FilterHandle] = std::tuple{ Arguments... }; requires { { FilterHandle->GenerateFrame(Index, FrameContext, Core) }->SubtypeOf<FrameReference>; })
 					return FilterHandle->GenerateFrame(Index, FrameContext, Core);
@@ -75,45 +75,45 @@ namespace FilterEngine {
 			return Frame::NullHandle;
 		};
 		auto InitiateFrameGeneratingSequenceForStandardFilter = [&](auto FilterHandle) {
-			using ResourceType = decltype(FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext));
-			if (auto& ResourceHandle = reinterpret_cast<ResourceType*&>(*ResourcePointer); ActivationReason == VSActivationReason::arInitial)
-				if constexpr (requires { { ResourceHandle }->AnyBut<void*>; })
-					ResourceHandle = new auto{ FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext) };
+			using AttachmentType = decltype(FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext));
+			if (auto& AttachmentHandle = reinterpret_cast<AttachmentType*&>(*AttachmentPointer); ActivationReason == VSActivationReason::arInitial)
+				if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; })
+					AttachmentHandle = new auto{ FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext) };
 				else
 					FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext);
 			else if (ActivationReason == VSActivationReason::arAllFramesReady)
-				if constexpr (requires { { ResourceHandle }->AnyBut<void*>; }) {
-					[[maybe_unused]] auto ResourceGuard = std::unique_ptr<ResourceType>{ ResourceHandle };
-					return InitiateFrameGenerator(FilterHandle, ResourceHandle).Leak();
+				if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; }) {
+					[[maybe_unused]] auto AttachmentGuard = std::unique_ptr<AttachmentType>{ AttachmentHandle };
+					return InitiateFrameGenerator(FilterHandle, AttachmentHandle).Leak();
 				}
 				else
 					return InitiateFrameGenerator(FilterHandle).Leak();
 			else if (ActivationReason == VSActivationReason::arError) [[unlikely]]
-				if constexpr (requires { { ResourceHandle }->AnyBut<void*>; })
-					delete ResourceHandle;
+				if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; })
+					delete AttachmentHandle;
 			return Frame::NullHandle;
 		};
 		auto InitiateFrameGeneratingSequenceForFilterRequiringLatentResourceAcquisition = [&](auto FilterHandle) {
-			using LatentResourceType = decltype(FilterHandle->AcquireLatentResources(Index, FrameContext));
-			using ResourceType = decltype(FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext));
-			static_assert(SubtypeOf<LatentResourceType, void>, "FilterEngine: attaching latent resources to AcquireResourcesForFrameGenerator() is not currently supported, open an issue if you have a valid use case that requires this functionality.");
+			using PrimordialAttachmentType = decltype(FilterHandle->AcquireLatentResources(Index, FrameContext));
+			using AttachmentType = decltype(FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext));
+			static_assert(SubtypeOf<PrimordialAttachmentType, void>, "FilterEngine: sending primordial attachments to AcquireResourcesForFrameGenerator() is not currently supported, open an issue if you have a valid use case that requires this functionality.");
 			if (ActivationReason == VSActivationReason::arInitial)
 				FilterHandle->AcquireLatentResources(Index, FrameContext);
-			else if (auto& ResourceHandle = reinterpret_cast<ResourceType*&>(*ResourcePointer); ActivationReason == VSActivationReason::arAllFramesReady && ResourceHandle == nullptr)
-				if constexpr (requires { { ResourceHandle }->AnyBut<void*>; })
-					ResourceHandle = new auto{ FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext) };
+			else if (auto& AttachmentHandle = reinterpret_cast<AttachmentType*&>(*AttachmentPointer); ActivationReason == VSActivationReason::arAllFramesReady && AttachmentHandle == nullptr)
+				if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; })
+					AttachmentHandle = new auto{ FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext) };
 				else
 					FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext);
 			else if (ActivationReason == VSActivationReason::arAllFramesReady)
-				if constexpr (requires { { ResourceHandle }->AnyBut<void*>; }) {
-					[[maybe_unused]] auto ResourceGuard = std::unique_ptr<ResourceType>{ ResourceHandle };
-					return InitiateFrameGenerator(FilterHandle, ResourceHandle).Leak();
+				if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; }) {
+					[[maybe_unused]] auto AttachmentGuard = std::unique_ptr<AttachmentType>{ AttachmentHandle };
+					return InitiateFrameGenerator(FilterHandle, AttachmentHandle).Leak();
 				}
 				else
 					return InitiateFrameGenerator(FilterHandle).Leak();
 			else if (ActivationReason == VSActivationReason::arError) [[unlikely]]
-				if constexpr (requires { { ResourceHandle }->AnyBut<void*>; })
-					delete ResourceHandle;
+				if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; })
+					delete AttachmentHandle;
 			return Frame::NullHandle;
 		};
 		try {
@@ -129,6 +129,33 @@ namespace FilterEngine {
 			return FrameContext.RaiseError(ErrorMessage);
 		}
 	}
+
+	template<typename FunctionType>
+	constexpr auto DeduceFunctionName() {
+		auto FunctionSignature = static_cast<std::string>(FunctionType::Signature);
+		if (auto FunctionNameLength = FunctionSignature.find("("); FunctionNameLength != std::string::npos)
+			return FunctionSignature.substr(0, FunctionNameLength);
+		else
+			return static_cast<std::string>(Utility::Reflection::ReifyTypeNameIntoString<FunctionType>());
+	}
+
+	template<typename FunctionType>
+	constexpr auto ExtractParameterList() {
+		auto FunctionSignature = static_cast<std::string>(FunctionType::Signature);
+		auto ParameterListSector = [&] {
+			if (auto SectorMarker = FunctionSignature.find("("); SectorMarker != std::string::npos)
+				return SectorMarker + 1;
+			else
+				return static_cast<decltype(SectorMarker)>(0);
+		}();
+		auto ReturnKeySector = [&] {
+			if (auto SectorMarker = FunctionSignature.find(")"); SectorMarker != std::string::npos)
+				return SectorMarker;
+			else
+				return FunctionSignature.find("->");
+		}();
+		return FunctionSignature.substr(ParameterListSector, ReturnKeySector == std::string::npos ? ReturnKeySector : ReturnKeySector - ParameterListSector);
+	}
 }
 
 namespace VaporInterface {
@@ -142,7 +169,7 @@ namespace VaporInterface {
 		}();
 		auto Console = Controller<FilterType>{ OutputMap };
 		auto SelfEvaluator = [&](auto EvaluatedMap, auto InstanceData) {
-			auto FilterName = std::string{ Utility::Reflection::ReifyTypeNameIntoString<FilterType>() };
+			auto FilterName = FilterEngine::DeduceFunctionName<FilterType>();
 			auto AuxiliaryMap = VaporGlobals::API->createMap();
 			auto AssumedMultithreadingMode = VSFilterMode::fmParallel;
 			auto AssumedCacheFlag = 0;
@@ -209,8 +236,9 @@ namespace VaporInterface {
 
 	template<typename FilterType>
 	auto RegisterFilter(auto Broker, auto Plugin) {
-		auto FilterName = std::string{ Utility::Reflection::ReifyTypeNameIntoString<FilterType>() };
-		Broker(FilterName.data(), FilterType::Signature, Create<FilterType>, nullptr, Plugin);
+		auto FilterName = FilterEngine::DeduceFunctionName<FilterType>();
+		auto ParameterList = FilterEngine::ExtractParameterList<FilterType>();
+		Broker(FilterName.data(), ParameterList.data(), Create<FilterType>, nullptr, Plugin);
 	}
 
 	auto RegisterPlugin(auto Broker, auto Plugin) {

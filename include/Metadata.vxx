@@ -139,6 +139,12 @@ struct AudioInfo {
 	//Placeholder for API v4.
 };
 
+struct PluginInfo {
+	field(Namespace, ""s);
+	field(Identifier, ""s);
+	field(Description, ""s);
+};
+
 struct CoreInfo {
 	field(Version, ""sv);
 	field(CoreVersion, 0);

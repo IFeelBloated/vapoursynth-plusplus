@@ -104,7 +104,7 @@ namespace Utility::Reflection {
 		return std::string_view{ std::source_location::current().function_name() };
 	}
 	template<typename UnknownType>
-	auto ReifyTypeNameIntoString() {
+	constexpr auto ReifyTypeNameIntoString() {
 		auto SignatureTemplate = EmbedTypeNameIntoSignature<double>();
 		auto EmbeddingSignature = EmbedTypeNameIntoSignature<UnknownType>();
 		auto CaptionLength = SignatureTemplate.find("double");

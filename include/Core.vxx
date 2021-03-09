@@ -32,12 +32,25 @@ public:
 		//Placeholder for API v4.
 		return AudioFormat{};
 	}
-	auto Query(ExplicitlyConvertibleTo<std::string> auto&& PluginID) const {
-		auto ID = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(PluginID);
-		auto PluginHandle = VaporGlobals::API->getPluginById(Utility::ExtractCharPointerFromASCIZFormattedString(ID), Handle);
-		if (PluginHandle == nullptr)
-			throw RuntimeError{ "Query: plugin with the specified identifier "s + std::move(ID) + " not found." };
-		return Plugin{ PluginHandle };
+	auto Query(ExplicitlyConvertibleTo<std::string> auto&& PluginIdentifier) const {
+		auto Identifier = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(PluginIdentifier);
+		auto PluginHandle = VaporGlobals::API->getPluginById(Utility::ExtractCharPointerFromASCIZFormattedString(Identifier), Handle);
+		auto PluginDescriptor = [&] {
+			auto PluginDescriptors = ListPlugins();
+			for (auto PluginIndex = 0_size; auto&& [_, LocatedIdentifier, __] : PluginDescriptors)
+				if (LocatedIdentifier == Identifier)
+					return std::move(PluginDescriptors[PluginIndex]);
+				else
+					++PluginIndex;
+			throw RuntimeError{ "Query: plugin with the specified identifier "s + std::move(Identifier) + " not found." };
+		}();
+		auto PluginPath = [&] {
+			if (auto PathString = VaporGlobals::API->getPluginPath(PluginHandle); PathString != nullptr)
+				return std::filesystem::path{ PathString };
+			else
+				return std::filesystem::path{};
+		}();
+		return Plugin{ PluginDescriptor, PluginHandle, PluginPath };
 	}
 
 public:
@@ -211,17 +224,38 @@ public:
 		return VaporGlobals::API->setThreadCount(Threads, Handle);
 	}
 	auto ListPlugins() const {
-		auto PluginSignatures = std::vector<std::string>{};
-		for (auto PluginMap = MapReference{ VaporGlobals::API->getPlugins(Handle) }; auto x : Utility::Map::ListKeys(PluginMap.Handle))
-			PluginSignatures.push_back(Utility::Map::AccessItem(PluginMap.Handle, x));
-		return PluginSignatures;
+		auto PluginDescriptors = std::vector<PluginInfo>{};
+		auto ReconstructDescriptorFromStringRepresentation = [](auto&& StringRepresentation) {
+			auto NamespaceSector = StringRepresentation.find(";");
+			auto IdentifierSector = StringRepresentation.find(";", NamespaceSector + 1);
+			auto Namespace = StringRepresentation.substr(0, NamespaceSector);
+			auto Identifier = StringRepresentation.substr(NamespaceSector + 1, IdentifierSector - NamespaceSector - 1);
+			auto Description = StringRepresentation.substr(IdentifierSector + 1, StringRepresentation.size() - Namespace.size() - Identifier.size());
+			return PluginInfo{ .Namespace = std::string{ Namespace }, .Identifier = std::string{ Identifier }, .Description = std::string{ Description } };
+		};
+		for (auto PluginMap = MapReference{ VaporGlobals::API->getPlugins(Handle) }; auto&& x : Utility::Map::ListKeys(PluginMap.Handle))
+			PluginDescriptors.push_back(ReconstructDescriptorFromStringRepresentation(static_cast<std::string_view>(Utility::Map::AccessItem(PluginMap.Handle, x))));
+		return PluginDescriptors;
 	}
 	auto operator[](ExplicitlyConvertibleTo<std::string> auto&& PluginNamespace) const {
 		auto Namespace = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(PluginNamespace);
 		auto PluginHandle = VaporGlobals::API->getPluginByNs(Utility::ExtractCharPointerFromASCIZFormattedString(Namespace), Handle);
-		if (PluginHandle == nullptr)
+		auto PluginDescriptor = [&] {
+			auto PluginDescriptors = ListPlugins();
+			for (auto PluginIndex = 0_size; auto&& [LocatedNamespace, _, __] : PluginDescriptors)
+				if (LocatedNamespace == Namespace)
+					return std::move(PluginDescriptors[PluginIndex]);
+				else
+					++PluginIndex;
 			throw RuntimeError{ "Core: No attribute with the name "s + std::move(Namespace) + " exists. Missing plugin?" };
-		return Plugin{ PluginHandle };
+		}();
+		auto PluginPath = [&] {
+			if (auto PathString = VaporGlobals::API->getPluginPath(PluginHandle); PathString != nullptr)
+				return std::filesystem::path{ PathString };
+			else
+				return std::filesystem::path{};
+		}();
+		return Plugin{ std::move(PluginDescriptor), PluginHandle, PluginPath };
 	}
 	operator auto() const {
 		return Handle;

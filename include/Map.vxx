@@ -190,9 +190,9 @@ private:
 				InjectFloat(Value);
 			else if constexpr (IntegralOrEnumerable<ValueType>)
 				InjectInt(Value);
-			else if constexpr (requires { { Value }->std::convertible_to<const char*>; })
+			else if constexpr (requires { { Value }->ExplicitlyConvertibleTo<const char*>; })
 				InjectCharArray(static_cast<const char*>(Value));
-			else if constexpr (requires { Value.size(); { Value.data() }->std::convertible_to<const char*>; })
+			else if constexpr (requires { { Value.size() }->std::integral; { Value.data() }->std::convertible_to<const char*>; })
 				InjectString(Value);
 			else if constexpr (SubtypeOf<ValueType, NodeReference>)
 				InjectNode(Value);
@@ -200,14 +200,15 @@ private:
 				InjectFrame(Value);
 			else if constexpr (SubtypeOf<ValueType, FunctionReference>)
 				InjectFunction(Value);
-			else if constexpr (requires { { Value.Type() }->SubtypeOf<ItemTypes>; })
-				InjectDynamicallyTypedObject(Value);
 			else
 				static_assert(sizeof(Value) == -1, "Item: failed to inject an instance of unrecognized type.");
 		};
 		if (AppendMode == VSPropAppendMode::paReplace)
 			Erase();
-		if constexpr (IsIterable && !IsCharArray && !IsCharContainer)
+		if constexpr (requires { { Entity.Type() }->SubtypeOf<ItemTypes>; })
+			for (auto&& x : Entity)
+				InjectDynamicallyTypedObject(x);
+		else if constexpr (IsIterable && !IsCharArray && !IsCharContainer)
 			for (auto&& x : Entity)
 				InjectValue(x);
 		else
@@ -274,19 +275,13 @@ public:
 	}
 };
 
-
-
-
-
 struct ConsoleProxy {
 	field(Handle, static_cast<VSMap*>(nullptr));
 
 public:
-	auto RaiseError(ExplicitlyConvertibleTo<std::string> auto&& ErrorMessage) const {
-
-
-
-
+	auto RaiseError(ExplicitlyConvertibleTo<std::string> auto&& FormattedErrorMessage) const {
+		auto ErrorMessage = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(FormattedErrorMessage);
+		VaporGlobals::API->setError(Handle, Utility::ExtractCharPointerFromASCIZFormattedString(ErrorMessage));
 	}
 };
 

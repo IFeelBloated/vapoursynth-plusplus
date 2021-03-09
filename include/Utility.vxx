@@ -35,14 +35,6 @@ template<typename UnknownType, typename ...ReferenceTypes>
 concept AnyBut = !AnyOf<UnknownType, ReferenceTypes...>;
 
 namespace Utility {
-	auto PointerDropQualifiers(auto Pointer) {
-		using ReferencedType = std::remove_cvref_t<decltype(*Pointer)>;
-		return const_cast<ReferencedType*>(Pointer);
-	}
-	auto PointerAddConstQualifier(auto Pointer) {
-		using ReferencedType = std::remove_cvref_t<decltype(*Pointer)>;
-		return const_cast<const ReferencedType*>(Pointer);
-	}
 	auto Max(auto x, auto y) {
 		return x > y ? x : y;
 	}
@@ -98,17 +90,28 @@ namespace Utility {
 	}
 }
 
+namespace Utility::PointerQualifiers {
+	auto DropAll(auto Pointer) {
+		using ReferencedType = std::remove_cvref_t<decltype(*Pointer)>;
+		return const_cast<ReferencedType*>(Pointer);
+	}
+	auto AddConst(auto Pointer) {
+		using ReferencedType = std::remove_cvref_t<decltype(*Pointer)>;
+		return const_cast<const ReferencedType*>(Pointer);
+	}
+}
+
 namespace Utility::Reflection {
 	template<typename>
 	consteval auto EmbedTypeNameIntoSignature() {
 		return std::string_view{ std::source_location::current().function_name() };
 	}
 	template<typename UnknownType>
-	constexpr auto ReifyTypeNameIntoString() {
-		auto SignatureTemplate = EmbedTypeNameIntoSignature<double>();
-		auto EmbeddingSignature = EmbedTypeNameIntoSignature<UnknownType>();
-		auto CaptionLength = SignatureTemplate.find("double");
-		auto EnclosureLength = SignatureTemplate.size() - CaptionLength - "double"sv.size();
+	consteval auto ReifyTypeNameIntoString() {
+		constexpr auto SignatureTemplate = EmbedTypeNameIntoSignature<double>();
+		constexpr auto EmbeddingSignature = EmbedTypeNameIntoSignature<UnknownType>();
+		constexpr auto CaptionLength = SignatureTemplate.find("double");
+		constexpr auto EnclosureLength = SignatureTemplate.size() - CaptionLength - "double"sv.size();
 		return EmbeddingSignature.substr(CaptionLength, EmbeddingSignature.size() - CaptionLength - EnclosureLength);
 	}
 }

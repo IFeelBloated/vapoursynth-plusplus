@@ -71,7 +71,7 @@ namespace FilterEngine {
 		};
 		auto InitiateFrameGeneratingSequenceForSourceFilter = [&](auto FilterHandle) {
 			if (ActivationReason == VSActivationReason::arInitial)
-				return InitiateFrameGenerator(FilterHandle).Leak();
+				return Utility::PointerQualifiers::AddConst(InitiateFrameGenerator(FilterHandle).Leak());
 			return Frame::NullHandle;
 		};
 		auto InitiateFrameGeneratingSequenceForStandardFilter = [&](auto FilterHandle) {
@@ -84,10 +84,10 @@ namespace FilterEngine {
 			else if (ActivationReason == VSActivationReason::arAllFramesReady)
 				if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; }) {
 					[[maybe_unused]] auto AttachmentGuard = std::unique_ptr<AttachmentType>{ AttachmentHandle };
-					return InitiateFrameGenerator(FilterHandle, AttachmentHandle).Leak();
+					return Utility::PointerQualifiers::AddConst(InitiateFrameGenerator(FilterHandle, AttachmentHandle).Leak());
 				}
 				else
-					return InitiateFrameGenerator(FilterHandle).Leak();
+					return Utility::PointerQualifiers::AddConst(InitiateFrameGenerator(FilterHandle).Leak());
 			else if (ActivationReason == VSActivationReason::arError) [[unlikely]]
 				if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; })
 					delete AttachmentHandle;
@@ -107,10 +107,10 @@ namespace FilterEngine {
 			else if (ActivationReason == VSActivationReason::arAllFramesReady)
 				if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; }) {
 					[[maybe_unused]] auto AttachmentGuard = std::unique_ptr<AttachmentType>{ AttachmentHandle };
-					return InitiateFrameGenerator(FilterHandle, AttachmentHandle).Leak();
+					return Utility::PointerQualifiers::AddConst(InitiateFrameGenerator(FilterHandle, AttachmentHandle).Leak());
 				}
 				else
-					return InitiateFrameGenerator(FilterHandle).Leak();
+					return Utility::PointerQualifiers::AddConst(InitiateFrameGenerator(FilterHandle).Leak());
 			else if (ActivationReason == VSActivationReason::arError) [[unlikely]]
 				if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; })
 					delete AttachmentHandle;

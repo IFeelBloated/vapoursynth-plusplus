@@ -27,7 +27,7 @@ public:
 	FramePrototype() = default;
 	FramePrototype(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) : FrameReference{ Forward(Descriptor) } {
 		if constexpr (Readonly)
-			this->PropertyMap = Utility::PointerDropQualifiers(VaporGlobals::API->getFramePropsRO(this->Handle));
+			this->PropertyMap = Utility::PointerQualifiers::DropAll(VaporGlobals::API->getFramePropsRO(this->Handle));
 		else
 			this->PropertyMap = VaporGlobals::API->getFramePropsRW(this->Handle);
 	}
@@ -69,10 +69,9 @@ public:
 	auto QueryOutputIndex() const {
 		return VaporGlobals::API->getOutputIndex(Handle);
 	}
-	auto RaiseError(ExplicitlyConvertibleTo<std::string> auto&& ErrorMessage) const {
-
-
-
+	auto RaiseError(ExplicitlyConvertibleTo<std::string> auto&& FormattedErrorMessage) const {
+		auto ErrorMessage = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(FormattedErrorMessage);
+		VaporGlobals::API->setFilterError(Utility::ExtractCharPointerFromASCIZFormattedString(ErrorMessage), Handle);
 		return Frame::NullHandle;
 	}
 	operator auto() const {

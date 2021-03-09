@@ -18,7 +18,7 @@ public:
 	Owner() = default;
 	Owner(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) {
 		auto ManagedHandle = static_cast<HandleType>(Forward(Descriptor));
-		this->Handle = Utility::PointerDropQualifiers(ManagedHandle);
+		this->Handle = Utility::PointerQualifiers::DropAll(ManagedHandle);
 	}
 
 public:
@@ -53,16 +53,16 @@ public:
 	auto Leak() {
 		auto TransferredHandle = Handle;
 		Handle = nullptr;
-		return Utility::PointerAddConstQualifier(TransferredHandle);
+		return TransferredHandle;
 	}
 	auto Observe() const {
-		return Utility::PointerAddConstQualifier(Handle);
+		return Handle;
 	}
 
 protected:
 	auto CloneHandle() const {
 		if constexpr (SubtypeOf<HandleType, const VSFrameRef*>)
-			return Utility::PointerDropQualifiers(VaporGlobals::API->cloneFrameRef(Handle));
+			return Utility::PointerQualifiers::DropAll(VaporGlobals::API->cloneFrameRef(Handle));
 		if constexpr (SubtypeOf<HandleType, const VSNodeRef*>)
 			return VaporGlobals::API->cloneNodeRef(Handle);
 		if constexpr (SubtypeOf<HandleType, const VSFuncRef*>)
@@ -89,7 +89,7 @@ public:
 	ExclusiveOwner() = default;
 	ExclusiveOwner(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) {
 		auto ManagedHandle = static_cast<HandleType>(Forward(Descriptor));
-		this->Handle = Utility::PointerDropQualifiers(ManagedHandle);
+		this->Handle = Utility::PointerQualifiers::DropAll(ManagedHandle);
 	}
 
 public:
@@ -109,7 +109,7 @@ public:
 	auto Leak() {
 		auto TransferredHandle = Handle;
 		Handle = nullptr;
-		return Utility::PointerAddConstQualifier(TransferredHandle);
+		return TransferredHandle;
 	}
 
 private:

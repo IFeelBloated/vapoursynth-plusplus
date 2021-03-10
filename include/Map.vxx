@@ -67,7 +67,7 @@ public:
 		return Utility::Max(VaporGlobals::API->propNumElements(Access->Handle, Access->Key.data()), 0);
 	}
 	auto begin() const {
-		return Iterator{ .TargetItem = this, .Index = 0 };
+		return Iterator{ .TargetItem = this, .Index = Index };
 	}
 	auto end() const {
 		return Iterator{ .TargetItem = this, .Index = size() };

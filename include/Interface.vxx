@@ -2,6 +2,38 @@
 #include "Core.vxx"
 
 namespace FilterEngine {
+	template<typename FunctionType>
+	constexpr auto DeduceFunctionName() {
+		auto FunctionSignature = static_cast<std::string>(FunctionType::Signature);
+		if (auto FunctionNameLength = FunctionSignature.find("("); FunctionNameLength != std::string::npos)
+			return FunctionSignature.substr(0, FunctionNameLength);
+		else
+			return static_cast<std::string>(Utility::Reflection::ReifyTypeNameIntoString<FunctionType>());
+	}
+
+	template<typename FunctionType>
+	constexpr auto ExtractParameterList() {
+		auto FunctionSignature = static_cast<std::string>(FunctionType::Signature);
+		auto ParameterListSector = [&] {
+			if (auto SectorMarker = FunctionSignature.find("("); SectorMarker != std::string::npos)
+				return SectorMarker + 1;
+			else
+				return static_cast<decltype(SectorMarker)>(0);
+		}();
+		auto ReturnKeySector = [&] {
+			if (auto SectorMarker = FunctionSignature.find(")"); SectorMarker != std::string::npos)
+				return SectorMarker;
+			else
+				return FunctionSignature.find("->");
+		}();
+		return FunctionSignature.substr(ParameterListSector, ReturnKeySector == std::string::npos ? ReturnKeySector : ReturnKeySector - ParameterListSector);
+	}
+
+	template<typename FunctionType>
+	auto DecorateErrorMessage(ExplicitlyConvertibleTo<std::string> auto&& ErrorMessage) {
+		return DeduceFunctionName<FunctionType>() + ": " + static_cast<std::string>(Forward(ErrorMessage));
+	}
+
 	template<typename FilterType>
 	auto FilterRecycler(auto FilterPointer, auto...) {
 		auto Garbage = reinterpret_cast<FilterType*>(FilterPointer);
@@ -46,7 +78,7 @@ namespace FilterEngine {
 		catch (RuntimeError& ErrorMessage) {
 			auto Console = ConsoleProxy{ .Handle = ConsoleHandle };
 			delete FilterHandle;
-			Console.RaiseError(ErrorMessage);
+			Console.RaiseError(DecorateErrorMessage<FilterType>(ErrorMessage));
 		}
 	}
 
@@ -126,35 +158,8 @@ namespace FilterEngine {
 				return InitiateFrameGeneratingSequenceForSourceFilter(FilterHandle);
 		}
 		catch (RuntimeError& ErrorMessage) {
-			return FrameContext.RaiseError(ErrorMessage);
+			return FrameContext.RaiseError(DecorateErrorMessage<FilterType>(ErrorMessage));
 		}
-	}
-
-	template<typename FunctionType>
-	constexpr auto DeduceFunctionName() {
-		auto FunctionSignature = static_cast<std::string>(FunctionType::Signature);
-		if (auto FunctionNameLength = FunctionSignature.find("("); FunctionNameLength != std::string::npos)
-			return FunctionSignature.substr(0, FunctionNameLength);
-		else
-			return static_cast<std::string>(Utility::Reflection::ReifyTypeNameIntoString<FunctionType>());
-	}
-
-	template<typename FunctionType>
-	constexpr auto ExtractParameterList() {
-		auto FunctionSignature = static_cast<std::string>(FunctionType::Signature);
-		auto ParameterListSector = [&] {
-			if (auto SectorMarker = FunctionSignature.find("("); SectorMarker != std::string::npos)
-				return SectorMarker + 1;
-			else
-				return static_cast<decltype(SectorMarker)>(0);
-		}();
-		auto ReturnKeySector = [&] {
-			if (auto SectorMarker = FunctionSignature.find(")"); SectorMarker != std::string::npos)
-				return SectorMarker;
-			else
-				return FunctionSignature.find("->");
-		}();
-		return FunctionSignature.substr(ParameterListSector, ReturnKeySector == std::string::npos ? ReturnKeySector : ReturnKeySector - ParameterListSector);
 	}
 }
 

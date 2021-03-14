@@ -7,7 +7,7 @@ struct ModifyFrame {
 
 public:
 	static constexpr auto Signature = "clip:clip;evaluator:func;";
-	static constexpr auto MultithreadingMode = VSFilterMode::fmParallelRequests;
+	static constexpr auto ExecutionPolicy = ParallelizationSchemes::ParallelResourceAcquisitionYetSingleThreadedFrameGeneration;
 
 public:
 	ModifyFrame(auto Arguments) {

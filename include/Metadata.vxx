@@ -173,6 +173,18 @@ enum struct MessageTypes {
 	Information
 };
 
+enum struct ParallelizationSchemes {
+	FullyParallel = 100,
+	ParallelResourceAcquisitionYetSingleThreadedFrameGeneration = 200,
+	SingleThreadedConcurrentResourceAcquisitionAndFrameGeneration = 300,
+	OneFrameAtATime = 400
+};
+
+enum struct CacheOptions {
+	Automatic = 0,
+	Disabled = 1
+};
+
 enum struct VideoFormats {
 	None = 0,
 

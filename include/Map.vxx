@@ -308,23 +308,3 @@ struct Controller {
 		return OutputMap;
 	}
 };
-
-template<auto ContainsMultipleClips, auto NumberOfClips>
-auto ExtractEvaluatedClips(auto EvaluatedMap) {
-	auto ClipSequence = Utility::Map::AccessItem(EvaluatedMap, "clip");
-	if constexpr (ContainsMultipleClips)
-		if constexpr (NumberOfClips == IndeterminateSize) {
-			auto EvaluatedClips = std::vector<VideoNode>{};
-			for (auto&& x : ClipSequence)
-				EvaluatedClips.push_back(x);
-			return EvaluatedClips;
-		}
-		else {
-			auto EvaluatedClips = std::array<VideoNode, NumberOfClips>{};
-			for (auto x : Range{ Utility::Min(NumberOfClips, ClipSequence.size()) })
-				EvaluatedClips[x] = ClipSequence[x];
-			return EvaluatedClips;
-		}
-	else
-		return static_cast<VideoNode>(ClipSequence);
-}

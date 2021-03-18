@@ -60,13 +60,3 @@ auto ExposeCString(auto&& String) {
 	else
 		return String.data();
 }
-
-constexpr auto IndeterminateSize = -1_ptrdiff;
-
-consteval auto WithConstexprSize(auto&& Container) {
-	using ContainerType = std::decay_t<decltype(Container)>;
-	if constexpr (requires { std::array<char, ContainerType{}.size()>{}; })
-		return true;
-	else
-		return false;
-}

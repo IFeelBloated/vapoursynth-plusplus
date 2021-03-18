@@ -43,14 +43,30 @@ namespace FilterEngine {
 			static_assert(sizeof(FilterHandle) == -1, "FilterEngine: SpecifyMetadata() is either missing or has an incompatible signature.");
 	}
 
-	auto InitiateFilterInstance(auto FilterHandle, auto ResultMap, auto Core) {
-		using FilterType = std::decay_t<decltype(*FilterHandle)>;
+	auto OrchestrateMediaTypeDependentActions(auto FilterHandle, auto&& ActionForListOfVideoNodes, auto&& ActionForListOfAudioNodes, auto&& ActionForVideoNode, auto&& ActionForAudioNode) {
+		if constexpr ([[maybe_unused]] auto PlaceholderCore = CoreProxy{}; requires { { InitiateMetadataSpecifier(FilterHandle, PlaceholderCore) }->Iterable; })
+			if constexpr (requires { { *InitiateMetadataSpecifier(FilterHandle, PlaceholderCore).begin() }->AnyOf<VideoInfo, VSVideoInfo>; })
+				return ActionForListOfVideoNodes(FilterHandle);
+			else if constexpr (requires { { *InitiateMetadataSpecifier(FilterHandle, PlaceholderCore).begin() }->AnyOf<AudioInfo>; })
+				return ActionForListOfAudioNodes(FilterHandle);
+			else
+				static_assert(sizeof(FilterHandle) == -1, "FilterEngine: failed to decide which action to take because the filter has a list of outputs whose media type cannot be determined.");
+		else if constexpr (requires { { InitiateMetadataSpecifier(FilterHandle, PlaceholderCore) }->AnyOf<VideoInfo, VSVideoInfo>; })
+			return ActionForVideoNode(FilterHandle);
+		else if constexpr (requires { { InitiateMetadataSpecifier(FilterHandle, PlaceholderCore) }->AnyOf<AudioInfo>; })
+			return ActionForAudioNode(FilterHandle);
+		else
+			static_assert(sizeof(FilterHandle) == -1, "FilterEngine: failed to decide which action to take because the media type of the filter's output cannot be determined.");
+	}
+
+	auto InitiateFilterInstance(auto FilterInstance, auto ResultMap, auto Core) {
+		using FilterType = std::decay_t<decltype(*FilterInstance)>;
 		auto FilterName = DeduceFunctionName<FilterType>();
 		auto AuxiliaryMap = Utility::Map::Create();
 		auto ExecutionPolicy = [&] {
-			if constexpr (requires { FilterHandle->SpecifyExecutionPolicy(); })
-				if constexpr (requires { { FilterHandle->SpecifyExecutionPolicy() }->AnyOf<ParallelizationSchemes, VSFilterMode>; })
-					return static_cast<int>(FilterHandle->SpecifyExecutionPolicy());
+			if constexpr (requires { FilterInstance->SpecifyExecutionPolicy(); })
+				if constexpr (requires { { FilterInstance->SpecifyExecutionPolicy() }->AnyOf<ParallelizationSchemes, VSFilterMode>; })
+					return static_cast<int>(FilterInstance->SpecifyExecutionPolicy());
 				else
 					static_assert(sizeof(FilterType) == -1, "FilterEngine: SpecifyExecutionPolicy() has an unrecognized return type.");
 			else if constexpr (requires { FilterType::ExecutionPolicy; })
@@ -62,9 +78,9 @@ namespace FilterEngine {
 				return VSFilterMode::fmParallel;
 		}();
 		auto CachePolicy = [&] {
-			if constexpr (requires { FilterHandle->SpecifyCachePolicy(); })
-				if constexpr (requires { { FilterHandle->SpecifyCachePolicy() }->AnyOf<CacheOptions, VSNodeFlags>; })
-					return static_cast<int>(FilterHandle->SpecifyCachePolicy());
+			if constexpr (requires { FilterInstance->SpecifyCachePolicy(); })
+				if constexpr (requires { { FilterInstance->SpecifyCachePolicy() }->AnyOf<CacheOptions, VSNodeFlags>; })
+					return static_cast<int>(FilterInstance->SpecifyCachePolicy());
 				else
 					static_assert(sizeof(FilterType) == -1, "FilterEngine: SpecifyCachePolicy() has an unrecognized return type.");
 			else if constexpr (requires { FilterType::CachePolicy; })
@@ -80,34 +96,27 @@ namespace FilterEngine {
 			delete Garbage;
 		};
 		auto NodeInitializer = [](auto, auto ConsoleHandle, auto FilterPointer, auto NodeHandle, auto CoreHandle, auto...) {
-			auto FilterHandle = reinterpret_cast<FilterType*>(*FilterPointer);
 			auto Core = CoreProxy{ .Handle = CoreHandle };
 			try {
-				if constexpr (auto Metadata = InitiateMetadataSpecifier(FilterHandle, Core); requires { { Metadata }->Iterable; })
-					if constexpr (requires { { *Metadata.begin() }->AnyOf<VideoInfo, VSVideoInfo>; }) {
+				OrchestrateMediaTypeDependentActions(reinterpret_cast<FilterType*>(*FilterPointer),
+					[&](auto FilterHandle) {
 						auto SyncretizedMetadata = std::vector<VSVideoInfo>{};
-						for (auto&& x : Metadata)
+						for (auto&& x : InitiateMetadataSpecifier(FilterHandle, Core))
 							SyncretizedMetadata.push_back(VideoInfo::AdjustToLegacyLayout(x, Core));
 						VaporGlobals::API->setVideoInfo(SyncretizedMetadata.data(), SyncretizedMetadata.size(), NodeHandle);
-					}
-					else if constexpr (requires { { *Metadata.begin() }->AnyOf<AudioInfo>; })
-						//Placeholder for API v4.
-						VaporGlobals::API->setVideoInfo(nullptr, 0, nullptr);
-					else
-						static_assert(sizeof(FilterType) == -1, "FilterEngine: failed to initialize the output node with a container of unrecognized metadata type.");
-				else if constexpr (requires { { Metadata }->AnyOf<VideoInfo, VSVideoInfo>; }) {
-					auto&& SyncretizedMetadata = VideoInfo::AdjustToLegacyLayout(Metadata, Core);
-					VaporGlobals::API->setVideoInfo(&SyncretizedMetadata, 1, NodeHandle);
-				}
-				else if constexpr (requires { { Metadata }->AnyOf<AudioInfo>; })
-					//Placeholder for API v4.
-					VaporGlobals::API->setVideoInfo(nullptr, 0, nullptr);
-				else
-					static_assert(sizeof(FilterType) == -1, "FilterEngine: failed to initialize the output node with metadata of unrecognized type.");
+					},
+					[](auto) { /* Placeholder for API v4. */ },
+					[&](auto FilterHandle) {
+						auto Metadata = InitiateMetadataSpecifier(FilterHandle, Core);
+						auto&& SyncretizedMetadata = VideoInfo::AdjustToLegacyLayout(Metadata, Core);
+						VaporGlobals::API->setVideoInfo(&SyncretizedMetadata, 1, NodeHandle);
+					},
+					[](auto) { /* Placeholder for API v4. */ }
+				);
 			}
 			catch (RuntimeError& ErrorMessage) {
 				auto Console = ConsoleProxy{ .Handle = ConsoleHandle };
-				delete FilterHandle;
+				delete reinterpret_cast<FilterType*>(*FilterPointer);
 				Console.RaiseError(DecorateErrorMessage<FilterType>(ErrorMessage));
 			}
 		};
@@ -189,81 +198,61 @@ namespace FilterEngine {
 				return FrameContext.RaiseError(DecorateErrorMessage<FilterType>(ErrorMessage));
 			}
 		};
-		if constexpr (requires { { InitiateMetadataSpecifier(FilterHandle, Core) }->Iterable; })
-			if constexpr (requires { { *InitiateMetadataSpecifier(FilterHandle, Core).begin() }->AnyOf<VideoInfo, VSVideoInfo>; })
-				VaporGlobals::API->createFilter(AuxiliaryMap.Handle, ResultMap, FilterName.data(), NodeInitializer, FrameGenerator, FilterRecycler, ExecutionPolicy, CachePolicy, FilterHandle, Core);
-			else if constexpr (requires { { *InitiateMetadataSpecifier(FilterHandle, Core).begin() }->AnyOf<AudioInfo>; })
-				//Placeholder for API v4.
-				VaporGlobals::API->createFilter(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0, 0, nullptr, nullptr);
-			else
-				static_assert(sizeof(FilterType) == -1, "FilterEngine: failed to initiate a filter with a list of outputs of unrecognized media type.");
-		else if constexpr (requires { { InitiateMetadataSpecifier(FilterHandle, Core) }->AnyOf<VideoInfo, VSVideoInfo>; })
-			VaporGlobals::API->createFilter(AuxiliaryMap.Handle, ResultMap, FilterName.data(), NodeInitializer, FrameGenerator, FilterRecycler, ExecutionPolicy, CachePolicy, FilterHandle, Core);
-		else if constexpr (requires { { InitiateMetadataSpecifier(FilterHandle, Core) }->AnyOf<AudioInfo>; })
-			//Placeholder for API v4.
-			VaporGlobals::API->createFilter(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0, 0, nullptr, nullptr);
+		OrchestrateMediaTypeDependentActions(FilterInstance.release(),
+			[&](auto FilterHandle) { VaporGlobals::API->createFilter(AuxiliaryMap.Handle, ResultMap, FilterName.data(), NodeInitializer, FrameGenerator, FilterRecycler, ExecutionPolicy, CachePolicy, FilterHandle, Core); },
+			[](auto) { /* Placeholder for API v4. */ },
+			[&](auto FilterHandle) { VaporGlobals::API->createFilter(AuxiliaryMap.Handle, ResultMap, FilterName.data(), NodeInitializer, FrameGenerator, FilterRecycler, ExecutionPolicy, CachePolicy, FilterHandle, Core); },
+			[](auto) { /* Placeholder for API v4. */ }
+		);
+	}
+
+	template<typename FilterType>
+	auto FilterInstantiator(auto Arguments, auto Core) {
+		if constexpr (requires { FilterType{ Arguments, Core }; })
+			return std::make_unique<FilterType>(Arguments, Core);
+		else if constexpr (requires { FilterType{ Arguments }; })
+			return std::make_unique<FilterType>(Arguments);
+		else if constexpr (requires { FilterType{}; })
+			return std::make_unique<FilterType>();
 		else
-			static_assert(sizeof(FilterType) == -1, "FilterEngine: failed to initiate a filter with an output of unrecognized media type.");
+			static_assert(sizeof(FilterType) == -1, "FilterEngine: failed to instantiate a filter because its constructor has an incompatible signature.");
+	}
+
+	template<typename FilterType>
+	auto ImpredicativeFilterInitiator(auto Core) {
+		return [=](auto&& ...Arguments) {
+			auto ArgumentMap = Utility::Map::Create();
+			auto ResultMap = Utility::Map::Create();
+			auto ResultItem = Utility::Map::AccessItem(ResultMap.Handle, "clip");
+			if constexpr (sizeof...(Arguments) != 0)
+				Utility::Map::Fill(ArgumentMap.Handle, Forward(Arguments)...);
+			InitiateFilterInstance(FilterInstantiator<FilterType>(ArgumentList{ .Handle = ArgumentMap.Handle }, Core), ResultMap.Handle, Core);
+			if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ResultMap.Handle); EvaluationFailed)
+				throw RuntimeError{ ErrorMessage };
+			return OrchestrateMediaTypeDependentActions(static_cast<FilterType*>(nullptr),
+				[&](auto FilterHandle) {
+					using MetadataContainerType = decltype(InitiateMetadataSpecifier(FilterHandle, Core));
+					using VideoNodeContainerType = Utility::Reflection::ContainerReplaceElementType<MetadataContainerType, VideoNode>;
+					return static_cast<VideoNodeContainerType>(ResultItem);
+				},
+				[](auto) { /* Placeholder for API v4. */ },
+				[&](auto) { return static_cast<VideoNode>(ResultItem); },
+				[](auto) { /* Placeholder for API v4. */ }
+			);
+		};
 	}
 }
 
 namespace VaporInterface {
 	template<typename FilterType>
 	auto Create(auto InputMap, auto OutputMap, auto, auto Core, auto...) try {
-		auto Data = [&] {
-			if constexpr (requires { FilterType{ ArgumentList{} }; })
-				return FilterType{ ArgumentList{ InputMap } };
-			else
-				return FilterType{ ArgumentList{ InputMap }, CoreProxy{ .Handle = Core } };
-		}();
+		auto Data = FilterEngine::FilterInstantiator<FilterType>(ArgumentList{ InputMap }, CoreProxy{ .Handle = Core });
 		auto Console = Controller<FilterType>{ OutputMap };
-		auto SelfInvoker = [&](auto&& ...Arguments) {
-			auto InstanceData = static_cast<FilterType*>(nullptr);
-			auto ArgumentMap = VaporGlobals::API->createMap();
-			auto EvaluatedMap = VaporGlobals::API->createMap();
-			auto MaterializeEvaluatedClips = [&]() {
-				if constexpr (requires { InstanceData->SpecifyMetadata(CoreProxy{}); }) {
-					using VideoInfoType = decltype(InstanceData->SpecifyMetadata(CoreProxy{}));
-					auto VideoInfoPrototype = VideoInfoType{};
-					if constexpr (WithConstexprSize(VideoInfoPrototype))
-						return ExtractEvaluatedClips<true, VideoInfoPrototype.size()>(EvaluatedMap);
-					else
-						return ExtractEvaluatedClips<requires { VideoInfoPrototype.size(); }, IndeterminateSize>(EvaluatedMap);
-				}
-				else if constexpr (requires { InstanceData->SpecifyMetadata(); }) {
-					using VideoInfoType = decltype(InstanceData->SpecifyMetadata());
-					auto VideoInfoPrototype = VideoInfoType{};
-					if constexpr (WithConstexprSize(VideoInfoPrototype))
-						return ExtractEvaluatedClips<true, VideoInfoPrototype.size()>(EvaluatedMap);
-					else
-						return ExtractEvaluatedClips<requires { VideoInfoPrototype.size(); }, IndeterminateSize>(EvaluatedMap);
-				}
-				else
-					return ExtractEvaluatedClips<true, IndeterminateSize>(EvaluatedMap);
-			};
-			if constexpr (sizeof...(Arguments) != 0)
-				Utility::Map::Fill(ArgumentMap, Forward(Arguments)...);
-			try {
-				if constexpr (requires { FilterType{ ArgumentList{} }; })
-					InstanceData = new FilterType{ ArgumentList{ ArgumentMap } };
-				else
-					InstanceData = new FilterType{ ArgumentList{ ArgumentMap }, CoreProxy{ .Handle = Core } };
-			}
-			catch (...) {
-				VaporGlobals::API->freeMap(EvaluatedMap);
-				VaporGlobals::API->freeMap(ArgumentMap);
-				throw;
-			}
-			FilterEngine::InitiateFilterInstance(InstanceData, EvaluatedMap, CoreProxy{ .Handle = Core });
-			auto EvaluatedClips = MaterializeEvaluatedClips();
-			VaporGlobals::API->freeMap(EvaluatedMap);
-			VaporGlobals::API->freeMap(ArgumentMap);
-			return EvaluatedClips;
-		};
-		if constexpr (requires { Data.RegisterInvokingSequence(SelfInvoker, CoreProxy{}); })
-			Console.Receive(Data.RegisterInvokingSequence(SelfInvoker, CoreProxy{ .Handle = Core }));
+		auto SelfInvoker = FilterEngine::ImpredicativeFilterInitiator<FilterType>(CoreProxy{ .Handle = Core });
+		if constexpr (requires { Data->RegisterInvokingSequence(SelfInvoker, CoreProxy{}); })
+			Console.Receive(Data->RegisterInvokingSequence(SelfInvoker, CoreProxy{ .Handle = Core }));
 		else
-			FilterEngine::InitiateFilterInstance(new FilterType{ std::move(Data) }, OutputMap, CoreProxy{ .Handle = Core });
+			FilterEngine::InitiateFilterInstance(std::move(Data), OutputMap, CoreProxy{ .Handle = Core });
 	}
 	catch (RuntimeError& ErrorMessage) {
 		auto Console = Controller<FilterType>{ OutputMap };

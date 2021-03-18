@@ -101,19 +101,38 @@ namespace Utility::PointerQualifiers {
 	}
 }
 
-namespace Utility::Reflection {
+namespace Utility::Reflection::Private {
 	template<typename>
 	consteval auto EmbedTypeNameIntoSignature() {
 		return std::string_view{ std::source_location::current().function_name() };
 	}
+	template<typename, typename>
+	struct ContainerReplaceTypeArgument {};
+	template<template<typename> typename ContainerTypeConstructor, typename TypeBeingReplaced, typename TargetElementType>
+	struct ContainerReplaceTypeArgument<ContainerTypeConstructor<TypeBeingReplaced>, TargetElementType> {
+		using ReassembledType = ContainerTypeConstructor<TargetElementType>;
+	};
+	template<template<typename, auto> typename ContainerTypeConstructor, typename TypeBeingReplaced, auto Length, typename TargetElementType>
+	struct ContainerReplaceTypeArgument<ContainerTypeConstructor<TypeBeingReplaced, Length>, TargetElementType> {
+		using ReassembledType = ContainerTypeConstructor<TargetElementType, Length>;
+	};
+	template<template<typename, typename> typename ContainerTypeConstructor, template<typename> typename AllocatorTypeConstructor, typename TypeBeingReplaced, typename TargetElementType>
+	struct ContainerReplaceTypeArgument<ContainerTypeConstructor<TypeBeingReplaced, AllocatorTypeConstructor<TypeBeingReplaced>>, TargetElementType> {
+		using ReassembledType = ContainerTypeConstructor<TargetElementType, AllocatorTypeConstructor<TargetElementType>>;
+	};
+}
+
+namespace Utility::Reflection {
 	template<typename UnknownType>
 	consteval auto ReifyTypeNameIntoString() {
-		constexpr auto SignatureTemplate = EmbedTypeNameIntoSignature<double>();
-		constexpr auto EmbeddingSignature = EmbedTypeNameIntoSignature<UnknownType>();
+		constexpr auto SignatureTemplate = Private::EmbedTypeNameIntoSignature<double>();
+		constexpr auto EmbeddingSignature = Private::EmbedTypeNameIntoSignature<UnknownType>();
 		constexpr auto CaptionLength = SignatureTemplate.find("double");
 		constexpr auto EnclosureLength = SignatureTemplate.size() - CaptionLength - "double"sv.size();
 		return EmbeddingSignature.substr(CaptionLength, EmbeddingSignature.size() - CaptionLength - EnclosureLength);
 	}
+	template<typename ReferenceContainerType, typename TargetElementType>
+	using ContainerReplaceElementType = Private::ContainerReplaceTypeArgument<std::decay_t<ReferenceContainerType>, TargetElementType>::ReassembledType;
 }
 
 namespace Utility::Map {

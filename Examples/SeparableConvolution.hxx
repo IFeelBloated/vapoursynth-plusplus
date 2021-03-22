@@ -48,7 +48,7 @@ public:
                     ProcessedFrame[c][y][x] = HorizontalConvolution(InputFrame[c].View(y, x));
         return ProcessedFrame;
     }
-    auto RegisterInvokingSequence(auto Self, auto Core) {
+    auto InitiateCallGraph(auto Self, auto Core) {
         InputClip = Self("clip", InputClip, "h_kernel", HorizontalKernel);
         InputClip = Core["std"]["Transpose"]("clip", InputClip);
         InputClip = Self("clip", InputClip, "h_kernel", VerticalKernel);

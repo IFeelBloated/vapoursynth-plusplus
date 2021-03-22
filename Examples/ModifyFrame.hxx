@@ -7,7 +7,7 @@ struct ModifyFrame {
 
 public:
 	static constexpr auto Signature = "clip:clip;evaluator:func;";
-	static constexpr auto ExecutionPolicy = ParallelizationSchemes::ParallelResourceAcquisitionYetSingleThreadedFrameGeneration;
+	static constexpr auto ExecutionPolicyForFrameGenerator = ExecutionSchemes::ParallelResourceAcquisition;
 
 public:
 	ModifyFrame(auto Arguments) {

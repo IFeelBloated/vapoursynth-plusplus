@@ -9,11 +9,11 @@ struct Node : NodeReference {
 
 private:
 	struct RequestFunctionProxy {
-		using RequestFunctionInterface = auto(std::ptrdiff_t)->std::vector<std::ptrdiff_t>;
-		using RequestFunctionType = std::function<RequestFunctionInterface>;
+		using QuantificationBoundForRequestFunction = auto(std::ptrdiff_t)->std::vector<std::ptrdiff_t>;
+		using ExistentialTypeForRequestFunction = std::function<QuantificationBoundForRequestFunction>;
 
 	public:
-		field(HostedFunction, RequestFunctionType{});
+		field(HostedFunction, ExistentialTypeForRequestFunction{});
 
 	public:
 		auto& operator=(AnyBut<RequestFunctionProxy> auto&& RequestFunction) {
@@ -42,11 +42,11 @@ private:
 protected:
 	template<typename NodeType>
 	struct PaddingFunctionProxy {
-		using PaddingFunctionInterface = auto(const NodeType&, std::ptrdiff_t, FrameContextProxy)->FrameReference;
-		using PaddingFunctionType = std::function<PaddingFunctionInterface>;
+		using QuantificationBoundForPaddingFunction = auto(const NodeType&, std::ptrdiff_t, FrameContextProxy)->FrameReference;
+		using ExistentialTypeForPaddingFunction = std::function<QuantificationBoundForPaddingFunction>;
 
 	public:
-		field(HostedFunction, PaddingFunctionType{});
+		field(HostedFunction, ExistentialTypeForPaddingFunction{});
 
 	public:
 		auto& operator=(AnyBut<PaddingFunctionProxy> auto&& PaddingFunction) {

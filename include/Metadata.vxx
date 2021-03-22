@@ -173,10 +173,10 @@ enum struct MessageTypes {
 	Information
 };
 
-enum struct ParallelizationSchemes {
+enum struct ExecutionSchemes {
 	FullyParallel = 100,
-	ParallelResourceAcquisitionYetSingleThreadedFrameGeneration = 200,
-	SingleThreadedConcurrentResourceAcquisitionAndFrameGeneration = 300,
+	ParallelResourceAcquisition = 200,
+	Concurrent = 300,
 	OneFrameAtATime = 400
 };
 

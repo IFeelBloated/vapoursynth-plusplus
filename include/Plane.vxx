@@ -22,9 +22,9 @@ struct Plane : CanvasProxy<PixelType> {
 private:
 	using EmptyType = struct {};
 	using CanvasType = CanvasProxy<PixelType>;
-	using PaddingFunctionInterface = auto(const CanvasType&, std::ptrdiff_t, std::ptrdiff_t)->PixelType;
-	using PaddingFunctionType = std::function<PaddingFunctionInterface>;
-	using PaddingFunctionProxy = std::conditional_t<EnabledAutomaticPadding, PaddingFunctionType, EmptyType>;
+	using QuantificationBoundForPaddingFunction = auto(const CanvasType&, std::ptrdiff_t, std::ptrdiff_t)->PixelType;
+	using ExistentialTypeForPaddingFunction = std::function<QuantificationBoundForPaddingFunction>;
+	using PaddingFunctionProxy = std::conditional_t<EnabledAutomaticPadding, ExistentialTypeForPaddingFunction, EmptyType>;
 
 public:
 	[[no_unique_address]]
@@ -72,7 +72,7 @@ public:
 			return CanvasType::operator[](y);
 	}
 	auto View(std::integral auto y, std::integral auto x) const requires EnabledAutomaticPadding {
-		return PlaneView{.TargetPlane = this, .yOffset = y, .xOffset = x };
+		return PlaneView{ .TargetPlane = this, .yOffset = y, .xOffset = x };
 	}
 };
 

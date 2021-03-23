@@ -279,32 +279,11 @@ struct ConsoleProxy {
 	field(Handle, static_cast<VSMap*>(nullptr));
 
 public:
+	auto Receive(ExplicitlyConvertibleTo<std::string> auto&& Key, auto&& Value) const {
+		Utility::Map::Fill(Handle, Forward(Key), Forward(Value));
+	}
 	auto RaiseError(ExplicitlyConvertibleTo<std::string> auto&& FormattedErrorMessage) const {
 		auto ErrorMessage = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(FormattedErrorMessage);
 		VaporGlobals::API->setError(Handle, Utility::ExtractCharPointerFromASCIZFormattedString(ErrorMessage));
-	}
-};
-
-
-
-
-
-// anything below this line would be obsolete
-
-template<typename FilterType>
-struct Controller {
-	field(OutputMap, static_cast<VSMap*>(nullptr));
-	auto RaiseError(auto&& ErrorMessage) {
-		auto FilterName = std::string{};
-		auto Caption = FilterName + ": "s;
-		auto DecoratedMessage = Caption + ErrorMessage;
-		VaporGlobals::API->setError(OutputMap, ExposeCString(DecoratedMessage));
-	}
-	auto Receive(auto&& VideoOutput) {
-		auto OutputSequence = Utility::Map::AccessItem<false>(OutputMap, "clip");
-		OutputSequence += VideoOutput;
-	}
-	operator auto() {
-		return OutputMap;
 	}
 };

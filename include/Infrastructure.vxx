@@ -25,7 +25,6 @@
 #include <cstdlib>
 
 #define field(FieldIdentifier, ...) std::decay_t<decltype(__VA_ARGS__)> FieldIdentifier = __VA_ARGS__
-#define isinstance(Object, Type) (std::is_same_v<std::decay_t<decltype(Object)>, Type> || std::is_base_of_v<Type, std::decay_t<decltype(Object)>>)
 #define Forward(...) std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
 
 using namespace std::literals;
@@ -52,11 +51,4 @@ constexpr auto operator""_u32(unsigned long long Value) {
 
 constexpr auto operator""_i32(unsigned long long Value) {
 	return static_cast<std::int32_t>(Value);
-}
-
-auto ExposeCString(auto&& String) {
-	if constexpr (isinstance(String, const char*) || isinstance(String, char*))
-		return String;
-	else
-		return String.data();
 }

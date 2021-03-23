@@ -18,7 +18,7 @@ Node
 VideoNode
 AudioNode
 Function
-Map (Partial)
+Map
 Plugin
 Core
 Logger

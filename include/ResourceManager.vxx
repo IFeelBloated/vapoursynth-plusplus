@@ -122,3 +122,32 @@ private:
 			VaporGlobals::API->removeMessageHandler(~static_cast<int>(MangledLoggerID));
 	}
 };
+
+struct GarbageCollector {
+	using RecyclerType = auto(*)(void*)->void;
+	using GarbageRecord = std::tuple<RecyclerType, void*>;
+
+public:
+	field(Registry, std::vector<GarbageRecord>{});
+
+public:
+	GarbageCollector() = default;
+
+public:
+	GarbageCollector(const GarbageCollector&) = delete;
+	GarbageCollector(GarbageCollector&&) = delete;
+	auto& operator=(const GarbageCollector&) = delete;
+	auto& operator=(GarbageCollector&&) = delete;
+
+public:
+	~GarbageCollector() {
+		for (auto [Recycler, Garbage] : this->Registry)
+			Recycler(Garbage);
+	}
+
+public:
+	auto ClaimOwnership(auto UnmanagedResourceHandle) {
+		using ResourceType = std::decay_t<decltype(*UnmanagedResourceHandle)>;
+		Registry.push_back({ [](auto ResourcePointer) { delete reinterpret_cast<ResourceType*>(ResourcePointer); }, UnmanagedResourceHandle });
+	}
+};

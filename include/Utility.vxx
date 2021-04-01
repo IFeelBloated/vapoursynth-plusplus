@@ -135,6 +135,32 @@ namespace Utility::Reflection {
 	using ContainerReplaceElementType = Private::ContainerReplaceTypeArgument<std::decay_t<ReferenceContainerType>, TargetElementType>::ReassembledType;
 }
 
+namespace Utility::SignatureParser {
+	constexpr auto DeduceFunctionName(auto&& PartialSignature, auto&& Fallback) {
+		auto ReferenceSignature = static_cast<std::string>(Forward(PartialSignature));
+		if (auto SectorMarker = ReferenceSignature.find("("); SectorMarker != std::string::npos)
+			return ReferenceSignature.substr(0, SectorMarker);
+		else
+			return static_cast<std::string>(Forward(Fallback));
+	}
+	constexpr auto ExtractParameterList(auto&& PartialSignature) {
+		auto ReferenceSignature = static_cast<std::string>(Forward(PartialSignature));
+		auto ParameterListSector = [&] {
+			if (auto SectorMarker = ReferenceSignature.find("("); SectorMarker != std::string::npos)
+				return SectorMarker + 1;
+			else
+				return static_cast<decltype(SectorMarker)>(0);
+		}();
+		auto ReturnKeySector = [&] {
+			if (auto SectorMarker = ReferenceSignature.find(")"); SectorMarker != std::string::npos)
+				return SectorMarker;
+			else
+				return ReferenceSignature.find("->");
+		}();
+		return ReferenceSignature.substr(ParameterListSector, ReturnKeySector == std::string::npos ? ReturnKeySector : ReturnKeySector - ParameterListSector);
+	}
+}
+
 namespace Utility::Map {
 	auto Create();
 	auto ListKeys(auto);

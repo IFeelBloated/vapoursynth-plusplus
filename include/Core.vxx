@@ -270,9 +270,8 @@ public:
 	field(Anchor, std::shared_ptr<CoreReference>{});
 
 public:
-	CoreInstantiator() : CoreInstantiator{ 0 } {}
-	CoreInstantiator(std::integral auto Threads) {
-		this->Handle = VaporGlobals::API->createCore(Threads);
+	CoreInstantiator() {
+		this->Handle = VaporGlobals::API->createCore(0);
 		this->Anchor = std::make_shared<CoreReference>(this->Handle);
 	}
 };

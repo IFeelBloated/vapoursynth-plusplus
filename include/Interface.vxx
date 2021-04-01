@@ -1,276 +1,287 @@
 #pragma once
 #include "Core.vxx"
 
-namespace FilterEngine {
-	template<typename FunctionType>
-	constexpr auto DeduceFunctionName() {
-		auto FunctionSignature = static_cast<std::string>(FunctionType::Signature);
-		if (auto FunctionNameLength = FunctionSignature.find("("); FunctionNameLength != std::string::npos)
-			return FunctionSignature.substr(0, FunctionNameLength);
-		else
-			return static_cast<std::string>(Utility::Reflection::ReifyTypeNameIntoString<FunctionType>());
-	}
+namespace VaporGlobals {
+	auto Recycler = GarbageCollector{};
+}
 
-	template<typename FunctionType>
-	constexpr auto ExtractParameterList() {
-		auto FunctionSignature = static_cast<std::string>(FunctionType::Signature);
-		auto ParameterListSector = [&] {
-			if (auto SectorMarker = FunctionSignature.find("("); SectorMarker != std::string::npos)
-				return SectorMarker + 1;
-			else
-				return static_cast<decltype(SectorMarker)>(0);
-		}();
-		auto ReturnKeySector = [&] {
-			if (auto SectorMarker = FunctionSignature.find(")"); SectorMarker != std::string::npos)
-				return SectorMarker;
-			else
-				return FunctionSignature.find("->");
-		}();
-		return FunctionSignature.substr(ParameterListSector, ReturnKeySector == std::string::npos ? ReturnKeySector : ReturnKeySector - ParameterListSector);
-	}
-
-	template<typename FunctionType>
-	auto DecorateErrorMessage(ExplicitlyConvertibleTo<std::string> auto&& ErrorMessage) {
-		return DeduceFunctionName<FunctionType>() + ": " + static_cast<std::string>(Forward(ErrorMessage));
-	}
-
+namespace PluginDevelopmentKit {
 	template<typename FilterType>
-	auto FilterEngine(auto ArgumentMap, auto ConsoleHandle, auto, auto CoreHandle, auto...) {
-		auto Arguments = ArgumentList{ .Handle = ArgumentMap };
-		auto Console = ConsoleProxy{ .Handle = ConsoleHandle };
-		auto Core = CoreProxy{ .Handle = CoreHandle };
-		static auto InitiateMetadataSpecifier = [](auto ...Arguments) {
-			auto [FilterHandle, Core] = [&] {
-				if constexpr (sizeof...(Arguments) > 1)
-					return std::tuple{ Arguments... };
-				else if constexpr (sizeof...(Arguments) > 0)
-					return std::tuple{ Arguments..., CoreProxy{} };
-				else
-					return std::tuple{ static_cast<FilterType*>(nullptr), CoreProxy{} };
-			}();
-			if constexpr (requires { { FilterHandle->SpecifyMetadata() }->AnyBut<void>; })
-				return FilterHandle->SpecifyMetadata();
-			else if constexpr (requires { { FilterHandle->SpecifyMetadata(Core) }->AnyBut<void>; })
-				return FilterHandle->SpecifyMetadata(Core);
-			else
-				static_assert(sizeof(FilterType) == -1, "FilterEngine: SpecifyMetadata() is either missing or has an incompatible signature.");
-		};
-		static auto OrchestrateMediaTypeDependentActions = [](auto FilterHandle, auto&& ActionForListOfVideoNodes, auto&& ActionForListOfAudioNodes, auto&& ActionForVideoNode, auto&& ActionForAudioNode) {
-			if constexpr (requires { { InitiateMetadataSpecifier() }->Iterable; })
-				if constexpr (requires { { *InitiateMetadataSpecifier().begin() }->AnyOf<VideoInfo, VSVideoInfo>; })
-					return ActionForListOfVideoNodes(FilterHandle);
-				else if constexpr (requires { { *InitiateMetadataSpecifier().begin() }->AnyOf<AudioInfo>; })
-					return ActionForListOfAudioNodes(FilterHandle);
-				else
-					static_assert(sizeof(FilterType) == -1, "FilterEngine: failed to decide which action to take because the filter has a list of outputs whose media type cannot be determined.");
-			else if constexpr (requires { { InitiateMetadataSpecifier() }->AnyOf<VideoInfo, VSVideoInfo>; })
-				return ActionForVideoNode(FilterHandle);
-			else if constexpr (requires { { InitiateMetadataSpecifier() }->AnyOf<AudioInfo>; })
-				return ActionForAudioNode(FilterHandle);
-			else
-				static_assert(sizeof(FilterType) == -1, "FilterEngine: failed to decide which action to take because the media type of the filter's output cannot be determined.");
-		};
-		auto InitiateFilterInstance = [=](auto FilterInstance, auto ResultMap) {
-			auto FilterName = DeduceFunctionName<FilterType>();
-			auto AuxiliaryMap = Utility::Map::Create();
-			auto ExecutionPolicyForFrameGenerator = [&] {
-				if constexpr (requires { FilterInstance->SpecifyExecutionPolicyForFrameGenerator(); })
-					if constexpr (requires { { FilterInstance->SpecifyExecutionPolicyForFrameGenerator() }->AnyOf<ExecutionSchemes, VSFilterMode>; })
-						return static_cast<int>(FilterInstance->SpecifyExecutionPolicyForFrameGenerator());
+	auto RegisterFilter(auto&& ...Configurations) requires (sizeof...(Configurations) < 2) {
+		auto ConfigurationHandle = new std::tuple{ ""s, Forward(Configurations)... };
+		using ConfigurationHandleType = decltype(ConfigurationHandle);
+		auto Signature = [&] {
+			auto CarryOnRegardless = [&](auto...) {
+				if constexpr (requires { FilterType::SpecifySignature(); })
+					if constexpr (requires { { FilterType::SpecifySignature() }->ExplicitlyConvertibleTo<std::string>; })
+						return FilterType::SpecifySignature();
 					else
-						static_assert(sizeof(FilterType) == -1, "FilterEngine: SpecifyExecutionPolicyForFrameGenerator() has an unrecognized return type.");
-				else if constexpr (requires { FilterType::ExecutionPolicyForFrameGenerator; })
-					if constexpr (requires { { FilterType::ExecutionPolicyForFrameGenerator }->AnyOf<ExecutionSchemes, VSFilterMode>; })
-						return static_cast<int>(FilterType::ExecutionPolicyForFrameGenerator);
+						static_assert(sizeof(FilterType) == -1, "RegisterFilter: SpecifySignature() has an unrecognized return type.");
+				else if constexpr (requires { FilterType::Signature; })
+					if constexpr (requires { { FilterType::Signature }->ExplicitlyConvertibleTo<std::string>; })
+						return FilterType::Signature;
 					else
-						static_assert(sizeof(FilterType) == -1, "FilterEngine: ExecutionPolicyForFrameGenerator is of an unrecognized type.");
+						static_assert(sizeof(FilterType) == -1, "RegisterFilter: Signature is of an unrecognized type.");
 				else
-					return VSFilterMode::fmParallel;
-			}();
-			auto CachePolicy = [&] {
-				if constexpr (requires { FilterInstance->SpecifyCachePolicy(); })
-					if constexpr (requires { { FilterInstance->SpecifyCachePolicy() }->AnyOf<CacheOptions, VSNodeFlags>; })
-						return static_cast<int>(FilterInstance->SpecifyCachePolicy());
-					else
-						static_assert(sizeof(FilterType) == -1, "FilterEngine: SpecifyCachePolicy() has an unrecognized return type.");
-				else if constexpr (requires { FilterType::CachePolicy; })
-					if constexpr (requires { { FilterType::CachePolicy }->AnyOf<CacheOptions, VSNodeFlags>; })
-						return static_cast<int>(FilterType::CachePolicy);
-					else
-						static_assert(sizeof(FilterType) == -1, "FilterEngine: CachePolicy is of an unrecognized type.");
-				else
-					return static_cast<int>(CacheOptions::Automatic);
-			}();
-			auto FilterRecycler = [](auto FilterPointer, auto...) {
-				auto Garbage = reinterpret_cast<FilterType*>(FilterPointer);
-				delete Garbage;
+					static_assert(sizeof(FilterType) == -1, "RegisterFilter: registration failed because the signature of the filter cannot be determined.");
 			};
-			auto NodeInitializer = [](auto, auto ConsoleHandle, auto FilterPointer, auto NodeHandle, auto CoreHandle, auto...) {
-				auto Core = CoreProxy{ .Handle = CoreHandle };
-				try {
-					OrchestrateMediaTypeDependentActions(reinterpret_cast<FilterType*>(*FilterPointer),
-						[&](auto FilterHandle) {
-							auto SyncretizedMetadata = std::vector<VSVideoInfo>{};
-							for (auto&& x : InitiateMetadataSpecifier(FilterHandle, Core))
-								SyncretizedMetadata.push_back(VideoInfo::AdjustToLegacyLayout(x, Core));
-							VaporGlobals::API->setVideoInfo(SyncretizedMetadata.data(), SyncretizedMetadata.size(), NodeHandle);
-						},
-						[](auto) { /* Placeholder for API v4. */ },
-						[&](auto FilterHandle) {
-							auto Metadata = InitiateMetadataSpecifier(FilterHandle, Core);
-							auto&& SyncretizedMetadata = VideoInfo::AdjustToLegacyLayout(Metadata, Core);
-							VaporGlobals::API->setVideoInfo(&SyncretizedMetadata, 1, NodeHandle);
-						},
-						[](auto) { /* Placeholder for API v4. */ }
-					);
-				}
-				catch (RuntimeError& ErrorMessage) {
-					auto Console = ConsoleProxy{ .Handle = ConsoleHandle };
-					delete reinterpret_cast<FilterType*>(*FilterPointer);
-					Console.RaiseError(ErrorMessage);
-				}
-			};
-			auto FrameGenerator = [](auto Index, auto ActivationReason, auto FilterPointer, auto AttachmentPointer, auto FrameContextHandle, auto CoreHandle, auto...) {
-				auto FrameContext = FrameContextProxy{ .Handle = FrameContextHandle };
-				auto InitiateGeneratorRoutine = [&](auto ...Arguments) {
-					if constexpr (auto Core = CoreProxy{ .Handle = CoreHandle }; sizeof...(Arguments) > 1)
-						if constexpr (auto [FilterHandle, AttachmentHandle] = std::tuple{ Arguments... }; requires { { FilterHandle->GenerateFrame(Index, FrameContext, *AttachmentHandle, Core) }->SubtypeOf<FrameReference>; })
-							return FilterHandle->GenerateFrame(Index, FrameContext, *AttachmentHandle, Core);
-						else
-							static_assert(sizeof(FilterType) == -1, "FilterEngine: the signature of the frame generator must be \"auto GenerateFrame(auto Index, auto FrameContext, auto& Attachments, auto Core)\" when there're attachments available.");
+			if constexpr (sizeof...(Configurations) > 0)
+				if constexpr (requires { FilterType::SpecifySignature(std::get<1>(*ConfigurationHandle)); })
+					if constexpr (requires { { FilterType::SpecifySignature(std::get<1>(*ConfigurationHandle)) }->ExplicitlyConvertibleTo<std::string>; })
+						return FilterType::SpecifySignature(std::get<1>(*ConfigurationHandle));
 					else
-						if constexpr (auto [FilterHandle] = std::tuple{ Arguments... }; requires { { FilterHandle->GenerateFrame(Index, FrameContext, Core) }->SubtypeOf<FrameReference>; })
-							return FilterHandle->GenerateFrame(Index, FrameContext, Core);
-						else if constexpr (requires { { FilterHandle->GenerateFrame(Index, Core) }->SubtypeOf<FrameReference>; })
-							return FilterHandle->GenerateFrame(Index, Core);
-						else if constexpr (requires { { FilterHandle->GenerateFrame(Core) }->SubtypeOf<FrameReference>; })
-							return FilterHandle->GenerateFrame(Core);
-						else
-							static_assert(sizeof(FilterType) == -1, "FilterEngine: GenerateFrame() is either missing or has an incompatible signature.");
-				};
-				auto InitiateFrameGeneratorForSourceFilter = [&](auto FilterHandle) {
-					if (ActivationReason == VSActivationReason::arInitial)
-						return Utility::PointerQualifiers::AddConst(InitiateGeneratorRoutine(FilterHandle).Leak());
-					return Frame::NullHandle;
-				};
-				auto InitiateFrameGeneratorForStandardFilter = [&](auto FilterHandle) {
-					using AttachmentType = decltype(FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext));
-					if (auto& AttachmentHandle = reinterpret_cast<AttachmentType*&>(*AttachmentPointer); ActivationReason == VSActivationReason::arInitial)
-						if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; })
-							AttachmentHandle = new auto{ FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext) };
-						else
-							FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext);
-					else if (ActivationReason == VSActivationReason::arAllFramesReady)
-						if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; }) {
-							[[maybe_unused]] auto AttachmentGuard = std::unique_ptr<AttachmentType>{ AttachmentHandle };
-							return Utility::PointerQualifiers::AddConst(InitiateGeneratorRoutine(FilterHandle, AttachmentHandle).Leak());
-						}
-						else
-							return Utility::PointerQualifiers::AddConst(InitiateGeneratorRoutine(FilterHandle).Leak());
-					else if (ActivationReason == VSActivationReason::arError) [[unlikely]]
-						if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; })
-							delete AttachmentHandle;
-					return Frame::NullHandle;
-				};
-				auto InitiateFrameGeneratorForFilterRequiringLatentResourceAcquisition = [&](auto FilterHandle) {
-					using PrimordialAttachmentType = decltype(FilterHandle->AcquireLatentResources(Index, FrameContext));
-					using AttachmentType = decltype(FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext));
-					static_assert(SubtypeOf<PrimordialAttachmentType, void>, "FilterEngine: sending primordial attachments to AcquireResourcesForFrameGenerator() is not currently supported, open an issue if you have a valid use case that requires this functionality.");
-					if (ActivationReason == VSActivationReason::arInitial)
-						FilterHandle->AcquireLatentResources(Index, FrameContext);
-					else if (auto& AttachmentHandle = reinterpret_cast<AttachmentType*&>(*AttachmentPointer); ActivationReason == VSActivationReason::arAllFramesReady && AttachmentHandle == nullptr)
-						if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; })
-							AttachmentHandle = new auto{ FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext) };
-						else
-							FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext);
-					else if (ActivationReason == VSActivationReason::arAllFramesReady)
-						if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; }) {
-							[[maybe_unused]] auto AttachmentGuard = std::unique_ptr<AttachmentType>{ AttachmentHandle };
-							return Utility::PointerQualifiers::AddConst(InitiateGeneratorRoutine(FilterHandle, AttachmentHandle).Leak());
-						}
-						else
-							return Utility::PointerQualifiers::AddConst(InitiateGeneratorRoutine(FilterHandle).Leak());
-					else if (ActivationReason == VSActivationReason::arError) [[unlikely]]
-						if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; })
-							delete AttachmentHandle;
-					return Frame::NullHandle;
-				};
-				try {
-					if constexpr (auto FilterHandle = reinterpret_cast<FilterType*>(*FilterPointer); requires { FilterHandle->AcquireResourcesForFrameGenerator(Index, FrameContext); })
-						if constexpr (requires { FilterHandle->AcquireLatentResources(Index, FrameContext); })
-							return InitiateFrameGeneratorForFilterRequiringLatentResourceAcquisition(FilterHandle);
-						else
-							return InitiateFrameGeneratorForStandardFilter(FilterHandle);
+						static_assert(sizeof(FilterType) == -1, "RegisterFilter: SpecifySignature() returned something of an unrecognized type given the current configurations.");
+				else
+					return CarryOnRegardless();
+			else
+				return CarryOnRegardless();
+		}();
+		auto FilterEngine = [](auto ArgumentMap, auto ConsoleHandle, auto ConfigurationPointer, auto CoreHandle, auto...) {
+			using ExtendedFilterType = std::pair<const char*, FilterType>;
+			auto Arguments = ArgumentList{ .Handle = ArgumentMap };
+			auto Console = ConsoleProxy{ .Handle = ConsoleHandle };
+			auto Core = CoreProxy{ .Handle = CoreHandle };
+			auto ConfigurationHandle = reinterpret_cast<ConfigurationHandleType>(ConfigurationPointer);
+			static auto InitiateMetadataSpecifier = [](auto ...SpecifierDependencies) {
+				auto [FilterHandle, Core] = [&] {
+					if constexpr (sizeof...(SpecifierDependencies) > 1)
+						return std::tuple{ SpecifierDependencies... };
+					else if constexpr (sizeof...(SpecifierDependencies) > 0)
+						return std::tuple{ SpecifierDependencies..., CoreProxy{} };
 					else
-						return InitiateFrameGeneratorForSourceFilter(FilterHandle);
-				}
-				catch (RuntimeError& ErrorMessage) {
-					return FrameContext.RaiseError(DecorateErrorMessage<FilterType>(ErrorMessage));
-				}
+						return std::tuple{ static_cast<FilterType*>(nullptr), CoreProxy{} };
+				}();
+				if constexpr (requires { { FilterHandle->SpecifyMetadata() }->AnyBut<void>; })
+					return FilterHandle->SpecifyMetadata();
+				else if constexpr (requires { { FilterHandle->SpecifyMetadata(Core) }->AnyBut<void>; })
+					return FilterHandle->SpecifyMetadata(Core);
+				else
+					static_assert(sizeof(FilterType) == -1, "FilterEngine: SpecifyMetadata() is either missing or has an incompatible signature.");
 			};
-			OrchestrateMediaTypeDependentActions(FilterInstance.release(),
-				[&](auto FilterHandle) { VaporGlobals::API->createFilter(AuxiliaryMap.Handle, ResultMap, FilterName.data(), NodeInitializer, FrameGenerator, FilterRecycler, ExecutionPolicyForFrameGenerator, CachePolicy, FilterHandle, Core); },
-				[](auto) { /* Placeholder for API v4. */ },
-				[&](auto FilterHandle) { VaporGlobals::API->createFilter(AuxiliaryMap.Handle, ResultMap, FilterName.data(), NodeInitializer, FrameGenerator, FilterRecycler, ExecutionPolicyForFrameGenerator, CachePolicy, FilterHandle, Core); },
-				[](auto) { /* Placeholder for API v4. */ }
-			);
+			static auto OrchestrateMediaTypeDependentActions = [](auto FilterHandle, auto&& ActionForListOfVideoNodes, auto&& ActionForListOfAudioNodes, auto&& ActionForVideoNode, auto&& ActionForAudioNode) {
+				if constexpr (requires { { InitiateMetadataSpecifier() }->Iterable; })
+					if constexpr (requires { { *InitiateMetadataSpecifier().begin() }->AnyOf<VideoInfo, VSVideoInfo>; })
+						return ActionForListOfVideoNodes(FilterHandle);
+					else if constexpr (requires { { *InitiateMetadataSpecifier().begin() }->AnyOf<AudioInfo>; })
+						return ActionForListOfAudioNodes(FilterHandle);
+					else
+						static_assert(sizeof(FilterType) == -1, "FilterEngine: failed to decide which action to take because the filter has a list of outputs whose media type cannot be determined.");
+				else if constexpr (requires { { InitiateMetadataSpecifier() }->AnyOf<VideoInfo, VSVideoInfo>; })
+					return ActionForVideoNode(FilterHandle);
+				else if constexpr (requires { { InitiateMetadataSpecifier() }->AnyOf<AudioInfo>; })
+					return ActionForAudioNode(FilterHandle);
+				else
+					static_assert(sizeof(FilterType) == -1, "FilterEngine: failed to decide which action to take because the media type of the filter's output cannot be determined.");
+			};
+			auto InitiateFilterInstance = [=](auto ExtendedFilterInstance, auto ResultMap) {
+				auto& [FilterName, FilterInstance] = *ExtendedFilterInstance;
+				auto AuxiliaryMap = Utility::Map::Create();
+				auto ExecutionPolicyForFrameGenerator = [&] {
+					if constexpr (requires { FilterInstance.SpecifyExecutionPolicyForFrameGenerator(); })
+						if constexpr (requires { { FilterInstance.SpecifyExecutionPolicyForFrameGenerator() }->AnyOf<ExecutionSchemes, VSFilterMode>; })
+							return static_cast<int>(FilterInstance.SpecifyExecutionPolicyForFrameGenerator());
+						else
+							static_assert(sizeof(FilterType) == -1, "FilterEngine: SpecifyExecutionPolicyForFrameGenerator() has an unrecognized return type.");
+					else if constexpr (requires { FilterType::ExecutionPolicyForFrameGenerator; })
+						if constexpr (requires { { FilterType::ExecutionPolicyForFrameGenerator }->AnyOf<ExecutionSchemes, VSFilterMode>; })
+							return static_cast<int>(FilterType::ExecutionPolicyForFrameGenerator);
+						else
+							static_assert(sizeof(FilterType) == -1, "FilterEngine: ExecutionPolicyForFrameGenerator is of an unrecognized type.");
+					else
+						return VSFilterMode::fmParallel;
+				}();
+				auto CachePolicy = [&] {
+					if constexpr (requires { FilterInstance.SpecifyCachePolicy(); })
+						if constexpr (requires { { FilterInstance.SpecifyCachePolicy() }->AnyOf<CacheOptions, VSNodeFlags>; })
+							return static_cast<int>(FilterInstance.SpecifyCachePolicy());
+						else
+							static_assert(sizeof(FilterType) == -1, "FilterEngine: SpecifyCachePolicy() has an unrecognized return type.");
+					else if constexpr (requires { FilterType::CachePolicy; })
+						if constexpr (requires { { FilterType::CachePolicy }->AnyOf<CacheOptions, VSNodeFlags>; })
+							return static_cast<int>(FilterType::CachePolicy);
+						else
+							static_assert(sizeof(FilterType) == -1, "FilterEngine: CachePolicy is of an unrecognized type.");
+					else
+						return static_cast<int>(CacheOptions::Automatic);
+				}();
+				auto FilterRecycler = [](auto FatInstancePointer, auto...) {
+					auto Garbage = reinterpret_cast<ExtendedFilterType*>(FatInstancePointer);
+					delete Garbage;
+				};
+				auto NodeInitializer = [](auto, auto ConsoleHandle, auto FatInstancePointer, auto NodeHandle, auto CoreHandle, auto...) {
+					auto Core = CoreProxy{ .Handle = CoreHandle };
+					try {
+						OrchestrateMediaTypeDependentActions(&std::get<1>(*reinterpret_cast<ExtendedFilterType*>(*FatInstancePointer)),
+							[&](auto FilterHandle) {
+								auto SyncretizedMetadata = std::vector<VSVideoInfo>{};
+								for (auto&& x : InitiateMetadataSpecifier(FilterHandle, Core))
+									SyncretizedMetadata.push_back(VideoInfo::AdjustToLegacyLayout(x, Core));
+								VaporGlobals::API->setVideoInfo(SyncretizedMetadata.data(), SyncretizedMetadata.size(), NodeHandle);
+							},
+							[](auto) { /* Placeholder for API v4. */ },
+							[&](auto FilterHandle) {
+								auto Metadata = InitiateMetadataSpecifier(FilterHandle, Core);
+								auto&& SyncretizedMetadata = VideoInfo::AdjustToLegacyLayout(Metadata, Core);
+								VaporGlobals::API->setVideoInfo(&SyncretizedMetadata, 1, NodeHandle);
+							},
+							[](auto) { /* Placeholder for API v4. */ }
+						);
+					}
+					catch (RuntimeError& ErrorMessage) {
+						auto Console = ConsoleProxy{ .Handle = ConsoleHandle };
+						delete reinterpret_cast<ExtendedFilterType*>(*FatInstancePointer);
+						Console.RaiseError(ErrorMessage);
+					}
+				};
+				auto FrameGenerator = [](auto Index, auto ActivationReason, auto FatInstancePointer, auto AttachmentPointer, auto FrameContextHandle, auto CoreHandle, auto...) {
+					auto& [FilterName, FilterInstance] = *reinterpret_cast<ExtendedFilterType*>(*FatInstancePointer);
+					auto FrameContext = FrameContextProxy{ .Handle = FrameContextHandle };
+					auto InitiateGeneratorRoutine = [&](auto ...GeneratorDependencies) {
+						if constexpr (auto Core = CoreProxy{ .Handle = CoreHandle }; sizeof...(GeneratorDependencies) > 0)
+							if constexpr (auto [AttachmentHandle] = std::tuple{ GeneratorDependencies... }; requires { { FilterInstance.GenerateFrame(Index, FrameContext, *AttachmentHandle, Core) }->SubtypeOf<FrameReference>; })
+								return FilterInstance.GenerateFrame(Index, FrameContext, *AttachmentHandle, Core);
+							else
+								static_assert(sizeof(FilterType) == -1, "FilterEngine: the signature of the frame generator must be \"auto GenerateFrame(auto Index, auto FrameContext, auto& Attachments, auto Core)\" when there're attachments available.");
+						else
+							if constexpr (requires { { FilterInstance.GenerateFrame(Index, FrameContext, Core) }->SubtypeOf<FrameReference>; })
+								return FilterInstance.GenerateFrame(Index, FrameContext, Core);
+							else if constexpr (requires { { FilterInstance.GenerateFrame(Index, Core) }->SubtypeOf<FrameReference>; })
+								return FilterInstance.GenerateFrame(Index, Core);
+							else if constexpr (requires { { FilterInstance.GenerateFrame(Core) }->SubtypeOf<FrameReference>; })
+								return FilterInstance.GenerateFrame(Core);
+							else
+								static_assert(sizeof(FilterType) == -1, "FilterEngine: GenerateFrame() is either missing or has an incompatible signature.");
+					};
+					auto InitiateFrameGeneratorForSourceFilter = [&] {
+						if (ActivationReason == VSActivationReason::arInitial)
+							return Utility::PointerQualifiers::AddConst(InitiateGeneratorRoutine().Leak());
+						return Frame::NullHandle;
+					};
+					auto InitiateFrameGeneratorForStandardFilter = [&](auto& FilterInstance) {
+						using AttachmentType = decltype(FilterInstance.AcquireResourcesForFrameGenerator(Index, FrameContext));
+						if (auto& AttachmentHandle = reinterpret_cast<AttachmentType*&>(*AttachmentPointer); ActivationReason == VSActivationReason::arInitial)
+							if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; })
+								AttachmentHandle = new auto{ FilterInstance.AcquireResourcesForFrameGenerator(Index, FrameContext) };
+							else
+								FilterInstance.AcquireResourcesForFrameGenerator(Index, FrameContext);
+						else if (ActivationReason == VSActivationReason::arAllFramesReady)
+							if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; }) {
+								[[maybe_unused]] auto AttachmentGuard = std::unique_ptr<AttachmentType>{ AttachmentHandle };
+								return Utility::PointerQualifiers::AddConst(InitiateGeneratorRoutine(AttachmentHandle).Leak());
+							}
+							else
+								return Utility::PointerQualifiers::AddConst(InitiateGeneratorRoutine().Leak());
+						else if (ActivationReason == VSActivationReason::arError) [[unlikely]]
+							if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; })
+								delete AttachmentHandle;
+						return Frame::NullHandle;
+					};
+					auto InitiateFrameGeneratorForFilterRequiringLatentResourceAcquisition = [&](auto& FilterInstance) {
+						using PrimordialAttachmentType = decltype(FilterInstance.AcquireLatentResources(Index, FrameContext));
+						using AttachmentType = decltype(FilterInstance.AcquireResourcesForFrameGenerator(Index, FrameContext));
+						static_assert(SubtypeOf<PrimordialAttachmentType, void>, "FilterEngine: sending primordial attachments to AcquireResourcesForFrameGenerator() is not currently supported, open an issue if you have a valid use case that requires this functionality.");
+						if (ActivationReason == VSActivationReason::arInitial)
+							FilterInstance.AcquireLatentResources(Index, FrameContext);
+						else if (auto& AttachmentHandle = reinterpret_cast<AttachmentType*&>(*AttachmentPointer); ActivationReason == VSActivationReason::arAllFramesReady && AttachmentHandle == nullptr)
+							if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; })
+								AttachmentHandle = new auto{ FilterInstance.AcquireResourcesForFrameGenerator(Index, FrameContext) };
+							else
+								FilterInstance.AcquireResourcesForFrameGenerator(Index, FrameContext);
+						else if (ActivationReason == VSActivationReason::arAllFramesReady)
+							if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; }) {
+								[[maybe_unused]] auto AttachmentGuard = std::unique_ptr<AttachmentType>{ AttachmentHandle };
+								return Utility::PointerQualifiers::AddConst(InitiateGeneratorRoutine(AttachmentHandle).Leak());
+							}
+							else
+								return Utility::PointerQualifiers::AddConst(InitiateGeneratorRoutine().Leak());
+						else if (ActivationReason == VSActivationReason::arError) [[unlikely]]
+							if constexpr (requires { { AttachmentHandle }->AnyBut<void*>; })
+								delete AttachmentHandle;
+						return Frame::NullHandle;
+					};
+					try {
+						if constexpr (requires { FilterInstance.AcquireResourcesForFrameGenerator(Index, FrameContext); })
+							if constexpr (requires { FilterInstance.AcquireLatentResources(Index, FrameContext); })
+								return InitiateFrameGeneratorForFilterRequiringLatentResourceAcquisition(FilterInstance);
+							else
+								return InitiateFrameGeneratorForStandardFilter(FilterInstance);
+						else
+							return InitiateFrameGeneratorForSourceFilter();
+					}
+					catch (RuntimeError& ErrorMessage) {
+						return FrameContext.RaiseError(std::string{ FilterName } + ": " + ErrorMessage);
+					}
+				};
+				OrchestrateMediaTypeDependentActions(ExtendedFilterInstance.release(),
+					[&](auto FatInstanceHandle) { VaporGlobals::API->createFilter(AuxiliaryMap.Handle, ResultMap, FilterName, NodeInitializer, FrameGenerator, FilterRecycler, ExecutionPolicyForFrameGenerator, CachePolicy, FatInstanceHandle, Core); },
+					[](auto) { /* Placeholder for API v4. */ },
+					[&](auto FatInstanceHandle) { VaporGlobals::API->createFilter(AuxiliaryMap.Handle, ResultMap, FilterName, NodeInitializer, FrameGenerator, FilterRecycler, ExecutionPolicyForFrameGenerator, CachePolicy, FatInstanceHandle, Core); },
+					[](auto) { /* Placeholder for API v4. */ }
+				);
+			};
+			auto FilterInstantiator = [=](auto Arguments) {
+				auto CarryOnRegardless = [&](auto...) {
+					if constexpr (requires { FilterType{ Arguments, Core }; })
+						return std::make_unique<ExtendedFilterType>(std::piecewise_construct, std::tuple{ std::get<0>(*ConfigurationHandle).data() }, std::tuple{ Arguments, Core });
+					else if constexpr (requires { FilterType{ Arguments }; })
+						return std::make_unique<ExtendedFilterType>(std::piecewise_construct, std::tuple{ std::get<0>(*ConfigurationHandle).data() }, std::tuple{ Arguments });
+					else if constexpr (requires { FilterType{}; })
+						return std::make_unique<ExtendedFilterType>(std::piecewise_construct, std::tuple{ std::get<0>(*ConfigurationHandle).data() }, std::tuple{});
+					else
+						static_assert(sizeof(FilterType) == -1, "FilterEngine: failed to instantiate a filter because its constructor has an incompatible signature.");
+				};
+				if constexpr (sizeof...(Configurations) > 0)
+					if constexpr (requires { FilterType{ Arguments, std::get<1>(*ConfigurationHandle), Core }; })
+						return std::make_unique<ExtendedFilterType>(std::piecewise_construct, std::tuple{ std::get<0>(*ConfigurationHandle).data() }, std::forward_as_tuple(std::move(Arguments), std::get<1>(*ConfigurationHandle), std::move(Core)));
+					else
+						return CarryOnRegardless();
+				else
+					return CarryOnRegardless();
+			};
+			auto ImpredicativeFilterInitiator = [=](auto&& ...Arguments) {
+				auto ArgumentMap = Utility::Map::Create();
+				auto ResultMap = Utility::Map::Create();
+				auto ResultItem = Utility::Map::AccessItem(ResultMap.Handle, "clip");
+				if constexpr (sizeof...(Arguments) != 0)
+					Utility::Map::Fill(ArgumentMap.Handle, Forward(Arguments)...);
+				InitiateFilterInstance(FilterInstantiator(ArgumentList{ .Handle = ArgumentMap.Handle }), ResultMap.Handle);
+				if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ResultMap.Handle); EvaluationFailed)
+					throw RuntimeError{ ErrorMessage };
+				return OrchestrateMediaTypeDependentActions(static_cast<FilterType*>(nullptr),
+					[&](auto FilterHandle) {
+						using MetadataContainerType = decltype(InitiateMetadataSpecifier(FilterHandle));
+						using VideoNodeContainerType = Utility::Reflection::ContainerReplaceElementType<MetadataContainerType, VideoNode>;
+						return static_cast<VideoNodeContainerType>(ResultItem);
+					},
+					[](auto) { /* Placeholder for API v4. */ },
+					[&](auto) { return static_cast<VideoNode>(ResultItem); },
+					[](auto) { /* Placeholder for API v4. */ }
+				);
+			};
+			try {
+				auto ExtendedFilterInstance = FilterInstantiator(Arguments);
+				// GCC bug, fixme (place structured binding within if)
+				auto& [_, FilterInstance] = *ExtendedFilterInstance;
+				if constexpr (requires { { FilterInstance.InitiateCallGraph(ImpredicativeFilterInitiator, Core) }->AnyBut<void>; })
+					Console.Receive("clip", FilterInstance.InitiateCallGraph(ImpredicativeFilterInitiator, Core));
+				else if constexpr (requires { { FilterInstance.InitiateCallGraph(ImpredicativeFilterInitiator) }->AnyBut<void>; })
+					Console.Receive("clip", FilterInstance.InitiateCallGraph(ImpredicativeFilterInitiator));
+				else
+					InitiateFilterInstance(std::move(ExtendedFilterInstance), ConsoleHandle);
+				if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ConsoleHandle); EvaluationFailed)
+					throw RuntimeError{ ErrorMessage };
+			}
+			catch (RuntimeError& ErrorMessage) {
+				Console.RaiseError(std::get<0>(*ConfigurationHandle) + ": " + ErrorMessage);
+			}
 		};
-		auto FilterInstantiator = [=](auto Arguments) {
-			if constexpr (requires { FilterType{ Arguments, Core }; })
-				return std::make_unique<FilterType>(Arguments, Core);
-			else if constexpr (requires { FilterType{ Arguments }; })
-				return std::make_unique<FilterType>(Arguments);
-			else if constexpr (requires { FilterType{}; })
-				return std::make_unique<FilterType>();
-			else
-				static_assert(sizeof(FilterType) == -1, "FilterEngine: failed to instantiate a filter because its constructor has an incompatible signature.");
-		};
-		auto ImpredicativeFilterInitiator = [=](auto&& ...Arguments) {
-			auto ArgumentMap = Utility::Map::Create();
-			auto ResultMap = Utility::Map::Create();
-			auto ResultItem = Utility::Map::AccessItem(ResultMap.Handle, "clip");
-			if constexpr (sizeof...(Arguments) != 0)
-				Utility::Map::Fill(ArgumentMap.Handle, Forward(Arguments)...);
-			InitiateFilterInstance(FilterInstantiator(ArgumentList{ .Handle = ArgumentMap.Handle }), ResultMap.Handle);
-			if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ResultMap.Handle); EvaluationFailed)
-				throw RuntimeError{ ErrorMessage };
-			return OrchestrateMediaTypeDependentActions(static_cast<FilterType*>(nullptr),
-				[&](auto FilterHandle) {
-					using MetadataContainerType = decltype(InitiateMetadataSpecifier(FilterHandle));
-					using VideoNodeContainerType = Utility::Reflection::ContainerReplaceElementType<MetadataContainerType, VideoNode>;
-					return static_cast<VideoNodeContainerType>(ResultItem);
-				},
-				[](auto) { /* Placeholder for API v4. */ },
-				[&](auto) { return static_cast<VideoNode>(ResultItem); },
-				[](auto) { /* Placeholder for API v4. */ }
-			);
-		};
-		try {
-			if constexpr (auto FilterInstance = FilterInstantiator(Arguments); requires { { FilterInstance->InitiateCallGraph(ImpredicativeFilterInitiator, Core) }->AnyBut<void>; })
-				Console.Receive("clip", FilterInstance->InitiateCallGraph(ImpredicativeFilterInitiator, Core));
-			else if constexpr (requires { { FilterInstance->InitiateCallGraph(ImpredicativeFilterInitiator) }->AnyBut<void>; })
-				Console.Receive("clip", FilterInstance->InitiateCallGraph(ImpredicativeFilterInitiator));
-			else
-				InitiateFilterInstance(std::move(FilterInstance), ConsoleHandle);
-			if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ConsoleHandle); EvaluationFailed)
-				throw RuntimeError{ ErrorMessage };
-		}
-		catch (RuntimeError& ErrorMessage) {
-			Console.RaiseError(DecorateErrorMessage<FilterType>(ErrorMessage));
-		}
+		std::get<0>(*ConfigurationHandle) = Utility::SignatureParser::DeduceFunctionName(Signature, Utility::Reflection::ReifyTypeNameIntoString<FilterType>());
+		VaporGlobals::Recycler.ClaimOwnership(ConfigurationHandle);
+		VaporGlobals::API->registerFunction(std::get<0>(*ConfigurationHandle).data(), Utility::SignatureParser::ExtractParameterList(Signature).data(), FilterEngine, ConfigurationHandle, VaporGlobals::PluginHandle);
 	}
 }
 
 namespace VaporInterface {
-
-
-	template<typename FilterType>
-	auto RegisterFilter(auto Broker, auto Plugin) {
-		auto FilterName = FilterEngine::DeduceFunctionName<FilterType>();
-		auto ParameterList = FilterEngine::ExtractParameterList<FilterType>();
-		Broker(FilterName.data(), ParameterList.data(), FilterEngine::FilterEngine<FilterType>, nullptr, Plugin);
-	}
-
 	auto RegisterPlugin(auto Broker, auto Plugin) {
 		VaporGlobals::API = getVapourSynthAPI(VAPOURSYNTH_API_VERSION);
 		Broker(VaporGlobals::Identifier, VaporGlobals::Namespace, VaporGlobals::Description, VAPOURSYNTH_API_VERSION, 1, Plugin);

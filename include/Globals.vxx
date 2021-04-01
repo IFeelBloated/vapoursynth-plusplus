@@ -7,4 +7,6 @@ namespace VaporGlobals {
 	auto Identifier = "";
 	auto Namespace = "";
 	auto Description = "";
+
+	auto PluginHandle = static_cast<VSPlugin*>(nullptr);
 }

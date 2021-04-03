@@ -159,6 +159,13 @@ namespace Utility::SignatureParser {
 		}();
 		return ReferenceSignature.substr(ParameterListSector, ReturnKeySector == std::string::npos ? ReturnKeySector : ReturnKeySector - ParameterListSector);
 	}
+	constexpr auto DeduceReturnKey(auto&& PartialSignature, auto&& Fallback) {
+		auto ReferenceSignature = static_cast<std::string>(Forward(PartialSignature));
+		if (auto SectorMarker = ReferenceSignature.find("->"); SectorMarker != std::string::npos)
+			return ReferenceSignature.substr(SectorMarker + 2);
+		else
+			return static_cast<std::string>(Forward(Fallback));
+	}
 }
 
 namespace Utility::Map {

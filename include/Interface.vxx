@@ -9,7 +9,7 @@ namespace PluginDevelopmentKit {
 	template<typename FilterType>
 	auto RegisterFilter(auto&& ...Configurations) requires (sizeof...(Configurations) < 2) {
 		auto ConfigurationHandle = new std::tuple{ ""s, Forward(Configurations)... };
-		using ConfigurationHandleType = decltype(ConfigurationHandle);
+		using ConfigurationType = std::decay_t<decltype(*ConfigurationHandle)>;
 		auto Signature = [&] {
 			auto CarryOnRegardless = [&](auto...) {
 				if constexpr (requires { FilterType::SpecifySignature(); })
@@ -41,7 +41,7 @@ namespace PluginDevelopmentKit {
 			auto Arguments = ArgumentList{ .Handle = ArgumentMap };
 			auto Console = ConsoleProxy{ .Handle = ConsoleHandle };
 			auto Core = CoreProxy{ .Handle = CoreHandle };
-			auto ConfigurationHandle = reinterpret_cast<ConfigurationHandleType>(ConfigurationPointer);
+			auto ConfigurationHandle = reinterpret_cast<ConfigurationType*>(ConfigurationPointer);
 			static auto InitiateMetadataSpecifier = [](auto ...SpecifierDependencies) {
 				auto [FilterHandle, Core] = [&] {
 					if constexpr (sizeof...(SpecifierDependencies) > 1)
@@ -278,6 +278,39 @@ namespace PluginDevelopmentKit {
 		std::get<0>(*ConfigurationHandle) = Utility::SignatureParser::DeduceFunctionName(Signature, Utility::Reflection::ReifyTypeNameIntoString<FilterType>());
 		VaporGlobals::Recycler.ClaimOwnership(ConfigurationHandle);
 		VaporGlobals::API->registerFunction(std::get<0>(*ConfigurationHandle).data(), Utility::SignatureParser::ExtractParameterList(Signature).data(), FilterEngine, ConfigurationHandle, VaporGlobals::PluginHandle);
+	}
+	auto RegisterFunction(ExplicitlyConvertibleTo<std::string> auto&& Signature, auto&& FunctionEntity) {
+		auto ConfigurationHandle = new std::tuple{ ""s, ""s, Forward(FunctionEntity) };
+		using ConfigurationType = std::decay_t<decltype(*ConfigurationHandle)>;
+		auto FunctionProxy = [](auto ArgumentMap, auto ConsoleHandle, auto ConfigurationPointer, auto CoreHandle, auto...) {
+			auto Arguments = ArgumentList{ .Handle = ArgumentMap };
+			auto Console = ConsoleProxy{ .Handle = ConsoleHandle };
+			auto Core = CoreProxy{ .Handle = CoreHandle };
+			auto& [FunctionName, ReturnKey, RegisteredFunction] = *reinterpret_cast<ConfigurationType*>(ConfigurationPointer);
+			auto FunctionInvoker = [&] {
+				if constexpr (requires { RegisteredFunction(Arguments, Core); })
+					return RegisteredFunction(Arguments, Core);
+				else if constexpr (requires { RegisteredFunction(Arguments); })
+					return RegisteredFunction(Arguments);
+				else if constexpr (requires { RegisteredFunction(); })
+					return RegisteredFunction();
+				else
+					static_assert(sizeof(RegisteredFunction) == -1, "RegisterFunction: failed to register the specified object, it is either not callable or has an incompatible signature.");
+			};
+			try {
+				if constexpr (requires { { FunctionInvoker() }->AnyBut<void>; })
+					Console.Receive(ReturnKey, FunctionInvoker());
+				else
+					FunctionInvoker();
+			}
+			catch (RuntimeError& ErrorMessage) {
+				Console.RaiseError(FunctionName + ": " + ErrorMessage);
+			}
+		};
+		std::get<0>(*ConfigurationHandle) = Utility::SignatureParser::DeduceFunctionName(Signature, "AnonymousFunction");
+		std::get<1>(*ConfigurationHandle) = Utility::SignatureParser::DeduceReturnKey(Signature, "val");
+		VaporGlobals::Recycler.ClaimOwnership(ConfigurationHandle);
+		VaporGlobals::API->registerFunction(std::get<0>(*ConfigurationHandle).data(), Utility::SignatureParser::ExtractParameterList(Signature).data(), FunctionProxy, ConfigurationHandle, VaporGlobals::PluginHandle);
 	}
 }
 

@@ -169,7 +169,7 @@ private:
 			InjectInt(static_cast<std::int64_t>(Object));
 		else if (Object.Type() == ItemTypes::Float)
 			InjectFloat(static_cast<double>(Object));
-		else if (Object.Type() == ItemTypes::Data)
+		else if (Object.Type() == ItemTypes::String)
 			InjectString(static_cast<std::string>(Object));
 		else if (Object.Type() == ItemTypes::VideoNode || Object.Type() == ItemTypes::AudioNode)
 			InjectNode(static_cast<NodeReference>(Object));

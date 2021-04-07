@@ -5,7 +5,7 @@ struct Rec601ToRGB {
 	field(InputClip, VideoNode{});
 
 public:
-	static constexpr auto Signature = "clip:clip;";
+	static constexpr auto Signature = "clip: vnode";
 	
 public:
 	Rec601ToRGB(auto Arguments) {

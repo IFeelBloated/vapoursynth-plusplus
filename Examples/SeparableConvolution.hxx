@@ -7,7 +7,7 @@ struct SeparableConvolution {
     field(VerticalKernel, std::array{ 0., 0., 0. });
 
 public:
-    static constexpr auto Signature = "clip:clip;h_kernel:float[]:opt;v_kernel:float[]:opt;";
+    static constexpr auto Signature = "clip: vnode, [h_kernel, v_kernel]: float[]?";
 
 public:
     SeparableConvolution(auto Arguments) {

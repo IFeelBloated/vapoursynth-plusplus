@@ -6,7 +6,7 @@ struct TemporalMedian {
 	field(Radius, 1);
 
 public:
-	static constexpr auto Signature = "clip:clip;radius:int:opt;";
+	static constexpr auto Signature = "clip: vnode, radius: int?";
 
 public:
 	TemporalMedian(auto Arguments) {

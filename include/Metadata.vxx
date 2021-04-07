@@ -157,7 +157,7 @@ struct CoreInfo {
 enum struct ItemTypes {
 	Int = 'i',
 	Float = 'f',
-	Data = 's',
+	String = 's',
 	VideoNode = 'c',
 	VideoFrame = 'v',
 	Function = 'm',

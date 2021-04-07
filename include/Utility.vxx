@@ -136,14 +136,14 @@ namespace Utility::Reflection {
 }
 
 namespace Utility::SignatureParser {
-	constexpr auto DeduceFunctionName(auto&& PartialSignature, auto&& Fallback) {
+	auto DeduceFunctionName(auto&& PartialSignature, auto&& Fallback) {
 		auto ReferenceSignature = static_cast<std::string>(Forward(PartialSignature));
 		if (auto SectorMarker = ReferenceSignature.find("("); SectorMarker != std::string::npos)
-			return ReferenceSignature.substr(0, SectorMarker);
+			return std::regex_replace(ReferenceSignature.substr(0, SectorMarker), std::regex{ R"(\s)" }, "");
 		else
 			return static_cast<std::string>(Forward(Fallback));
 	}
-	constexpr auto ExtractParameterList(auto&& PartialSignature) {
+	auto ExtractParameterList(auto&& PartialSignature) {
 		auto ReferenceSignature = static_cast<std::string>(Forward(PartialSignature));
 		auto ParameterListSector = [&] {
 			if (auto SectorMarker = ReferenceSignature.find("("); SectorMarker != std::string::npos)
@@ -157,12 +157,43 @@ namespace Utility::SignatureParser {
 			else
 				return ReferenceSignature.find("->");
 		}();
-		return ReferenceSignature.substr(ParameterListSector, ReturnKeySector == std::string::npos ? ReturnKeySector : ReturnKeySector - ParameterListSector);
+		auto FormatParameterList = [](auto ExtractedParameterList) {
+			auto ReplaceTokens = [&](auto ...TokenPairs) {
+				auto ReplaceEachToken = [](auto& Self, auto TokenizedParameterList, auto ReferenceToken, auto TargetToken, auto ...TokenPairs) {
+					if constexpr (auto RetokenizedParameterList = std::regex_replace(TokenizedParameterList, std::regex{ ReferenceToken }, TargetToken); sizeof...(TokenPairs) == 0)
+						return RetokenizedParameterList;
+					else
+						return Self(Self, std::move(RetokenizedParameterList), TokenPairs...);
+				};
+				return ReplaceEachToken(ReplaceEachToken, std::move(ExtractedParameterList), TokenPairs...);
+			};
+			auto TokenizedParameterList = ReplaceTokens(R"(\s)", "", R"(\?)", ":opt", ",", ";", ":vnode", ":clip", ":vframe", ":frame", ":string", ":data");
+			auto FlattenParameterGroups = [&] {
+				auto FlattenedParameterList = std::ostringstream{};
+				auto PatternForParameterGroups = std::regex{ R"(\[([^:]+)\]:([^;]+))" };
+				auto ParameterGroup = std::sregex_iterator{ TokenizedParameterList.begin(), TokenizedParameterList.end(), PatternForParameterGroups };
+				auto NoMatch = std::sregex_iterator{};
+				auto ParameterListNeedsFlattening = ParameterGroup != NoMatch;
+				while (ParameterGroup != NoMatch) {
+					FlattenedParameterList << ParameterGroup->prefix() << std::regex_replace(ParameterGroup->str(1), std::regex{ ";" }, ":" + ParameterGroup->str(2) + ";") << ":" + ParameterGroup->str(2);
+					if (std::next(ParameterGroup) == NoMatch)
+						FlattenedParameterList << ParameterGroup->suffix();
+					++ParameterGroup;
+				}
+				return std::tuple{ ParameterListNeedsFlattening, std::move(FlattenedParameterList).str() };
+			};
+			if (auto [ParameterListNeedsFlattening, FlattenedParameterList] = FlattenParameterGroups(); ParameterListNeedsFlattening)
+				TokenizedParameterList = std::move(FlattenedParameterList);
+			if (TokenizedParameterList[TokenizedParameterList.size() - 1] != ';')
+				TokenizedParameterList += ";";
+			return TokenizedParameterList;
+		};
+		return FormatParameterList(ReferenceSignature.substr(ParameterListSector, ReturnKeySector == std::string::npos ? ReturnKeySector : ReturnKeySector - ParameterListSector));
 	}
-	constexpr auto DeduceReturnKey(auto&& PartialSignature, auto&& Fallback) {
+	auto DeduceReturnKey(auto&& PartialSignature, auto&& Fallback) {
 		auto ReferenceSignature = static_cast<std::string>(Forward(PartialSignature));
 		if (auto SectorMarker = ReferenceSignature.find("->"); SectorMarker != std::string::npos)
-			return ReferenceSignature.substr(SectorMarker + 2);
+			return std::regex_replace(ReferenceSignature.substr(SectorMarker + 2), std::regex{ R"(\s)" }, "");
 		else
 			return static_cast<std::string>(Forward(Fallback));
 	}

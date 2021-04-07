@@ -6,7 +6,7 @@ struct ModifyFrame {
 	field(Evaluator, Function{});
 
 public:
-	static constexpr auto Signature = "clip:clip;evaluator:func;";
+	static constexpr auto Signature = "clip: vnode, evaluator: func";
 	static constexpr auto ExecutionPolicyForFrameGenerator = ExecutionSchemes::ParallelResourceAcquisition;
 
 public:

@@ -9,7 +9,7 @@ struct Crop {
 	field(CroppedHeight, 0);
 
 public:
-	static constexpr auto Signature = "clip:clip;left:int:opt;right:int:opt;top:int:opt;bottom:int:opt;";
+	static constexpr auto Signature = "clip: vnode, [left, right, top, bottom]: int?";
 
 public:
 	Crop(auto Arguments) {

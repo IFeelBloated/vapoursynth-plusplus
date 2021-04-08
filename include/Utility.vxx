@@ -184,7 +184,7 @@ namespace Utility::SignatureParser {
 			};
 			if (auto [ParameterListNeedsFlattening, FlattenedParameterList] = FlattenParameterGroups(); ParameterListNeedsFlattening)
 				TokenizedParameterList = std::move(FlattenedParameterList);
-			if (TokenizedParameterList[TokenizedParameterList.size() - 1] != ';')
+			if (TokenizedParameterList.size() > 0 && TokenizedParameterList[TokenizedParameterList.size() - 1] != ';')
 				TokenizedParameterList += ";";
 			return TokenizedParameterList;
 		};

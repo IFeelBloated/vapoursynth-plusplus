@@ -259,15 +259,14 @@ namespace PluginDevelopmentKit {
 				);
 			};
 			try {
-				auto ExtendedFilterInstance = FilterInstantiator(Arguments);
-				// GCC bug, fixme (place structured binding within if)
-				auto& [_, FilterInstance] = *ExtendedFilterInstance;
-				if constexpr (requires { { FilterInstance.InitiateCallGraph(ImpredicativeFilterInitiator, Core) }->AnyBut<void>; })
-					Console.Receive("clip", FilterInstance.InitiateCallGraph(ImpredicativeFilterInitiator, Core));
-				else if constexpr (requires { { FilterInstance.InitiateCallGraph(ImpredicativeFilterInitiator) }->AnyBut<void>; })
-					Console.Receive("clip", FilterInstance.InitiateCallGraph(ImpredicativeFilterInitiator));
+				if constexpr (requires { { FilterType::InitiateWorkflow(ImpredicativeFilterInitiator, Arguments, Core) }->AnyBut<void>; })
+					Console.Receive("clip", FilterType::InitiateWorkflow(ImpredicativeFilterInitiator, Arguments, Core));
+				else if constexpr (requires { { FilterType::InitiateWorkflow(ImpredicativeFilterInitiator, Arguments) }->AnyBut<void>; })
+					Console.Receive("clip", FilterType::InitiateWorkflow(ImpredicativeFilterInitiator, Arguments));
+				else if constexpr (requires { { FilterType::InitiateWorkflow(ImpredicativeFilterInitiator) }->AnyBut<void>; })
+					Console.Receive("clip", FilterType::InitiateWorkflow(ImpredicativeFilterInitiator));
 				else
-					InitiateFilterInstance(std::move(ExtendedFilterInstance), ConsoleHandle);
+					InitiateFilterInstance(FilterInstantiator(Arguments), ConsoleHandle);
 				if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ConsoleHandle); EvaluationFailed)
 					throw RuntimeError{ ErrorMessage };
 			}

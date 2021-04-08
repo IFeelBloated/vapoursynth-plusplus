@@ -3,15 +3,14 @@
 
 struct SeparableConvolution {
     field(InputClip, VideoNode{});
-    field(HorizontalKernel, std::array{ 1., 2., 1. });
-    field(VerticalKernel, std::array{ 0., 0., 0. });
+    field(HorizontalKernel, std::array{ 0., 0., 0. });
 
 public:
     static constexpr auto Signature = "clip: vnode, [h_kernel, v_kernel]: float[]?";
-
-public:
-    SeparableConvolution(auto Arguments) {
-        InputClip = Arguments["clip"];
+    static auto InitiateWorkflow(auto Self, auto Arguments, auto Core) {
+        auto InputClip = static_cast<VideoNode>(Arguments["clip"]);
+        auto HorizontalKernel = std::array{ 1., 2., 1. };
+        auto VerticalKernel = std::array{ 0., 0., 0. };
         if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
             throw RuntimeError{ "only single precision floating point clips with constant format and dimensions supported." };
         if (Arguments["h_kernel"].Exists())
@@ -26,6 +25,16 @@ public:
                 throw RuntimeError{ "v_kernel must contain 3 scalar values." };
         else
             VerticalKernel = HorizontalKernel;
+        InputClip = Self("clip", InputClip, "h_kernel", HorizontalKernel);
+        InputClip = Core["std"]["Transpose"]("clip", InputClip);
+        InputClip = Self("clip", InputClip, "h_kernel", VerticalKernel);
+        return Core["std"]["Transpose"]("clip", InputClip);
+    }
+
+public:
+    SeparableConvolution(auto Arguments) {
+        InputClip = Arguments["clip"];
+        HorizontalKernel = Arguments["h_kernel"];
     }
     auto SpecifyMetadata() {
         return InputClip.ExtractMetadata();
@@ -47,12 +56,5 @@ public:
                 for (auto x : Range{ InputFrame[c].Width })
                     ProcessedFrame[c][y][x] = HorizontalConvolution(InputFrame[c].View(y, x));
         return ProcessedFrame;
-    }
-    auto InitiateCallGraph(auto Self, auto Core) {
-        InputClip = Self("clip", InputClip, "h_kernel", HorizontalKernel);
-        InputClip = Core["std"]["Transpose"]("clip", InputClip);
-        InputClip = Self("clip", InputClip, "h_kernel", VerticalKernel);
-        InputClip = Core["std"]["Transpose"]("clip", InputClip);
-        return InputClip;
     }
 };

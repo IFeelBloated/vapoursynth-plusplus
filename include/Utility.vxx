@@ -170,7 +170,7 @@ namespace Utility::SignatureParser {
 			auto TokenizedParameterList = ReplaceTokens(R"(\s)", "", R"(\?)", ":opt", ",", ";", ":vnode", ":clip", ":vframe", ":frame", ":string", ":data");
 			auto FlattenParameterGroups = [&] {
 				auto FlattenedParameterList = std::ostringstream{};
-				auto PatternForParameterGroups = std::regex{ R"(\[([^:]+)\]:([^;]+))" };
+				auto PatternForParameterGroups = std::regex{ R"(\[([^\]]+)\]:([^;]+))" };
 				auto ParameterGroup = std::sregex_iterator{ TokenizedParameterList.begin(), TokenizedParameterList.end(), PatternForParameterGroups };
 				auto NoMatch = std::sregex_iterator{};
 				auto ParameterListNeedsFlattening = ParameterGroup != NoMatch;

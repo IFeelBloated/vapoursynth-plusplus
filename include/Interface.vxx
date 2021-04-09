@@ -306,7 +306,7 @@ namespace PluginDevelopmentKit {
 				Console.RaiseError(FunctionName + ": " + ErrorMessage);
 			}
 		};
-		std::get<0>(*ConfigurationHandle) = Utility::SignatureParser::DeduceFunctionName(Signature, "AnonymousFunction");
+		std::get<0>(*ConfigurationHandle) = Utility::SignatureParser::DeduceFunctionName(Signature);
 		std::get<1>(*ConfigurationHandle) = Utility::SignatureParser::DeduceReturnKey(Signature, "val");
 		VaporGlobals::Recycler.ClaimOwnership(ConfigurationHandle);
 		VaporGlobals::API->registerFunction(std::get<0>(*ConfigurationHandle).data(), Utility::SignatureParser::ExtractParameterList(Signature).data(), FunctionProxy, ConfigurationHandle, VaporGlobals::PluginHandle);

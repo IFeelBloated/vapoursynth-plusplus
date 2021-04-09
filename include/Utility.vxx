@@ -135,13 +135,25 @@ namespace Utility::Reflection {
 	using ContainerReplaceElementType = Private::ContainerReplaceTypeArgument<std::decay_t<ReferenceContainerType>, TargetElementType>::ReassembledType;
 }
 
+namespace Utility::SignatureParser::Tokenizer {
+	auto Replace(auto TokenizedParameterList, auto ReferenceToken, auto TargetToken, auto ...TokenPairs) {
+		if constexpr (auto RetokenizedParameterList = std::regex_replace(TokenizedParameterList, std::regex{ ReferenceToken }, TargetToken); sizeof...(TokenPairs) == 0)
+			return RetokenizedParameterList;
+		else
+			return Replace(std::move(RetokenizedParameterList), TokenPairs...);
+	}
+}
+
 namespace Utility::SignatureParser {
-	auto DeduceFunctionName(auto&& PartialSignature, auto&& Fallback) {
+	auto DeduceFunctionName(auto&& PartialSignature, auto&& ...Fallback) {
 		auto ReferenceSignature = static_cast<std::string>(Forward(PartialSignature));
 		if (auto SectorMarker = ReferenceSignature.find("("); SectorMarker != std::string::npos)
 			return std::regex_replace(ReferenceSignature.substr(0, SectorMarker), std::regex{ R"(\s)" }, "");
 		else
-			return static_cast<std::string>(Forward(Fallback));
+			if constexpr (sizeof...(Fallback) > 0)
+				return std::string{ Forward(Fallback)... };
+			else
+				return ""s;
 	}
 	auto ExtractParameterList(auto&& PartialSignature) {
 		auto ReferenceSignature = static_cast<std::string>(Forward(PartialSignature));
@@ -158,16 +170,7 @@ namespace Utility::SignatureParser {
 				return ReferenceSignature.find("->");
 		}();
 		auto FormatParameterList = [](auto ExtractedParameterList) {
-			auto ReplaceTokens = [&](auto ...TokenPairs) {
-				auto ReplaceEachToken = [](auto& Self, auto TokenizedParameterList, auto ReferenceToken, auto TargetToken, auto ...TokenPairs) {
-					if constexpr (auto RetokenizedParameterList = std::regex_replace(TokenizedParameterList, std::regex{ ReferenceToken }, TargetToken); sizeof...(TokenPairs) == 0)
-						return RetokenizedParameterList;
-					else
-						return Self(Self, std::move(RetokenizedParameterList), TokenPairs...);
-				};
-				return ReplaceEachToken(ReplaceEachToken, std::move(ExtractedParameterList), TokenPairs...);
-			};
-			auto TokenizedParameterList = ReplaceTokens(R"(\s)", "", R"(\?)", ":opt", ",", ";", ":vnode", ":clip", ":vframe", ":frame", ":string", ":data");
+			auto TokenizedParameterList = Tokenizer::Replace(std::move(ExtractedParameterList), R"(\s)", "", R"(\?)", ":opt", ",", ";", ":vnode", ":clip", ":vframe", ":frame", ":string", ":data");
 			auto FlattenParameterGroups = [&] {
 				auto FlattenedParameterList = std::ostringstream{};
 				auto PatternForParameterGroups = std::regex{ R"(\[([^\]]+)\]:([^;]+))" };
@@ -185,7 +188,7 @@ namespace Utility::SignatureParser {
 			if (auto [ParameterListNeedsFlattening, FlattenedParameterList] = FlattenParameterGroups(); ParameterListNeedsFlattening)
 				TokenizedParameterList = std::move(FlattenedParameterList);
 			if (TokenizedParameterList.size() > 0 && TokenizedParameterList[TokenizedParameterList.size() - 1] != ';')
-				TokenizedParameterList += ";";
+				TokenizedParameterList.push_back(';');
 			return TokenizedParameterList;
 		};
 		return FormatParameterList(ReferenceSignature.substr(ParameterListSector, ReturnKeySector == std::string::npos ? ReturnKeySector : ReturnKeySector - ParameterListSector));

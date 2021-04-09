@@ -8,15 +8,14 @@ struct Plugin : PluginInfo {
 private:
 	struct Function {
 		field(PluginHandle, static_cast<const Plugin*>(nullptr));
-		field(Name, ""s);
-		field(ParameterList, ""s);
+		field(Signature, ""s);
 
 	public:
 		auto operator()(auto&& ...Arguments) const requires (sizeof...(Arguments) % 2 == 0) {
 			auto ArgumentMap = Utility::Map::Create();
 			if constexpr (sizeof...(Arguments) != 0)
 				Utility::Map::Fill(ArgumentMap.Handle, Forward(Arguments)...);
-			auto ResultMap = VaporGlobals::API->invoke(PluginHandle->Handle, Name.data(), ArgumentMap.Handle);
+			auto ResultMap = VaporGlobals::API->invoke(PluginHandle->Handle, Utility::SignatureParser::DeduceFunctionName(Signature).data(), ArgumentMap.Handle);
 			auto ResultItem = Utility::Map::AccessItem<true, false>(ResultMap, Utility::Map::DeduceReturnKey(ResultMap, "clip"sv));
 			if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ResultMap); EvaluationFailed)
 				throw RuntimeError{ ErrorMessage };
@@ -28,7 +27,9 @@ public:
 	auto operator[](ExplicitlyConvertibleTo<std::string> auto&& FunctionName) const {
 		auto Name = static_cast<std::string>(Forward(FunctionName));
 		auto ParameterList = static_cast<std::string>(Utility::Map::AccessItem<true, false>(VaporGlobals::API->getFunctions(Handle), Name)).erase(0, Name.size() + 1);
-		return Function{ .PluginHandle = this, .Name = std::move(Name), .ParameterList = std::move(ParameterList) };
+		if (ParameterList.size() > 0)
+			ParameterList.pop_back();
+		return Function{ .PluginHandle = this, .Signature = std::move(Name) + "(" + Utility::SignatureParser::Tokenizer::Replace(std::move(ParameterList), ":data", ":string", ":frame", ":vframe", ":clip", ":vnode", ":opt", "?", ";", ", ", ":", ": ", R"(:([^,]+)(?=,[^:]+:\1(?=,|$)))", "", R"((?![, ])([^:]+): ([^,]+))", "[$1]: $2", R"(\[([^\]|,]+)\]: ([^,]+))", "$1: $2") + ")" };
 	}
 	auto ListFunctions() const {
 		auto FunctionNames = std::vector<std::string>{};

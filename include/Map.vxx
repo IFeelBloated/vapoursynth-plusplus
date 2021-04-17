@@ -41,12 +41,12 @@ private:
 	};
 
 public:
-	field(Access, std::shared_ptr<SharedState>{});
+	field(StorageAccess, std::shared_ptr<SharedState>{});
 
 public:
 	Item() = default;
 	Item(auto&& Descriptor, ExplicitlyConvertibleTo<std::string> auto&& Key) {
-		this->Access = std::make_shared<SharedState>(Forward(Descriptor), Forward(Key));
+		this->StorageAccess = std::make_shared<SharedState>(Forward(Descriptor), Forward(Key));
 	}
 
 public:
@@ -54,7 +54,7 @@ public:
 		return Index < size();
 	}
 	auto Type() const {
-		return static_cast<ItemTypes>(VaporGlobals::API->propGetType(Access->Handle, Access->Key.data()));
+		return static_cast<ItemTypes>(VaporGlobals::API->propGetType(StorageAccess->Handle, StorageAccess->Key.data()));
 	}
 	auto operator[](IntegralOrEnumerable auto Index) const {
 		auto Replica = *this;
@@ -64,7 +64,7 @@ public:
 
 public:
 	auto size() const {
-		return Utility::Max(VaporGlobals::API->propNumElements(Access->Handle, Access->Key.data()), 0);
+		return Utility::Max(VaporGlobals::API->propNumElements(StorageAccess->Handle, StorageAccess->Key.data()), 0);
 	}
 	auto begin() const {
 		return Iterator{ .TargetItem = this, .Index = Index };
@@ -76,37 +76,37 @@ public:
 public:
 	template<std::floating_point TargetType>
 	operator TargetType() const {
-		return VaporGlobals::API->propGetFloat(Access->Handle, Access->Key.data(), Index, nullptr);
+		return VaporGlobals::API->propGetFloat(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr);
 	}
 
 public:
 	template<IntegralOrEnumerable TargetType>
 	operator TargetType() const {
-		return static_cast<TargetType>(VaporGlobals::API->propGetInt(Access->Handle, Access->Key.data(), Index, nullptr));
+		return static_cast<TargetType>(VaporGlobals::API->propGetInt(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr));
 	}
 
 public:
 	template<ConstructibleFrom<const char*> TargetType>
 	operator TargetType() const {
-		return { VaporGlobals::API->propGetData(Access->Handle, Access->Key.data(), Index, nullptr) };
+		return { VaporGlobals::API->propGetData(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr) };
 	}
 
 public:
 	template<SubtypeOf<NodeReference> TargetType>
 	operator TargetType() const {
-		return { VaporGlobals::API->propGetNode(Access->Handle, Access->Key.data(), Index, nullptr) };
+		return { VaporGlobals::API->propGetNode(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr) };
 	}
 
 public:
 	template<SubtypeOf<FrameReference> TargetType>
 	operator TargetType() const {
-		return { VaporGlobals::API->propGetFrame(Access->Handle, Access->Key.data(), Index, nullptr) };
+		return { VaporGlobals::API->propGetFrame(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr) };
 	}
 
 public:
 	template<SubtypeOf<FunctionReference> TargetType>
 	operator TargetType() const {
-		return { VaporGlobals::API->propGetFunc(Access->Handle, Access->Key.data(), Index, nullptr) };
+		return { VaporGlobals::API->propGetFunc(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr) };
 	}
 
 public:
@@ -144,25 +144,25 @@ public:
 
 private:
 	auto InjectInt(auto Value) const {
-		VaporGlobals::API->propSetInt(Access->Handle, Access->Key.data(), static_cast<std::int64_t>(Value), VSPropAppendMode::paAppend);
+		VaporGlobals::API->propSetInt(StorageAccess->Handle, StorageAccess->Key.data(), static_cast<std::int64_t>(Value), VSPropAppendMode::paAppend);
 	}
 	auto InjectFloat(auto Value) const {
-		VaporGlobals::API->propSetFloat(Access->Handle, Access->Key.data(), Value, VSPropAppendMode::paAppend);
+		VaporGlobals::API->propSetFloat(StorageAccess->Handle, StorageAccess->Key.data(), Value, VSPropAppendMode::paAppend);
 	}
 	auto InjectString(auto&& Value) const {
-		VaporGlobals::API->propSetData(Access->Handle, Access->Key.data(), Value.data(), Value.size(), VSPropAppendMode::paAppend);
+		VaporGlobals::API->propSetData(StorageAccess->Handle, StorageAccess->Key.data(), Value.data(), Value.size(), VSPropAppendMode::paAppend);
 	}
 	auto InjectCharArray(auto Value) const {
-		VaporGlobals::API->propSetData(Access->Handle, Access->Key.data(), Value, -1, VSPropAppendMode::paAppend);
+		VaporGlobals::API->propSetData(StorageAccess->Handle, StorageAccess->Key.data(), Value, -1, VSPropAppendMode::paAppend);
 	}
 	auto InjectNode(auto&& Value) const {
-		VaporGlobals::API->propSetNode(Access->Handle, Access->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
+		VaporGlobals::API->propSetNode(StorageAccess->Handle, StorageAccess->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
 	}
 	auto InjectFrame(auto&& Value) const {
-		VaporGlobals::API->propSetFrame(Access->Handle, Access->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
+		VaporGlobals::API->propSetFrame(StorageAccess->Handle, StorageAccess->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
 	}
 	auto InjectFunction(auto&& Value) const {
-		VaporGlobals::API->propSetFunc(Access->Handle, Access->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
+		VaporGlobals::API->propSetFunc(StorageAccess->Handle, StorageAccess->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
 	}
 	auto InjectDynamicallyTypedObject(auto&& Object) const {
 		if (Object.Type() == ItemTypes::Int)
@@ -217,7 +217,7 @@ private:
 
 public:
 	auto Erase() const requires (Readonly == false) {
-		return VaporGlobals::API->propDeleteKey(Access->Handle, Access->Key.data()) == 1;
+		return VaporGlobals::API->propDeleteKey(StorageAccess->Handle, StorageAccess->Key.data()) == 1;
 	}
 	auto& operator=(AnyBut<Item> auto&& Entity) const requires (Readonly == false) {
 		Insert(Entity, VSPropAppendMode::paReplace);
@@ -242,8 +242,8 @@ namespace Utility::Map {
 		return Keys;
 	}
 	auto Fill(auto MapHandle, auto&& Key, auto&& Values, auto&& ...Arguments) {
-		auto Storage = AccessItem<false>(MapHandle, Forward(Key));
-		Storage += Values;
+		auto ItemStorage = AccessItem<false>(MapHandle, Forward(Key));
+		ItemStorage += Values;
 		if constexpr (sizeof...(Arguments) != 0)
 			Fill(MapHandle, Forward(Arguments)...);
 	}

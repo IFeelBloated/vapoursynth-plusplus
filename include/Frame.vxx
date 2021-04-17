@@ -33,7 +33,7 @@ public:
 	}
 
 public:
-	auto Type() const {
+	auto QueryMediaType() const {
 		//Placeholder for API v4.
 	}
 	auto& QueryVideoFormat() const {

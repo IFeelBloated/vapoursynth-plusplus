@@ -21,7 +21,8 @@ Function
 Map
 Plugin
 Core
-Logger
+LoggerController
+Interface (partial)
 ```
 
 ## Compilation

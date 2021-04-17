@@ -1,6 +1,6 @@
 #pragma once
 #include "Plugin.vxx"
-#include "Logger.vxx"
+#include "LoggerController.vxx"
 
 struct CoreProxy {
 	field(Handle, static_cast<VSCore*>(nullptr));
@@ -162,7 +162,7 @@ public:
 	}
 
 public:
-	auto TetherLogger(auto&& MessageLogger) const {
+	auto InstallLogger(auto&& MessageLogger) const {
 		using LoggerType = std::decay_t<decltype(MessageLogger)>;
 		auto LoggerHandle = new auto{ Forward(MessageLogger) };
 		auto LoggerRecycler = [](auto LoggerPointer) {
@@ -171,30 +171,24 @@ public:
 		};
 		auto LoggerProxy = [](auto MessageType, auto Message, auto LoggerPointer) {
 			auto LoggerHandle = reinterpret_cast<LoggerType*>(LoggerPointer);
-			if constexpr (auto& TetheredLogger = *LoggerHandle; requires { TetheredLogger(""sv); })
-				TetheredLogger(std::string_view{ Message });
-			else if constexpr (requires { TetheredLogger(Message); })
-				TetheredLogger(Message);
-			else if constexpr (requires { TetheredLogger(MessageTypes::Debug, ""sv); })
-				TetheredLogger(static_cast<MessageTypes>(MessageType), std::string_view{ Message });
-			else if constexpr (requires { TetheredLogger(MessageTypes::Debug, Message); })
-				TetheredLogger(static_cast<MessageTypes>(MessageType), Message);
-			else if constexpr (requires { TetheredLogger(VSMessageType::mtDebug, ""sv); })
-				TetheredLogger(static_cast<VSMessageType>(MessageType), std::string_view{ Message });
-			else if constexpr (requires { TetheredLogger(VSMessageType::mtDebug, Message); })
-				TetheredLogger(static_cast<VSMessageType>(MessageType), Message);
+			if constexpr (auto& InstalledLogger = *LoggerHandle; requires { InstalledLogger(""sv); })
+				InstalledLogger(std::string_view{ Message });
+			else if constexpr (requires { InstalledLogger(Message); })
+				InstalledLogger(Message);
+			else if constexpr (requires { InstalledLogger(MessageTypes::Debug, ""sv); })
+				InstalledLogger(static_cast<MessageTypes>(MessageType), std::string_view{ Message });
+			else if constexpr (requires { InstalledLogger(MessageTypes::Debug, Message); })
+				InstalledLogger(static_cast<MessageTypes>(MessageType), Message);
+			else if constexpr (requires { InstalledLogger(VSMessageType::mtDebug, ""sv); })
+				InstalledLogger(static_cast<VSMessageType>(MessageType), std::string_view{ Message });
+			else if constexpr (requires { InstalledLogger(VSMessageType::mtDebug, Message); })
+				InstalledLogger(static_cast<VSMessageType>(MessageType), Message);
 			else
-				static_assert(sizeof(TetheredLogger) == -1, "TetherLogger: failed to tether the specified logger, it is either not callable or has an incompatible signature.");
+				static_assert(sizeof(InstalledLogger) == -1, "InstallLogger: failed to install the specified logger, it is either not callable or has an incompatible signature.");
 		};
 		auto LoggerID = VaporGlobals::API->addMessageHandler(LoggerProxy, LoggerRecycler, LoggerHandle);
-		auto MangledLoggerID = static_cast<std::intptr_t>(~LoggerID);
-		auto LoggerDescriptor = reinterpret_cast<VSLogHandle*>(MangledLoggerID);
-		return Logger{ LoggerDescriptor, LoggerHandle, LoggerProxy };
-	}
-	auto InstallLogger(auto&& MessageLogger) const {
-		auto InstalledLogger = TetherLogger(Forward(MessageLogger));
-		InstalledLogger.Detach();
-		return InstalledLogger;
+		auto LoggerDescriptor = static_cast<std::intptr_t>(~LoggerID);
+		return LoggerController{ .Handle = reinterpret_cast<VSLogHandle*>(LoggerDescriptor) };
 	}
 	auto LogMessage(AnyOf<MessageTypes, VSMessageType> auto MessageType, ExplicitlyConvertibleTo<std::string> auto&& Message) const {
 		auto FormattedMessage = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(Message);
@@ -267,11 +261,11 @@ private:
 	using CoreReference = ExclusiveOwner<VSCore, false>;
 
 public:
-	field(Anchor, std::shared_ptr<CoreReference>{});
+	field(ResourceManager, std::shared_ptr<CoreReference>{});
 
 public:
 	CoreInstantiator() {
 		this->Handle = VaporGlobals::API->createCore(0);
-		this->Anchor = std::make_shared<CoreReference>(this->Handle);
+		this->ResourceManager = std::make_shared<CoreReference>(this->Handle);
 	}
 };

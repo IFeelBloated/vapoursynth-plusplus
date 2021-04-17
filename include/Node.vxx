@@ -100,7 +100,7 @@ public:
 		VaporGlobals::API->getFrameAsync(Index, Handle, Materialize, Expectation);
 		return Expectation->get_future();
 	}
-	auto Type() const {
+	auto QueryMediaType() const {
 		//Placeholder for API v4.
 	}
 	auto QueryVideoInfo() const {

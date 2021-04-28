@@ -4,9 +4,4 @@
 namespace VaporGlobals {
 	auto API = static_cast<const VSAPI*>(nullptr);
 	constexpr auto IndeterminateVideoFormat = VideoFormat{};
-	auto Identifier = "";
-	auto Namespace = "";
-	auto Description = "";
-
-	auto PluginHandle = static_cast<VSPlugin*>(nullptr);
 }

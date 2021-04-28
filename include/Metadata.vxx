@@ -185,6 +185,11 @@ enum struct CacheOptions {
 	Disabled = 1
 };
 
+enum struct WriteProtectOptions {
+	Rewritable = 0,
+	WriteOnce = 1
+};
+
 enum struct VideoFormats {
 	None = 0,
 

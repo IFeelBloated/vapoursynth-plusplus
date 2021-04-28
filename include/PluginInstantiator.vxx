@@ -1,11 +1,13 @@
 #pragma once
 #include "Core.vxx"
 
-namespace VaporGlobals {
+namespace PluginInstantiator::Private {
+	auto Initializer = static_cast<VSConfigPlugin>(nullptr);
+	auto Handle = static_cast<VSPlugin*>(nullptr);
 	auto Recycler = GarbageCollector{};
 }
 
-namespace PluginDevelopmentKit {
+namespace PluginInstantiator {
 	template<typename FilterType>
 	auto RegisterFilter(auto&& ...Configurations) requires (sizeof...(Configurations) < 2) {
 		auto ConfigurationHandle = new std::tuple{ ""s, Forward(Configurations)... };
@@ -275,8 +277,8 @@ namespace PluginDevelopmentKit {
 			}
 		};
 		std::get<0>(*ConfigurationHandle) = Utility::SignatureParser::DeduceFunctionName(Signature, Utility::Reflection::ReifyTypeNameIntoString<FilterType>());
-		VaporGlobals::Recycler.ClaimOwnership(ConfigurationHandle);
-		VaporGlobals::API->registerFunction(std::get<0>(*ConfigurationHandle).data(), Utility::SignatureParser::ExtractParameterList(Signature).data(), FilterEngine, ConfigurationHandle, VaporGlobals::PluginHandle);
+		Private::Recycler.ClaimOwnership(ConfigurationHandle);
+		VaporGlobals::API->registerFunction(std::get<0>(*ConfigurationHandle).data(), Utility::SignatureParser::ExtractParameterList(Signature).data(), FilterEngine, ConfigurationHandle, Private::Handle);
 	}
 	auto RegisterFunction(ExplicitlyConvertibleTo<std::string> auto&& Signature, auto&& FunctionEntity) {
 		auto ConfigurationHandle = new std::tuple{ ""s, ""s, Forward(FunctionEntity) };
@@ -308,14 +310,20 @@ namespace PluginDevelopmentKit {
 		};
 		std::get<0>(*ConfigurationHandle) = Utility::SignatureParser::DeduceFunctionName(Signature);
 		std::get<1>(*ConfigurationHandle) = Utility::SignatureParser::DeduceReturnKey(Signature, "val");
-		VaporGlobals::Recycler.ClaimOwnership(ConfigurationHandle);
-		VaporGlobals::API->registerFunction(std::get<0>(*ConfigurationHandle).data(), Utility::SignatureParser::ExtractParameterList(Signature).data(), FunctionProxy, ConfigurationHandle, VaporGlobals::PluginHandle);
+		Private::Recycler.ClaimOwnership(ConfigurationHandle);
+		VaporGlobals::API->registerFunction(std::get<0>(*ConfigurationHandle).data(), Utility::SignatureParser::ExtractParameterList(Signature).data(), FunctionProxy, ConfigurationHandle, Private::Handle);
+	}
+	auto Initialize(SubtypeOf<PluginInfo> auto&& Configurations, AnyOf<WriteProtectOptions, bool> auto WriteProtection) {
+		Private::Initializer(Configurations.Identifier.data(), Configurations.Namespace.data(), Configurations.Description.data(), VAPOURSYNTH_API_VERSION, static_cast<bool>(WriteProtection), Private::Handle);
+	}
+	auto Initialize(SubtypeOf<PluginInfo> auto&& Configurations) {
+		Initialize(Forward(Configurations), WriteProtectOptions::WriteOnce);
 	}
 }
 
-namespace VaporInterface {
-	auto RegisterPlugin(auto Broker, auto Plugin) {
-		VaporGlobals::API = getVapourSynthAPI(VAPOURSYNTH_API_VERSION);
-		Broker(VaporGlobals::Identifier, VaporGlobals::Namespace, VaporGlobals::Description, VAPOURSYNTH_API_VERSION, 1, Plugin);
-	}
+#define InstantiatePluginFrom(UserDefinedConstructor) VS_EXTERNAL_API(auto) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction, VSPlugin* plugin) { \
+	PluginInstantiator::Private::Initializer = configFunc; \
+	PluginInstantiator::Private::Handle = plugin; \
+	VaporGlobals::API = getVapourSynthAPI(VAPOURSYNTH_API_VERSION); \
+	UserDefinedConstructor(); \
 }

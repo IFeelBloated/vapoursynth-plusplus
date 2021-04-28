@@ -1,5 +1,5 @@
 #pragma once
-#include "Interface.vxx"
+#include "Core.vxx"
 
 struct GaussBlur {
 	field(InputClip, VideoNode{});

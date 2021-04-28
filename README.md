@@ -22,7 +22,7 @@ Map
 Plugin
 Core
 LoggerController
-Interface (partial)
+PluginInstantiator
 ```
 
 ## Compilation

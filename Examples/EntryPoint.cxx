@@ -1,4 +1,4 @@
-#include "Interface.vxx"
+#include "PluginInstantiator.vxx"
 #include "GaussBlur.hxx"
 #include "GaussBlurFast.hxx"
 #include "TemporalMedian.hxx"
@@ -8,18 +8,21 @@
 #include "ModifyFrame.hxx"
 #include "Palette.hxx"
 
-VS_EXTERNAL_API(auto) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction, VSPlugin* plugin) {
-	VaporGlobals::Identifier = "com.vsfilterscript.test";
-	VaporGlobals::Namespace = "test";
-	VaporGlobals::Description = "Test filters for vsFilterScript";
-	VaporGlobals::PluginHandle = plugin;
-	VaporInterface::RegisterPlugin(configFunc, plugin);
-	PluginDevelopmentKit::RegisterFilter<GaussBlur>();
-	PluginDevelopmentKit::RegisterFilter<GaussBlurFast>();
-	PluginDevelopmentKit::RegisterFilter<TemporalMedian>();
-	PluginDevelopmentKit::RegisterFilter<Crop>();
-	PluginDevelopmentKit::RegisterFilter<Rec601ToRGB>();
-	PluginDevelopmentKit::RegisterFilter<SeparableConvolution>();
-	PluginDevelopmentKit::RegisterFilter<ModifyFrame>();
-	PluginDevelopmentKit::RegisterFilter<Palette>();
+auto Main() {
+	auto Configurations = PluginInfo{
+		.Namespace = "test",
+		.Identifier = "com.vsfilterscript.test",
+		.Description = "Test filters for vsFilterScript"
+	};
+	PluginInstantiator::Initialize(Configurations);
+	PluginInstantiator::RegisterFilter<GaussBlur>();
+	PluginInstantiator::RegisterFilter<GaussBlurFast>();
+	PluginInstantiator::RegisterFilter<TemporalMedian>();
+	PluginInstantiator::RegisterFilter<Crop>();
+	PluginInstantiator::RegisterFilter<Rec601ToRGB>();
+	PluginInstantiator::RegisterFilter<SeparableConvolution>();
+	PluginInstantiator::RegisterFilter<ModifyFrame>();
+	PluginInstantiator::RegisterFilter<Palette>();
 }
+
+InstantiatePluginFrom(Main);

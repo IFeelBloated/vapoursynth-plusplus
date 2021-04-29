@@ -114,6 +114,12 @@ public:
 	auto QueryAudioInfo() const {
 		//Placeholder for API v4.
 	}
+	auto QueryCachePolicy() const {
+		if (auto CachePolicy = VaporGlobals::API->getVideoInfo(Handle)->flags; CachePolicy & 0x1 != 0)
+			return CacheOptions::Disabled;
+		else
+			return CacheOptions::Automatic;
+	}
 
 public:
 	template<SubtypeOf<Node> NodeType>

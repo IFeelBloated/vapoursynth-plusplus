@@ -321,9 +321,9 @@ namespace PluginInstantiator {
 	}
 }
 
-#define InstantiatePluginFrom(UserDefinedConstructor) VS_EXTERNAL_API(auto) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction, VSPlugin* plugin) { \
+#define InstantiatePluginFrom(...) VS_EXTERNAL_API(auto) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction, VSPlugin* plugin) { \
 	PluginInstantiator::Private::Initializer = configFunc; \
 	PluginInstantiator::Private::Handle = plugin; \
 	VaporGlobals::API = getVapourSynthAPI(VAPOURSYNTH_API_VERSION); \
-	UserDefinedConstructor(); \
+	__VA_ARGS__(); \
 }

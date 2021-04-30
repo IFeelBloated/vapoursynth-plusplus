@@ -18,7 +18,7 @@ private:
 			auto ResultMap = VaporGlobals::API->invoke(PluginHandle->Handle, Utility::SignatureParser::DeduceFunctionName(Signature).data(), ArgumentMap.Handle);
 			auto ResultItem = Utility::Map::AccessItem<true, false>(ResultMap, Utility::Map::DeduceReturnKey(ResultMap, "clip"sv));
 			if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ResultMap); EvaluationFailed)
-				throw RuntimeError{ ErrorMessage };
+				throw std::runtime_error{ ErrorMessage };
 			return ResultItem;
 		}
 	};

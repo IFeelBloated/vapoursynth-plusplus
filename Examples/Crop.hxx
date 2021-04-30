@@ -27,11 +27,11 @@ public:
 		CroppedWidth = InputClip.Width - Left - Right;
 		CroppedHeight = InputClip.Height - Top - Bottom;
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.Is444())
-			throw RuntimeError{ "clips with subsampled format not supported." };
+			throw std::runtime_error{ "clips with subsampled format not supported." };
 		if (Left < 0 || Right < 0 || Top < 0 || Bottom < 0)
-			throw RuntimeError{ "cannot crop negative measures!" };
+			throw std::runtime_error{ "cannot crop negative measures!" };
 		if (CroppedWidth <= 0 || CroppedHeight <= 0)
-			throw RuntimeError{ "dimensions must be positive after cropping!" };
+			throw std::runtime_error{ "dimensions must be positive after cropping!" };
 	}
 	auto SpecifyMetadata() {
 		auto Metadata = InputClip.ExtractMetadata();

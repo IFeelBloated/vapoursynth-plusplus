@@ -17,7 +17,7 @@ public:
 		if (Arguments["height"].Exists())
 			Height = Arguments["height"];
 		if (Width <= 0 || Height <= 0)
-			throw RuntimeError{ "spatial dimensions must be positive!" };
+			throw std::runtime_error{ "spatial dimensions must be positive!" };
 	}
 	auto SpecifyMetadata(auto Core) {
 		auto Metadata = VideoInfo{

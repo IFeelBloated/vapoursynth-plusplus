@@ -84,7 +84,7 @@ public:
 		auto ErrorMessageBuffer = std::array<char, 1024>{};
 		auto FrameHandle = VaporGlobals::API->getFrame(Index, Handle, ErrorMessageBuffer.data(), 1024);
 		if (FrameHandle == Frame::NullHandle)
-			throw RuntimeError{ ErrorMessageBuffer.data() };
+			throw std::runtime_error{ ErrorMessageBuffer.data() };
 		return Frame{ FrameHandle };
 	}
 	auto ExpectFrame(std::integral auto Index) const {
@@ -94,7 +94,7 @@ public:
 			if (ErrorMessage == nullptr)
 				Expectation->set_value(ExpectedFrame);
 			else
-				Expectation->set_exception(std::make_exception_ptr(RuntimeError{ ErrorMessage }));
+				Expectation->set_exception(std::make_exception_ptr(std::runtime_error{ ErrorMessage }));
 			delete Expectation;
 		};
 		VaporGlobals::API->getFrameAsync(Index, Handle, Materialize, Expectation);

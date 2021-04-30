@@ -129,10 +129,10 @@ namespace PluginInstantiator {
 							[](auto) { /* Placeholder for API v4. */ }
 						);
 					}
-					catch (RuntimeError& ErrorMessage) {
+					catch (std::exception& ErrorMessage) {
 						auto Console = ConsoleProxy{ .Handle = ConsoleHandle };
 						delete reinterpret_cast<ExtendedFilterType*>(*FatInstancePointer);
-						Console.RaiseError(ErrorMessage);
+						Console.RaiseError(ErrorMessage.what());
 					}
 				};
 				auto FrameGenerator = [](auto Index, auto ActivationReason, auto FatInstancePointer, auto AttachmentPointer, auto FrameContextHandle, auto CoreHandle, auto...) {
@@ -210,8 +210,8 @@ namespace PluginInstantiator {
 						else
 							return InitiateFrameGeneratorForSourceFilter();
 					}
-					catch (RuntimeError& ErrorMessage) {
-						return FrameContext.RaiseError(std::string{ FilterName } + ": " + ErrorMessage);
+					catch (std::exception& ErrorMessage) {
+						return FrameContext.RaiseError(FilterName + ": "s + ErrorMessage.what());
 					}
 				};
 				OrchestrateMediaTypeDependentActions(ExtendedFilterInstance.release(),
@@ -248,7 +248,7 @@ namespace PluginInstantiator {
 					Utility::Map::Fill(ArgumentMap.Handle, Forward(Arguments)...);
 				InitiateFilterInstance(FilterInstantiator(ArgumentList{ .Handle = ArgumentMap.Handle }), ResultMap.Handle);
 				if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ResultMap.Handle); EvaluationFailed)
-					throw RuntimeError{ ErrorMessage };
+					throw std::runtime_error{ ErrorMessage };
 				return OrchestrateMediaTypeDependentActions(static_cast<FilterType*>(nullptr),
 					[&](auto FilterHandle) {
 						using MetadataContainerType = decltype(InitiateMetadataSpecifier(FilterHandle));
@@ -270,10 +270,10 @@ namespace PluginInstantiator {
 				else
 					InitiateFilterInstance(FilterInstantiator(Arguments), ConsoleHandle);
 				if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ConsoleHandle); EvaluationFailed)
-					throw RuntimeError{ ErrorMessage };
+					throw std::runtime_error{ ErrorMessage };
 			}
-			catch (RuntimeError& ErrorMessage) {
-				Console.RaiseError(std::get<0>(*ConfigurationHandle) + ": " + ErrorMessage);
+			catch (std::exception& ErrorMessage) {
+				Console.RaiseError(std::get<0>(*ConfigurationHandle) + ": " + ErrorMessage.what());
 			}
 		};
 		std::get<0>(*ConfigurationHandle) = Utility::SignatureParser::DeduceFunctionName(Signature, Utility::Reflection::ReifyTypeNameIntoString<FilterType>());
@@ -304,8 +304,8 @@ namespace PluginInstantiator {
 				else
 					FunctionInvoker();
 			}
-			catch (RuntimeError& ErrorMessage) {
-				Console.RaiseError(FunctionName + ": " + ErrorMessage);
+			catch (std::exception& ErrorMessage) {
+				Console.RaiseError(FunctionName + ": " + ErrorMessage.what());
 			}
 		};
 		std::get<0>(*ConfigurationHandle) = Utility::SignatureParser::DeduceFunctionName(Signature);

@@ -11,7 +11,7 @@ public:
 	GaussBlurFast(auto Arguments) {
 		InputClip = Arguments["clip"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
-			throw RuntimeError{ "only single precision floating point clips with constant format and dimensions supported." };
+			throw std::runtime_error{ "only single precision floating point clips with constant format and dimensions supported." };
 	}
 	auto SpecifyMetadata() {
 		return InputClip.ExtractMetadata();

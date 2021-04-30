@@ -68,7 +68,7 @@ namespace PaddingFunctions::VideoNode {
 	auto Constant(auto&& Values, auto Core) {
 		return [Values = Utility::TypeEraseIterableToTriplet(Forward(Values)), Core](auto& Clip, auto Index) {
 			if (!Clip.WithConstantFormat() || !Clip.WithConstantDimensions())
-				throw RuntimeError{ "PaddingFunctions::VideoNode::Constant: only clips with constant format and dimensions supported." };
+				throw std::runtime_error{ "PaddingFunctions::VideoNode::Constant: only clips with constant format and dimensions supported." };
 			auto AllocatedFrame = Core.AllocateVideoFrame(Clip.ExtractFormat(), Clip.Width, Clip.Height);
 			auto FillWithColor = [&](auto&& BlankFrame) {
 				using PixelType = std::decay_t<decltype(BlankFrame[0][0][0])>;

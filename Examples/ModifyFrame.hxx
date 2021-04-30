@@ -14,7 +14,7 @@ public:
 		InputClip = Arguments["clip"];
 		Evaluator = Arguments["evaluator"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions())
-			throw RuntimeError{ "only clips with constant format and dimensions supported." };
+			throw std::runtime_error{ "only clips with constant format and dimensions supported." };
 	}
 	auto SpecifyMetadata() {
 		return InputClip.ExtractMetadata();

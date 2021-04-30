@@ -12,17 +12,17 @@ public:
         auto HorizontalKernel = std::array{ 1., 2., 1. };
         auto VerticalKernel = std::array{ 0., 0., 0. };
         if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
-            throw RuntimeError{ "only single precision floating point clips with constant format and dimensions supported." };
+            throw std::runtime_error{ "only single precision floating point clips with constant format and dimensions supported." };
         if (Arguments["h_kernel"].Exists())
             if (Arguments["h_kernel"].size() == HorizontalKernel.size())
                 HorizontalKernel = Arguments["h_kernel"];
             else
-                throw RuntimeError{ "h_kernel must contain 3 scalar values." };
+                throw std::runtime_error{ "h_kernel must contain 3 scalar values." };
         if (Arguments["v_kernel"].Exists())
             if (Arguments["v_kernel"].size() == VerticalKernel.size())
                 VerticalKernel = Arguments["v_kernel"];
             else
-                throw RuntimeError{ "v_kernel must contain 3 scalar values." };
+                throw std::runtime_error{ "v_kernel must contain 3 scalar values." };
         else
             VerticalKernel = HorizontalKernel;
         InputClip = Self("clip", InputClip, "h_kernel", HorizontalKernel);

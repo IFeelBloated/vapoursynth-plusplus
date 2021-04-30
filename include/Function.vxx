@@ -17,7 +17,7 @@ public:
 			Utility::Map::Fill(ArgumentMap.Handle, Forward(Arguments)...);
 		VaporGlobals::API->callFunc(Handle, ArgumentMap.Handle, ResultObserver, nullptr, nullptr);
 		if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ResultObserver); EvaluationFailed)
-			throw RuntimeError{ ErrorMessage };
+			throw std::runtime_error{ ErrorMessage };
 		return Utility::Map::AccessItem<true, false>(ResultMap.Leak(), Utility::Map::DeduceReturnKey(ResultObserver, "val"sv));
 	}
 };

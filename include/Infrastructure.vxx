@@ -19,6 +19,7 @@
 #include <initializer_list>
 #include <source_location>
 #include <new>
+#include <stdexcept>
 #include <cstring>
 #include <cstdint>
 #include <cstddef>

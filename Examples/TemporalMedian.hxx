@@ -15,9 +15,9 @@ public:
 			Radius = Arguments["radius"];
 		InputClip.RequestFunction = [this](auto Index) { return Range{ Index - Radius, Index + Radius + 1 }; };
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
-			throw RuntimeError{ "only single precision floating point clips with constant format and dimensions supported." };
+			throw std::runtime_error{ "only single precision floating point clips with constant format and dimensions supported." };
 		if (Radius < 0)
-			throw RuntimeError{ "radius cannot be negative!" };
+			throw std::runtime_error{ "radius cannot be negative!" };
 	}
 	auto SpecifyMetadata() {
 		return InputClip.ExtractMetadata();

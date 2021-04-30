@@ -42,7 +42,7 @@ public:
 					return std::move(PluginDescriptors[PluginIndex]);
 				else
 					++PluginIndex;
-			throw RuntimeError{ "Query: plugin with the specified identifier "s + std::move(Identifier) + " not found." };
+			throw std::runtime_error{ "Query: plugin with the specified identifier "s + std::move(Identifier) + " not found." };
 		}();
 		auto PluginPath = [&] {
 			if (auto PathString = VaporGlobals::API->getPluginPath(PluginHandle); PathString != nullptr)
@@ -86,7 +86,7 @@ public:
 			static_assert(requires { { PrimaryFrame.ExtractFormat() }->SubtypeOf<VideoFormat>; }, "ShufflePlanes: specified frames must be video frames.");
 			static_assert(IntegralOrEnumerable<decltype(PlaneIndex)>, "ShufflePlanes: plane index must be an integer.");
 			if (SubsidiaryPlane1.Width != SubsidiaryPlane2.Width || SubsidiaryPlane1.Height != SubsidiaryPlane2.Height)
-				throw RuntimeError{ "ShufflePlanes: subsidiary planes have inconsistent dimensions." };
+				throw std::runtime_error{ "ShufflePlanes: subsidiary planes have inconsistent dimensions." };
 		};
 		auto DeduceFormat = [&](auto& ReferenceFormat, auto& PrimaryPlane, auto& SubsidiaryPlane) {
 			auto Format = VideoFormat{
@@ -95,10 +95,10 @@ public:
 				.HorizontalSubsamplingFactor = Utility::Log2(PrimaryPlane.Width / SubsidiaryPlane.Width), .VerticalSubsamplingFactor = Utility::Log2(PrimaryPlane.Height / SubsidiaryPlane.Height)
 			};
 			if (SubsidiaryPlane.Width << Format.HorizontalSubsamplingFactor != PrimaryPlane.Width || SubsidiaryPlane.Height << Format.VerticalSubsamplingFactor != PrimaryPlane.Height)
-				throw RuntimeError{ "ShufflePlanes: assembling specified planes leads to invalid subsampling factor." };
+				throw std::runtime_error{ "ShufflePlanes: assembling specified planes leads to invalid subsampling factor." };
 			if (Format.IsRGB())
 				if (Format.HorizontalSubsamplingFactor != 0 || Format.VerticalSubsamplingFactor != 0)
-					throw RuntimeError{ "ShufflePlanes: RGB cannot be subsampled." };
+					throw std::runtime_error{ "ShufflePlanes: RGB cannot be subsampled." };
 			return &VideoFormat::AdjustToLegacyLayout(Query(Format));
 		};
 		auto&& [Frame1, Frame2, Frame3] = Utility::TypeEraseIterableToTriplet(Forward(Frames));
@@ -154,8 +154,8 @@ public:
 				else
 					FunctionInvoker();
 			}
-			catch (RuntimeError& ErrorMessage) {
-				VaporGlobals::API->setError(OutputMap, ErrorMessage.data());
+			catch (std::exception& ErrorMessage) {
+				VaporGlobals::API->setError(OutputMap, ErrorMessage.what());
 			}
 		};
 		return Function{ VaporGlobals::API->createFunc(FunctionProxy, FunctionHandle, FunctionRecycler, Handle, VaporGlobals::API) };
@@ -241,7 +241,7 @@ public:
 					return std::move(PluginDescriptors[PluginIndex]);
 				else
 					++PluginIndex;
-			throw RuntimeError{ "Core: No attribute with the name "s + std::move(Namespace) + " exists. Missing plugin?" };
+			throw std::runtime_error{ "Core: No attribute with the name "s + std::move(Namespace) + " exists. Missing plugin?" };
 		}();
 		auto PluginPath = [&] {
 			if (auto PathString = VaporGlobals::API->getPluginPath(PluginHandle); PathString != nullptr)

@@ -1,7 +1,14 @@
 #pragma once
 #include "Range.vxx"
 
-using RuntimeError = std::string;
+template<typename UnknownType, typename ReferenceType>
+concept SubtypeOf = std::same_as<std::decay_t<UnknownType>, ReferenceType> || std::derived_from<std::decay_t<UnknownType>, ReferenceType>;
+
+template<typename UnknownType, typename ...ReferenceTypes>
+concept AnyOf = (SubtypeOf<UnknownType, ReferenceTypes> || ...);
+
+template<typename UnknownType, typename ...ReferenceTypes>
+concept AnyBut = !AnyOf<UnknownType, ReferenceTypes...>;
 
 template<typename UnknownType, typename ReferenceType>
 concept ExplicitlyConvertibleTo = requires(UnknownType x) { static_cast<ReferenceType>(Forward(x)); };
@@ -18,21 +25,12 @@ concept Advanceable = requires(UnknownType x) { ++x; };
 template<typename UnknownType>
 concept Iterable = NativeArray<UnknownType> || requires(UnknownType x) {
 	{ x.begin() }->Advanceable;
-	*x.begin();
+	{ *x.begin() }->AnyBut<void>;
 	{ x.begin() != x.end() }->ExplicitlyConvertibleTo<bool>;
 };
 
 template<typename UnknownType>
 concept IntegralOrEnumerable = std::integral<UnknownType> || std::is_enum_v<UnknownType>;
-
-template<typename UnknownType, typename ReferenceType>
-concept SubtypeOf = std::same_as<std::decay_t<UnknownType>, ReferenceType> || std::derived_from<std::decay_t<UnknownType>, ReferenceType>;
-
-template<typename UnknownType, typename ...ReferenceTypes>
-concept AnyOf = (SubtypeOf<UnknownType, ReferenceTypes> || ...);
-
-template<typename UnknownType, typename ...ReferenceTypes>
-concept AnyBut = !AnyOf<UnknownType, ReferenceTypes...>;
 
 namespace Utility {
 	auto Max(auto x, auto y) {
@@ -69,7 +67,7 @@ namespace Utility {
 			else if (Buffer.size() == 1)
 				return std::array{ Buffer[0], Buffer[0], std::move(Buffer[0]) };
 			else
-				throw RuntimeError{ "TypeEraseIterableToTriplet: failed to convert iterable object to std::array<auto, 3>." };
+				throw std::runtime_error{ "TypeEraseIterableToTriplet: failed to convert iterable object to std::array<auto, 3>." };
 		}
 		else
 			return std::array{ Entity, Entity, Forward(Entity) };

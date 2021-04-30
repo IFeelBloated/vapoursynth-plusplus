@@ -11,7 +11,7 @@ public:
 	Rec601ToRGB(auto Arguments) {
 		InputClip = Arguments["clip"];
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision() || !InputClip.IsYUV() || !InputClip.Is444())
-			throw RuntimeError{ "only YUV444PS clips supported." };
+			throw std::runtime_error{ "only YUV444PS clips supported." };
 	}
 	auto SpecifyMetadata(auto Core) {
 		auto Metadata = InputClip.ExtractMetadata();
@@ -27,11 +27,11 @@ public:
 		if (InputFrame["_Matrix"].Exists() == false)
 			Core.Alert("_Matrix property not found, assuming Rec601.");
 		else if (auto Matrix = static_cast<int>(InputFrame["_Matrix"]); Matrix != 6)
-			throw RuntimeError{ "unrecognized _Matrix!" };
+			throw std::runtime_error{ "unrecognized _Matrix!" };
 		if (InputFrame["_ColorRange"].Exists() == false)
 			Core.Alert("_ColorRange property not found, assuming full range.");
 		else if (auto ColorRange = static_cast<int>(InputFrame["_ColorRange"]); ColorRange != 0)
-			throw RuntimeError{ "only full range supported!" };
+			throw std::runtime_error{ "only full range supported!" };
 		for (auto y : Range{ InputClip.Height })
 			for (auto x : Range{ InputClip.Width }) {
 				auto Kr = 0.299;

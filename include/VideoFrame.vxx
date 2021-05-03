@@ -18,14 +18,14 @@ public:
 	VideoFrame() = default;
 	VideoFrame(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) : FramePrototype<PixelType>{ Forward(Descriptor) } {
 		auto ConstructPlane = [this](auto Index) {
-			auto Width = static_cast<std::size_t>(VaporGlobals::API->getFrameWidth(this->Handle, Index));
-			auto Height = static_cast<std::size_t>(VaporGlobals::API->getFrameHeight(this->Handle, Index));
-			auto Stride = static_cast<std::ptrdiff_t>(VaporGlobals::API->getStride(this->Handle, Index) / sizeof(PixelType));
+			auto Width = static_cast<std::size_t>(UniversalContext::API->getFrameWidth(this->Handle, Index));
+			auto Height = static_cast<std::size_t>(UniversalContext::API->getFrameHeight(this->Handle, Index));
+			auto Stride = static_cast<std::ptrdiff_t>(UniversalContext::API->getStride(this->Handle, Index) / sizeof(PixelType));
 			auto Canvas = [&] {
 				if constexpr (Readonly)
-					return reinterpret_cast<PixelType*>(VaporGlobals::API->getReadPtr(this->Handle, Index));
+					return reinterpret_cast<PixelType*>(UniversalContext::API->getReadPtr(this->Handle, Index));
 				else
-					return reinterpret_cast<PixelType*>(VaporGlobals::API->getWritePtr(this->Handle, Index));
+					return reinterpret_cast<PixelType*>(UniversalContext::API->getWritePtr(this->Handle, Index));
 			}();
 			if constexpr (PlaneType::EnabledAutomaticPadding)
 				return PlaneType{ Width, Height, Stride, Canvas, PaddingFunctions::Plane::Default };

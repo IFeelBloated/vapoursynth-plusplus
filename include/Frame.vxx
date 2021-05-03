@@ -1,6 +1,6 @@
 #pragma once
 #include "ResourceManager.vxx"
-#include "Metadata.vxx"
+#include "DescriptiveAggregates.vxx"
 
 struct FrameReference : Owner<VSFrameRef> {
 	using Owner::Owner;
@@ -27,9 +27,9 @@ public:
 	FramePrototype() = default;
 	FramePrototype(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) : FrameReference{ Forward(Descriptor) } {
 		if constexpr (Readonly)
-			this->PropertyMap = Utility::PointerQualifiers::DropAll(VaporGlobals::API->getFramePropsRO(this->Handle));
+			this->PropertyMap = Utility::PointerQualifiers::DropAll(UniversalContext::API->getFramePropsRO(this->Handle));
 		else
-			this->PropertyMap = VaporGlobals::API->getFramePropsRW(this->Handle);
+			this->PropertyMap = UniversalContext::API->getFramePropsRW(this->Handle);
 	}
 
 public:
@@ -37,7 +37,7 @@ public:
 		//Placeholder for API v4.
 	}
 	auto& QueryVideoFormat() const {
-		auto FormatHandle = VaporGlobals::API->getFrameFormat(Handle);
+		auto FormatHandle = UniversalContext::API->getFrameFormat(Handle);
 		return VideoFormat::AdjustToStandardLayout(*FormatHandle);
 	}
 	auto QueryAudioFormat() const {
@@ -67,11 +67,11 @@ struct FrameContextProxy {
 
 public:
 	auto QueryOutputIndex() const {
-		return VaporGlobals::API->getOutputIndex(Handle);
+		return UniversalContext::API->getOutputIndex(Handle);
 	}
 	auto RaiseError(ExplicitlyConvertibleTo<std::string> auto&& FormattedErrorMessage) const {
 		auto ErrorMessage = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(FormattedErrorMessage);
-		VaporGlobals::API->setFilterError(Utility::ExtractCharPointerFromASCIZFormattedString(ErrorMessage), Handle);
+		UniversalContext::API->setFilterError(Utility::ExtractCharPointerFromASCIZFormattedString(ErrorMessage), Handle);
 		return Frame::NullHandle;
 	}
 	operator auto() const {

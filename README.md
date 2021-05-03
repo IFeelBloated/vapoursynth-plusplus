@@ -1,30 +1,6 @@
 # vsFilterScript
 C++ wrapper for VSAPI to help you sketch your filter in the fastest possible way. (now requires GCC11!!)
 
-## Progress
-
-### Up To Date
-
-```
-Utility
-Range
-Plane
-ResourceManager
-Metadata
-Frame
-VideoFrame
-AudioFrame
-Node
-VideoNode
-AudioNode
-Function
-Map
-Plugin
-Core
-LoggerController
-PluginInstantiator
-```
-
 ## Compilation
 
 ### Linux

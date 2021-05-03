@@ -8,7 +8,7 @@ struct CoreProxy {
 public:
 	auto Query() {
 		auto CoreInfoBuffer = VSCoreInfo{};
-		VaporGlobals::API->getCoreInfo2(Handle, &CoreInfoBuffer);
+		UniversalContext::API->getCoreInfo2(Handle, &CoreInfoBuffer);
 		return CoreInfo{
 			.Version = CoreInfoBuffer.versionString, .CoreVersion = CoreInfoBuffer.core, .APIVersion = CoreInfoBuffer.api,
 			.ThreadCount = CoreInfoBuffer.numThreads,
@@ -16,17 +16,17 @@ public:
 		};
 	}
 	auto& Query(AnyOf<VideoFormats, VSPresetFormat> auto FormatID) const {
-		if (auto FormatHandle = VaporGlobals::API->getFormatPreset(static_cast<int>(FormatID), Handle); FormatHandle != nullptr)
+		if (auto FormatHandle = UniversalContext::API->getFormatPreset(static_cast<int>(FormatID), Handle); FormatHandle != nullptr)
 			return VideoFormat::AdjustToStandardLayout(*FormatHandle);
 		else
-			return VaporGlobals::IndeterminateVideoFormat;
+			return VideoFormat::ConstructIndeterminateInstance();
 	}
 	auto& Query(AnyOf<VideoFormat, VSFormat> auto&& Format) const {
 		auto [ColorFamily, SampleType, BitsPerSample, _, HorizontalSubsamplingFactor, VerticalSubsamplingFactor, __] = VideoFormat::AdjustToStandardLayout(Format);
-		if (auto FormatHandle = VaporGlobals::API->registerFormat(static_cast<int>(ColorFamily), static_cast<int>(SampleType), BitsPerSample, HorizontalSubsamplingFactor, VerticalSubsamplingFactor, Handle); FormatHandle != nullptr)
+		if (auto FormatHandle = UniversalContext::API->registerFormat(static_cast<int>(ColorFamily), static_cast<int>(SampleType), BitsPerSample, HorizontalSubsamplingFactor, VerticalSubsamplingFactor, Handle); FormatHandle != nullptr)
 			return VideoFormat::AdjustToStandardLayout(*FormatHandle);
 		else
-			return VaporGlobals::IndeterminateVideoFormat;
+			return VideoFormat::ConstructIndeterminateInstance();
 	}
 	auto Query(AnyOf<AudioFormat> auto&&) const {
 		//Placeholder for API v4.
@@ -34,7 +34,7 @@ public:
 	}
 	auto Query(ExplicitlyConvertibleTo<std::string> auto&& PluginIdentifier) const {
 		auto Identifier = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(PluginIdentifier);
-		auto PluginHandle = VaporGlobals::API->getPluginById(Utility::ExtractCharPointerFromASCIZFormattedString(Identifier), Handle);
+		auto PluginHandle = UniversalContext::API->getPluginById(Utility::ExtractCharPointerFromASCIZFormattedString(Identifier), Handle);
 		auto PluginDescriptor = [&] {
 			auto PluginDescriptors = ListPlugins();
 			for (auto PluginIndex = 0_size; auto&& [_, LocatedIdentifier, __] : PluginDescriptors)
@@ -45,7 +45,7 @@ public:
 			throw std::runtime_error{ "Query: plugin with the specified identifier "s + std::move(Identifier) + " not found." };
 		}();
 		auto PluginPath = [&] {
-			if (auto PathString = VaporGlobals::API->getPluginPath(PluginHandle); PathString != nullptr)
+			if (auto PathString = UniversalContext::API->getPluginPath(PluginHandle); PathString != nullptr)
 				return std::filesystem::path{ PathString };
 			else
 				return std::filesystem::path{};
@@ -61,7 +61,7 @@ public:
 			else
 				static_assert(sizeof(FormatDescriptor) == -1, "AllocateVideoFrame: failed to recognize the specified format descriptor.");
 		}();
-		return FrameReference{ VaporGlobals::API->newVideoFrame(FormatHandle, Width, Height, nullptr, Handle) };
+		return FrameReference{ UniversalContext::API->newVideoFrame(FormatHandle, Width, Height, nullptr, Handle) };
 	}
 	auto AllocateAudioFrame(auto&&, auto) const {
 		//Placeholder for API v4.
@@ -72,13 +72,13 @@ public:
 			using PixelType = std::decay_t<decltype(ReferenceFrame[0][0][0])>;
 			auto FormatHandle = &VideoFormat::AdjustToLegacyLayout(Query(ReferenceFrame.ExtractFormat()));
 			auto PropertyHandle = ReferenceFrame.Handle;
-			return VideoFrame<PixelType>{ VaporGlobals::API->newVideoFrame(FormatHandle, ReferenceFrame[0].Width, ReferenceFrame[0].Height, PropertyHandle, Handle) };
+			return VideoFrame<PixelType>{ UniversalContext::API->newVideoFrame(FormatHandle, ReferenceFrame[0].Width, ReferenceFrame[0].Height, PropertyHandle, Handle) };
 		}
 		else if constexpr (requires { { ReferenceFrame.ExtractFormat() }->SubtypeOf<AudioFormat>; })
 			//Placeholder for API v4.
 			return AudioFrame<void>{};
 		else
-			return WritableFrame{ VaporGlobals::API->copyFrame(ReferenceFrame.Handle, Handle) };
+			return WritableFrame{ UniversalContext::API->copyFrame(ReferenceFrame.Handle, Handle) };
 	}
 	auto ShufflePlanes(auto&& Frames, auto&& PlaneIndexes, AnyOf<ColorFamilies, VSColorFamily> auto ColorFamily) const {
 		auto ValidateInputs = [&](auto& PrimaryFrame, auto PlaneIndex, auto& SubsidiaryPlane1, auto& SubsidiaryPlane2) {
@@ -109,14 +109,14 @@ public:
 		auto FrameHandles = std::array{ Frame1.Observe(), Frame2.Observe(), Frame3.Observe() };
 		auto Specifiers = std::array{ static_cast<int>(x1), static_cast<int>(x2), static_cast<int>(x3) };
 		auto PropertyHandle = Frame1.Handle;
-		return VideoFrame<PixelType>{ VaporGlobals::API->newVideoFrame2(FormatHandle, Frame1[x1].Width, Frame1[x1].Height, FrameHandles.data(), Specifiers.data(), PropertyHandle, Handle) };
+		return VideoFrame<PixelType>{ UniversalContext::API->newVideoFrame2(FormatHandle, Frame1[x1].Width, Frame1[x1].Height, FrameHandles.data(), Specifiers.data(), PropertyHandle, Handle) };
 	}
 	auto ShuffleChannels(auto&&, auto&&, auto&&) const {
 		//Placeholder for API v4.
 		return AudioFrame<void>{};
 	}
 	auto CopyFrame(SubtypeOf<FrameReference> auto&& ReferenceFrame) const {
-		auto FrameHandle = VaporGlobals::API->copyFrame(ReferenceFrame.Handle, Handle);
+		auto FrameHandle = UniversalContext::API->copyFrame(ReferenceFrame.Handle, Handle);
 		if constexpr (requires { { ReferenceFrame.ExtractFormat() }->SubtypeOf<VideoFormat>; })
 			return VideoFrame<std::decay_t<decltype(ReferenceFrame[0][0][0])>>{ FrameHandle };
 		else if constexpr (requires { { ReferenceFrame.ExtractFormat() }->SubtypeOf<AudioFormat>; })
@@ -155,10 +155,10 @@ public:
 					FunctionInvoker();
 			}
 			catch (std::exception& ErrorMessage) {
-				VaporGlobals::API->setError(OutputMap, ErrorMessage.what());
+				UniversalContext::API->setError(OutputMap, ErrorMessage.what());
 			}
 		};
-		return Function{ VaporGlobals::API->createFunc(FunctionProxy, FunctionHandle, FunctionRecycler, Handle, VaporGlobals::API) };
+		return Function{ UniversalContext::API->createFunc(FunctionProxy, FunctionHandle, FunctionRecycler, Handle, UniversalContext::API) };
 	}
 
 public:
@@ -186,13 +186,13 @@ public:
 			else
 				static_assert(sizeof(InstalledLogger) == -1, "InstallLogger: failed to install the specified logger, it is either not callable or has an incompatible signature.");
 		};
-		auto LoggerID = VaporGlobals::API->addMessageHandler(LoggerProxy, LoggerRecycler, LoggerHandle);
+		auto LoggerID = UniversalContext::API->addMessageHandler(LoggerProxy, LoggerRecycler, LoggerHandle);
 		auto LoggerDescriptor = static_cast<std::intptr_t>(~LoggerID);
 		return LoggerController{ .Handle = reinterpret_cast<VSLogHandle*>(LoggerDescriptor) };
 	}
 	auto LogMessage(AnyOf<MessageTypes, VSMessageType> auto MessageType, ExplicitlyConvertibleTo<std::string> auto&& Message) const {
 		auto FormattedMessage = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(Message);
-		VaporGlobals::API->logMessage(static_cast<int>(MessageType), Utility::ExtractCharPointerFromASCIZFormattedString(FormattedMessage));
+		UniversalContext::API->logMessage(static_cast<int>(MessageType), Utility::ExtractCharPointerFromASCIZFormattedString(FormattedMessage));
 	}
 	auto DebugPrint(ExplicitlyConvertibleTo<std::string> auto&& Message) const {
 		LogMessage(MessageTypes::Debug, Message);
@@ -212,10 +212,10 @@ public:
 
 public:
 	auto SetMaxCacheSize(std::integral auto Bytes) const {
-		return VaporGlobals::API->setMaxCacheSize(Bytes, Handle);
+		return UniversalContext::API->setMaxCacheSize(Bytes, Handle);
 	}
 	auto SetThreadCount(std::integral auto Threads) const {
-		return VaporGlobals::API->setThreadCount(Threads, Handle);
+		return UniversalContext::API->setThreadCount(Threads, Handle);
 	}
 	auto ListPlugins() const {
 		auto PluginDescriptors = std::vector<PluginInfo>{};
@@ -227,13 +227,13 @@ public:
 			auto Description = StringRepresentation.substr(IdentifierSector + 1, StringRepresentation.size() - Namespace.size() - Identifier.size());
 			return PluginInfo{ .Namespace = std::string{ Namespace }, .Identifier = std::string{ Identifier }, .Description = std::string{ Description } };
 		};
-		for (auto PluginMap = MapReference{ VaporGlobals::API->getPlugins(Handle) }; auto&& x : Utility::Map::ListKeys(PluginMap.Handle))
+		for (auto PluginMap = MapReference{ UniversalContext::API->getPlugins(Handle) }; auto&& x : Utility::Map::ListKeys(PluginMap.Handle))
 			PluginDescriptors.push_back(ReconstructDescriptorFromStringRepresentation(static_cast<std::string_view>(Utility::Map::AccessItem(PluginMap.Handle, x))));
 		return PluginDescriptors;
 	}
 	auto operator[](ExplicitlyConvertibleTo<std::string> auto&& PluginNamespace) const {
 		auto Namespace = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(PluginNamespace);
-		auto PluginHandle = VaporGlobals::API->getPluginByNs(Utility::ExtractCharPointerFromASCIZFormattedString(Namespace), Handle);
+		auto PluginHandle = UniversalContext::API->getPluginByNs(Utility::ExtractCharPointerFromASCIZFormattedString(Namespace), Handle);
 		auto PluginDescriptor = [&] {
 			auto PluginDescriptors = ListPlugins();
 			for (auto PluginIndex = 0_size; auto&& [LocatedNamespace, _, __] : PluginDescriptors)
@@ -244,7 +244,7 @@ public:
 			throw std::runtime_error{ "Core: No attribute with the name "s + std::move(Namespace) + " exists. Missing plugin?" };
 		}();
 		auto PluginPath = [&] {
-			if (auto PathString = VaporGlobals::API->getPluginPath(PluginHandle); PathString != nullptr)
+			if (auto PathString = UniversalContext::API->getPluginPath(PluginHandle); PathString != nullptr)
 				return std::filesystem::path{ PathString };
 			else
 				return std::filesystem::path{};
@@ -265,7 +265,7 @@ public:
 
 public:
 	CoreInstantiator() {
-		this->Handle = VaporGlobals::API->createCore(0);
+		this->Handle = UniversalContext::API->createCore(0);
 		this->ResourceManager = std::make_shared<CoreReference>(this->Handle);
 	}
 };

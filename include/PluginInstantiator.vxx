@@ -118,13 +118,13 @@ namespace PluginInstantiator {
 								auto SyncretizedMetadata = std::vector<VSVideoInfo>{};
 								for (auto&& x : InitiateMetadataSpecifier(FilterHandle, Core))
 									SyncretizedMetadata.push_back(VideoInfo::AdjustToLegacyLayout(x, Core));
-								VaporGlobals::API->setVideoInfo(SyncretizedMetadata.data(), SyncretizedMetadata.size(), NodeHandle);
+								UniversalContext::API->setVideoInfo(SyncretizedMetadata.data(), SyncretizedMetadata.size(), NodeHandle);
 							},
 							[](auto) { /* Placeholder for API v4. */ },
 							[&](auto FilterHandle) {
 								auto Metadata = InitiateMetadataSpecifier(FilterHandle, Core);
 								auto&& SyncretizedMetadata = VideoInfo::AdjustToLegacyLayout(Metadata, Core);
-								VaporGlobals::API->setVideoInfo(&SyncretizedMetadata, 1, NodeHandle);
+								UniversalContext::API->setVideoInfo(&SyncretizedMetadata, 1, NodeHandle);
 							},
 							[](auto) { /* Placeholder for API v4. */ }
 						);
@@ -215,9 +215,9 @@ namespace PluginInstantiator {
 					}
 				};
 				OrchestrateMediaTypeDependentActions(ExtendedFilterInstance.release(),
-					[&](auto FatInstanceHandle) { VaporGlobals::API->createFilter(AuxiliaryMap.Handle, ResultMap, FilterName, NodeInitializer, FrameGenerator, FilterRecycler, ExecutionPolicyForFrameGenerator, CachePolicy, FatInstanceHandle, Core); },
+					[&](auto FatInstanceHandle) { UniversalContext::API->createFilter(AuxiliaryMap.Handle, ResultMap, FilterName, NodeInitializer, FrameGenerator, FilterRecycler, ExecutionPolicyForFrameGenerator, CachePolicy, FatInstanceHandle, Core); },
 					[](auto) { /* Placeholder for API v4. */ },
-					[&](auto FatInstanceHandle) { VaporGlobals::API->createFilter(AuxiliaryMap.Handle, ResultMap, FilterName, NodeInitializer, FrameGenerator, FilterRecycler, ExecutionPolicyForFrameGenerator, CachePolicy, FatInstanceHandle, Core); },
+					[&](auto FatInstanceHandle) { UniversalContext::API->createFilter(AuxiliaryMap.Handle, ResultMap, FilterName, NodeInitializer, FrameGenerator, FilterRecycler, ExecutionPolicyForFrameGenerator, CachePolicy, FatInstanceHandle, Core); },
 					[](auto) { /* Placeholder for API v4. */ }
 				);
 			};
@@ -278,7 +278,7 @@ namespace PluginInstantiator {
 		};
 		std::get<0>(*ConfigurationHandle) = Utility::SignatureParser::DeduceFunctionName(Signature, Utility::Reflection::ReifyTypeNameIntoString<FilterType>());
 		Private::Recycler.ClaimOwnership(ConfigurationHandle);
-		VaporGlobals::API->registerFunction(std::get<0>(*ConfigurationHandle).data(), Utility::SignatureParser::ExtractParameterList(Signature).data(), FilterEngine, ConfigurationHandle, Private::Handle);
+		UniversalContext::API->registerFunction(std::get<0>(*ConfigurationHandle).data(), Utility::SignatureParser::ExtractParameterList(Signature).data(), FilterEngine, ConfigurationHandle, Private::Handle);
 	}
 	auto RegisterFunction(ExplicitlyConvertibleTo<std::string> auto&& Signature, auto&& FunctionEntity) {
 		auto ConfigurationHandle = new std::tuple{ ""s, ""s, Forward(FunctionEntity) };
@@ -311,7 +311,7 @@ namespace PluginInstantiator {
 		std::get<0>(*ConfigurationHandle) = Utility::SignatureParser::DeduceFunctionName(Signature);
 		std::get<1>(*ConfigurationHandle) = Utility::SignatureParser::DeduceReturnKey(Signature, "val");
 		Private::Recycler.ClaimOwnership(ConfigurationHandle);
-		VaporGlobals::API->registerFunction(std::get<0>(*ConfigurationHandle).data(), Utility::SignatureParser::ExtractParameterList(Signature).data(), FunctionProxy, ConfigurationHandle, Private::Handle);
+		UniversalContext::API->registerFunction(std::get<0>(*ConfigurationHandle).data(), Utility::SignatureParser::ExtractParameterList(Signature).data(), FunctionProxy, ConfigurationHandle, Private::Handle);
 	}
 	auto Initialize(SubtypeOf<PluginInfo> auto&& Configurations, AnyOf<WriteProtectOptions, bool> auto WriteProtection) {
 		Private::Initializer(Configurations.Identifier.data(), Configurations.Namespace.data(), Configurations.Description.data(), VAPOURSYNTH_API_VERSION, static_cast<bool>(WriteProtection), Private::Handle);
@@ -324,6 +324,6 @@ namespace PluginInstantiator {
 #define InstantiatePluginFrom(...) VS_EXTERNAL_API(auto) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction, VSPlugin* plugin) { \
 	PluginInstantiator::Private::Initializer = configFunc; \
 	PluginInstantiator::Private::Handle = plugin; \
-	VaporGlobals::API = getVapourSynthAPI(VAPOURSYNTH_API_VERSION); \
+	UniversalContext::API = getVapourSynthAPI(VAPOURSYNTH_API_VERSION); \
 	__VA_ARGS__(); \
 }

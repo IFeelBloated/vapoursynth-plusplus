@@ -1,0 +1,6 @@
+#pragma once
+#include "VapourSynth.h"
+
+namespace UniversalContext {
+	auto API = static_cast<const VSAPI*>(nullptr);
+}

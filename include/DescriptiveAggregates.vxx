@@ -1,18 +1,7 @@
 #pragma once
 #include "VapourSynth.h"
+#include "Enumerations.vxx"
 #include "Utility.vxx"
-
-enum struct ColorFamilies : int {
-	Undefined = 0,
-	Gray = 1000000,
-	RGB = 2000000,
-	YUV = 3000000
-};
-
-enum struct SampleTypes : int {
-	Int = 0,
-	Float = 1
-};
 
 struct VideoFormat {
 	field(ColorFamily, ColorFamilies::Undefined);
@@ -26,6 +15,12 @@ struct VideoFormat {
 public:
 	static constexpr auto LegacyLayoutOffset = sizeof(VSFormat::name) + sizeof(VSFormat::id);
 	static constexpr auto IndeterminateID = 0;
+
+public:
+	static auto& ConstructIndeterminateInstance() {
+		static constexpr auto IndeterminateInstance = VideoFormat{};
+		return IndeterminateInstance;
+	}
 
 public:
 	static auto& AdjustToStandardLayout(auto& FormatReference) {
@@ -152,80 +147,4 @@ struct CoreInfo {
 	field(ThreadCount, 0);
 	field(MaxFrameBufferSize, 0_i64);
 	field(UsedFrameBufferSize, 0_i64);
-};
-
-enum struct ItemTypes {
-	Int = 'i',
-	Float = 'f',
-	String = 's',
-	VideoNode = 'c',
-	VideoFrame = 'v',
-	Function = 'm',
-	AudioNode,
-	AudioFrame
-};
-
-enum struct MessageTypes {
-	Debug = 0,
-	Warning = 1,
-	Critical = 2,
-	Fatal = 3,
-	Information
-};
-
-enum struct ExecutionSchemes {
-	FullyParallel = 100,
-	ParallelResourceAcquisition = 200,
-	Concurrent = 300,
-	OneFrameAtATime = 400
-};
-
-enum struct CacheOptions {
-	Automatic = 0,
-	Disabled = 1
-};
-
-enum struct WriteProtectOptions {
-	Rewritable = 0,
-	WriteOnce = 1
-};
-
-enum struct VideoFormats {
-	None = 0,
-
-	Gray8 = static_cast<int>(ColorFamilies::Gray) + 10,
-	Gray16,
-	GrayH,
-	GrayS,
-
-	YUV420P8 = static_cast<int>(ColorFamilies::YUV) + 10,
-	YUV422P8,
-	YUV444P8,
-	YUV410P8,
-	YUV411P8,
-	YUV440P8,
-	YUV420P9,
-	YUV422P9,
-	YUV444P9,
-	YUV420P10,
-	YUV422P10,
-	YUV444P10,
-	YUV420P16,
-	YUV422P16,
-	YUV444P16,
-	YUV444PH,
-	YUV444PS,
-	YUV420P12,
-	YUV422P12,
-	YUV444P12,
-	YUV420P14,
-	YUV422P14,
-	YUV444P14,
-
-	RGB24 = static_cast<int>(ColorFamilies::RGB) + 10,
-	RGB27,
-	RGB30,
-	RGB48,
-	RGBH,
-	RGBS
 };

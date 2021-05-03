@@ -1,6 +1,6 @@
 #pragma once
 #include "Utility.vxx"
-#include "Globals.vxx"
+#include "UniversalContext.vxx"
 
 template<typename ManagedType>
 struct Owner {
@@ -60,19 +60,19 @@ public:
 protected:
 	auto CloneHandle() const {
 		if constexpr (SubtypeOf<HandleType, const VSFrameRef*>)
-			return Utility::PointerQualifiers::DropAll(VaporGlobals::API->cloneFrameRef(Handle));
+			return Utility::PointerQualifiers::DropAll(UniversalContext::API->cloneFrameRef(Handle));
 		if constexpr (SubtypeOf<HandleType, const VSNodeRef*>)
-			return VaporGlobals::API->cloneNodeRef(Handle);
+			return UniversalContext::API->cloneNodeRef(Handle);
 		if constexpr (SubtypeOf<HandleType, const VSFuncRef*>)
-			return VaporGlobals::API->cloneFuncRef(Handle);
+			return UniversalContext::API->cloneFuncRef(Handle);
 	}
 	auto ReleaseHandle() {
 		if constexpr (SubtypeOf<HandleType, const VSFrameRef*>)
-			VaporGlobals::API->freeFrame(Handle);
+			UniversalContext::API->freeFrame(Handle);
 		if constexpr (SubtypeOf<HandleType, const VSNodeRef*>)
-			VaporGlobals::API->freeNode(Handle);
+			UniversalContext::API->freeNode(Handle);
 		if constexpr (SubtypeOf<HandleType, const VSFuncRef*>)
-			VaporGlobals::API->freeFunc(Handle);
+			UniversalContext::API->freeFunc(Handle);
 	}
 };
 
@@ -113,9 +113,9 @@ public:
 private:
 	auto ReleaseHandle() {
 		if constexpr (SubtypeOf<HandleType, const VSMap*>)
-			VaporGlobals::API->freeMap(Handle);
+			UniversalContext::API->freeMap(Handle);
 		if constexpr (SubtypeOf<HandleType, const VSCore*>)
-			VaporGlobals::API->freeCore(Handle);
+			UniversalContext::API->freeCore(Handle);
 	}
 };
 

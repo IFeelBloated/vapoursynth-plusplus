@@ -1,7 +1,0 @@
-#pragma once
-#include "Metadata.vxx"
-
-namespace VaporGlobals {
-	auto API = static_cast<const VSAPI*>(nullptr);
-	constexpr auto IndeterminateVideoFormat = VideoFormat{};
-}

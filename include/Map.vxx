@@ -54,7 +54,7 @@ public:
 		return Index < size();
 	}
 	auto Type() const {
-		return static_cast<ItemTypes>(VaporGlobals::API->propGetType(StorageAccess->Handle, StorageAccess->Key.data()));
+		return static_cast<ItemTypes>(UniversalContext::API->propGetType(StorageAccess->Handle, StorageAccess->Key.data()));
 	}
 	auto operator[](IntegralOrEnumerable auto Index) const {
 		auto Replica = *this;
@@ -64,7 +64,7 @@ public:
 
 public:
 	auto size() const {
-		return Utility::Max(VaporGlobals::API->propNumElements(StorageAccess->Handle, StorageAccess->Key.data()), 0);
+		return Utility::Max(UniversalContext::API->propNumElements(StorageAccess->Handle, StorageAccess->Key.data()), 0);
 	}
 	auto begin() const {
 		return Iterator{ .TargetItem = this, .Index = Index };
@@ -76,37 +76,37 @@ public:
 public:
 	template<std::floating_point TargetType>
 	operator TargetType() const {
-		return VaporGlobals::API->propGetFloat(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr);
+		return UniversalContext::API->propGetFloat(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr);
 	}
 
 public:
 	template<IntegralOrEnumerable TargetType>
 	operator TargetType() const {
-		return static_cast<TargetType>(VaporGlobals::API->propGetInt(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr));
+		return static_cast<TargetType>(UniversalContext::API->propGetInt(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr));
 	}
 
 public:
 	template<ConstructibleFrom<const char*> TargetType>
 	operator TargetType() const {
-		return { VaporGlobals::API->propGetData(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr) };
+		return { UniversalContext::API->propGetData(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr) };
 	}
 
 public:
 	template<SubtypeOf<NodeReference> TargetType>
 	operator TargetType() const {
-		return { VaporGlobals::API->propGetNode(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr) };
+		return { UniversalContext::API->propGetNode(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr) };
 	}
 
 public:
 	template<SubtypeOf<FrameReference> TargetType>
 	operator TargetType() const {
-		return { VaporGlobals::API->propGetFrame(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr) };
+		return { UniversalContext::API->propGetFrame(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr) };
 	}
 
 public:
 	template<SubtypeOf<FunctionReference> TargetType>
 	operator TargetType() const {
-		return { VaporGlobals::API->propGetFunc(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr) };
+		return { UniversalContext::API->propGetFunc(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr) };
 	}
 
 public:
@@ -144,25 +144,25 @@ public:
 
 private:
 	auto InjectInt(auto Value) const {
-		VaporGlobals::API->propSetInt(StorageAccess->Handle, StorageAccess->Key.data(), static_cast<std::int64_t>(Value), VSPropAppendMode::paAppend);
+		UniversalContext::API->propSetInt(StorageAccess->Handle, StorageAccess->Key.data(), static_cast<std::int64_t>(Value), VSPropAppendMode::paAppend);
 	}
 	auto InjectFloat(auto Value) const {
-		VaporGlobals::API->propSetFloat(StorageAccess->Handle, StorageAccess->Key.data(), Value, VSPropAppendMode::paAppend);
+		UniversalContext::API->propSetFloat(StorageAccess->Handle, StorageAccess->Key.data(), Value, VSPropAppendMode::paAppend);
 	}
 	auto InjectString(auto&& Value) const {
-		VaporGlobals::API->propSetData(StorageAccess->Handle, StorageAccess->Key.data(), Value.data(), Value.size(), VSPropAppendMode::paAppend);
+		UniversalContext::API->propSetData(StorageAccess->Handle, StorageAccess->Key.data(), Value.data(), Value.size(), VSPropAppendMode::paAppend);
 	}
 	auto InjectCharArray(auto Value) const {
-		VaporGlobals::API->propSetData(StorageAccess->Handle, StorageAccess->Key.data(), Value, -1, VSPropAppendMode::paAppend);
+		UniversalContext::API->propSetData(StorageAccess->Handle, StorageAccess->Key.data(), Value, -1, VSPropAppendMode::paAppend);
 	}
 	auto InjectNode(auto&& Value) const {
-		VaporGlobals::API->propSetNode(StorageAccess->Handle, StorageAccess->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
+		UniversalContext::API->propSetNode(StorageAccess->Handle, StorageAccess->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
 	}
 	auto InjectFrame(auto&& Value) const {
-		VaporGlobals::API->propSetFrame(StorageAccess->Handle, StorageAccess->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
+		UniversalContext::API->propSetFrame(StorageAccess->Handle, StorageAccess->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
 	}
 	auto InjectFunction(auto&& Value) const {
-		VaporGlobals::API->propSetFunc(StorageAccess->Handle, StorageAccess->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
+		UniversalContext::API->propSetFunc(StorageAccess->Handle, StorageAccess->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
 	}
 	auto InjectDynamicallyTypedObject(auto&& Object) const {
 		if (Object.Type() == ItemTypes::Int)
@@ -217,7 +217,7 @@ private:
 
 public:
 	auto Erase() const requires (Readonly == false) {
-		return VaporGlobals::API->propDeleteKey(StorageAccess->Handle, StorageAccess->Key.data()) == 1;
+		return UniversalContext::API->propDeleteKey(StorageAccess->Handle, StorageAccess->Key.data()) == 1;
 	}
 	auto& operator=(AnyBut<Item> auto&& Entity) const requires (Readonly == false) {
 		Insert(Entity, VSPropAppendMode::paReplace);
@@ -231,14 +231,14 @@ public:
 
 namespace Utility::Map {
 	auto Create() {
-		return MapReference{ VaporGlobals::API->createMap() };
+		return MapReference{ UniversalContext::API->createMap() };
 	}
 	auto ListKeys(auto MapHandle) {
-		auto ItemCount = VaporGlobals::API->propNumKeys(MapHandle);
+		auto ItemCount = UniversalContext::API->propNumKeys(MapHandle);
 		auto Keys = std::vector<std::string_view>{};
 		Keys.resize(ItemCount);
 		for (auto x : Range{ ItemCount })
-			Keys[x] = VaporGlobals::API->propGetKey(MapHandle, x);
+			Keys[x] = UniversalContext::API->propGetKey(MapHandle, x);
 		return Keys;
 	}
 	auto Fill(auto MapHandle, auto&& Key, auto&& Values, auto&& ...Arguments) {
@@ -248,7 +248,7 @@ namespace Utility::Map {
 			Fill(MapHandle, Forward(Arguments)...);
 	}
 	auto CheckForError(auto MapHandle) {
-		auto ErrorMessage = VaporGlobals::API->getError(MapHandle);
+		auto ErrorMessage = UniversalContext::API->getError(MapHandle);
 		return std::tuple{ ErrorMessage != nullptr, ErrorMessage };
 	}
 	auto DeduceReturnKey(auto MapHandle, auto Fallback) {
@@ -284,6 +284,6 @@ public:
 	}
 	auto RaiseError(ExplicitlyConvertibleTo<std::string> auto&& FormattedErrorMessage) const {
 		auto ErrorMessage = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(FormattedErrorMessage);
-		VaporGlobals::API->setError(Handle, Utility::ExtractCharPointerFromASCIZFormattedString(ErrorMessage));
+		UniversalContext::API->setError(Handle, Utility::ExtractCharPointerFromASCIZFormattedString(ErrorMessage));
 	}
 };

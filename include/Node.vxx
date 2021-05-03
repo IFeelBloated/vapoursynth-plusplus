@@ -1,6 +1,5 @@
 #pragma once
 #include "Frame.vxx"
-#include "Metadata.vxx"
 
 using NodeReference = Owner<VSNodeRef>;
 
@@ -75,14 +74,14 @@ public:
 
 public:
 	auto RequestFrameUnchecked(std::integral auto Index, auto FrameContext) const {
-		VaporGlobals::API->requestFrameFilter(Index, Handle, FrameContext);
+		UniversalContext::API->requestFrameFilter(Index, Handle, FrameContext);
 	}
 	auto AccessFrameUnchecked(std::integral auto Index, auto FrameContext) const {
-		return FrameReference{ VaporGlobals::API->getFrameFilter(Index, Handle, FrameContext) };
+		return FrameReference{ UniversalContext::API->getFrameFilter(Index, Handle, FrameContext) };
 	}
 	auto operator[](std::integral auto Index) const {
 		auto ErrorMessageBuffer = std::array<char, 1024>{};
-		auto FrameHandle = VaporGlobals::API->getFrame(Index, Handle, ErrorMessageBuffer.data(), 1024);
+		auto FrameHandle = UniversalContext::API->getFrame(Index, Handle, ErrorMessageBuffer.data(), 1024);
 		if (FrameHandle == Frame::NullHandle)
 			throw std::runtime_error{ ErrorMessageBuffer.data() };
 		return Frame{ FrameHandle };
@@ -97,16 +96,16 @@ public:
 				Expectation->set_exception(std::make_exception_ptr(std::runtime_error{ ErrorMessage }));
 			delete Expectation;
 		};
-		VaporGlobals::API->getFrameAsync(Index, Handle, Materialize, Expectation);
+		UniversalContext::API->getFrameAsync(Index, Handle, Materialize, Expectation);
 		return Expectation->get_future();
 	}
 	auto QueryMediaType() const {
 		//Placeholder for API v4.
 	}
 	auto QueryVideoInfo() const {
-		auto [FormatHandle, FrameRateNumerator, FrameRateDenominator, Width, Height, FrameCount, _] = *VaporGlobals::API->getVideoInfo(Handle);
+		auto [FormatHandle, FrameRateNumerator, FrameRateDenominator, Width, Height, FrameCount, _] = *UniversalContext::API->getVideoInfo(Handle);
 		return VideoInfo{
-			.Format = FormatHandle == nullptr ? VaporGlobals::IndeterminateVideoFormat : VideoFormat::AdjustToStandardLayout(*FormatHandle),
+			.Format = FormatHandle == nullptr ? VideoFormat::ConstructIndeterminateInstance() : VideoFormat::AdjustToStandardLayout(*FormatHandle),
 			.FrameRateNumerator = FrameRateNumerator, .FrameRateDenominator = FrameRateDenominator,
 			.Width = Width, .Height = Height, .FrameCount = FrameCount
 		};
@@ -115,7 +114,7 @@ public:
 		//Placeholder for API v4.
 	}
 	auto QueryCachePolicy() const {
-		if (auto CachePolicy = VaporGlobals::API->getVideoInfo(Handle)->flags; CachePolicy & 0x1 != 0)
+		if (auto CachePolicy = UniversalContext::API->getVideoInfo(Handle)->flags; CachePolicy & 0x1 != 0)
 			return CacheOptions::Disabled;
 		else
 			return CacheOptions::Automatic;

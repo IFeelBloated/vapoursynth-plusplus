@@ -9,7 +9,7 @@ struct LoggerController {
 public:
 	auto Eject() const {
 		auto LoggerDescriptor = reinterpret_cast<std::intptr_t>(Handle);
-		return VaporGlobals::API->removeMessageHandler(~static_cast<int>(LoggerDescriptor)) != 0;
+		return UniversalContext::API->removeMessageHandler(~static_cast<int>(LoggerDescriptor)) != 0;
 	}
 	operator auto() const {
 		return Handle;

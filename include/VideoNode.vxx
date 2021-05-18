@@ -2,16 +2,16 @@
 #include "VideoFrame.vxx"
 #include "Node.vxx"
 
-struct VideoNode : Node, FlattenedVideoInfo {
+struct VideoNode : Node, AlternateRepresentations::Flattened::VideoInfo {
 	field(PaddingFunction, PaddingFunctionProxy<VideoNode>{});
 
 public:
 	VideoNode() = default;
 	VideoNode(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) : Node{ Forward(Descriptor) } {
 		auto SynchronizeMetadata = [this] {
-			auto& MetadataInSync = static_cast<FlattenedVideoInfo&>(*this);
+			auto& MetadataInSync = static_cast<VideoInfo&>(*this);
 			auto ReferenceMetadata = this->QueryVideoInfo();
-			MetadataInSync = reinterpret_cast<FlattenedVideoInfo&>(ReferenceMetadata);
+			MetadataInSync = reinterpret_cast<VideoInfo&>(ReferenceMetadata);
 		};
 		SynchronizeMetadata();
 		this->PaddingFunction = PaddingFunctions::Node::Default;
@@ -53,8 +53,8 @@ public:
 
 public:
 	auto& ExtractMetadata() const {
-		auto& Metadata = static_cast<const FlattenedVideoInfo&>(*this);
-		return reinterpret_cast<const VideoInfo&>(Metadata);
+		auto& Metadata = static_cast<const VideoInfo&>(*this);
+		return reinterpret_cast<const ::VideoInfo&>(Metadata);
 	}
 	auto& ExtractFormat() const {
 		return ExtractMetadata().Format;

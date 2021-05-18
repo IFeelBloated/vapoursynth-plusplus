@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "VapourSynth.h"
 #include "Enumerations.vxx"
 #include "Utility.vxx"
@@ -50,6 +50,37 @@ public:
 		auto VerticalSubsamplingFlag = VerticalSubsamplingFactor & 0xFF;
 		return ColorFamilyFlag | SampleTypeFlag | BitdepthFlag | HorizontalSubsamplingFlag | VerticalSubsamplingFlag;
 	}
+	explicit operator auto() const {
+		using enum ColorFamilies;
+		using enum SampleTypes;
+		switch (auto QuantizationSuffix = SampleType == Int ? ColorFamily == RGB ? std::to_string(3 * BitsPerSample) : std::to_string(BitsPerSample) : BitsPerSample == 32 ? "S"s : "H"s; ColorFamily) {
+			case Gray:
+				return "Gray" + std::move(QuantizationSuffix);
+			case RGB:
+				return "RGB" + std::move(QuantizationSuffix);
+			case YUV:
+				if (HorizontalSubsamplingFactor == 1 && VerticalSubsamplingFactor == 1)
+					return "YUV420P" + std::move(QuantizationSuffix);
+				else if (HorizontalSubsamplingFactor == 1 && VerticalSubsamplingFactor == 0)
+					return "YUV422P" + std::move(QuantizationSuffix);
+				else if (HorizontalSubsamplingFactor == 0 && VerticalSubsamplingFactor == 0)
+					return "YUV444P" + std::move(QuantizationSuffix);
+				else if (HorizontalSubsamplingFactor == 2 && VerticalSubsamplingFactor == 2)
+					return "YUV410P" + std::move(QuantizationSuffix);
+				else if (HorizontalSubsamplingFactor == 2 && VerticalSubsamplingFactor == 0)
+					return "YUV411P" + std::move(QuantizationSuffix);
+				else if (HorizontalSubsamplingFactor == 0 && VerticalSubsamplingFactor == 1)
+					return "YUV440P" + std::move(QuantizationSuffix);
+				else [[unlikely]]
+					return "YUV with HorizontalSubsamplingFactor = " + std::to_string(HorizontalSubsamplingFactor) + ", VerticalSubsamplingFactor = " + std::to_string(VerticalSubsamplingFactor) + ", QuantizationScheme = " + (SampleType == Int ? "Int" : "Float") + std::to_string(BitsPerSample);
+			case Undefined:
+				return "Undefined"s;
+			[[unlikely]] default:
+				throw std::runtime_error{ "VideoFormat: An unrecognized instance has been detected." };
+		}
+	}
+
+public:
 	auto IsSinglePrecision() const {
 		return SampleType == SampleTypes::Float && BitsPerSample == 32;
 	}
@@ -112,21 +143,23 @@ public:
 	auto WithConstantFormat() const {
 		return Format.QueryID() != VideoFormat::IndeterminateID;
 	}
-};
-
-struct FlattenedVideoInfo : VideoFormat {
-	field(FrameRateNumerator, 0_i64);
-	field(FrameRateDenominator, 0_i64);
-	field(Width, 0);
-	field(Height, 0);
-	field(FrameCount, 0);
 
 public:
-	auto WithConstantDimensions() const {
-		return Width != 0 && Height != 0;
-	}
-	auto WithConstantFormat() const {
-		return QueryID() != IndeterminateID;
+	explicit operator auto() const {
+		auto StringRepresentation = std::ostringstream{};
+		StringRepresentation << "Format: " << static_cast<std::string>(Format) << "\n";
+		StringRepresentation << "Resolution: ";
+		if (WithConstantDimensions())
+			StringRepresentation << Width << " × " << Height << "\n";
+		else
+			StringRepresentation << "Indeterminate (may vary from frame to frame)\n";
+		StringRepresentation << "Frame Rate: ";
+		if (FrameRateNumerator % FrameRateDenominator == 0)
+			StringRepresentation << FrameRateNumerator / FrameRateDenominator << " fps\n";
+		else
+			StringRepresentation << FrameRateNumerator << " / " << FrameRateDenominator << " ≈ " << std::fixed << std::setprecision(3) << static_cast<long double>(FrameRateNumerator) / FrameRateDenominator << " fps\n";
+		StringRepresentation << "Frame Count: " << FrameCount;
+		return StringRepresentation.str();
 	}
 };
 
@@ -138,6 +171,15 @@ struct PluginInfo {
 	field(Namespace, ""s);
 	field(Identifier, ""s);
 	field(Description, ""s);
+
+public:
+	explicit operator auto() const {
+		auto StringRepresentation = std::ostringstream{};
+		StringRepresentation << "Namespace: " << Namespace << "\n";
+		StringRepresentation << "Identifier: " << Identifier << "\n";
+		StringRepresentation << "Description: " << Description;
+		return StringRepresentation.str();
+	}
 };
 
 struct CoreInfo {
@@ -147,4 +189,30 @@ struct CoreInfo {
 	field(ThreadCount, 0);
 	field(MaxFrameBufferSize, 0_i64);
 	field(UsedFrameBufferSize, 0_i64);
+
+public:
+	explicit operator auto() const {
+		auto StringRepresentation = std::ostringstream{};
+		StringRepresentation << Version << "Thread Count: " << ThreadCount << "\n";
+		StringRepresentation << "Frame Buffer Size: currently using " << UsedFrameBufferSize << " bytes out of " << MaxFrameBufferSize << " bytes";
+		return StringRepresentation.str();
+	}
 };
+
+namespace AlternateRepresentations::Flattened {
+	struct VideoInfo : VideoFormat {
+		field(FrameRateNumerator, 0_i64);
+		field(FrameRateDenominator, 0_i64);
+		field(Width, 0);
+		field(Height, 0);
+		field(FrameCount, 0);
+
+	public:
+		auto WithConstantDimensions() const {
+			return Width != 0 && Height != 0;
+		}
+		auto WithConstantFormat() const {
+			return QueryID() != IndeterminateID;
+		}
+	};
+}

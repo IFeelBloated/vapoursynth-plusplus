@@ -32,7 +32,7 @@ public:
 		//Placeholder for API v4.
 		return AudioFormat{};
 	}
-	auto Query(ExplicitlyConvertibleTo<std::string> auto&& PluginIdentifier) const {
+	auto Query(std::convertible_to<std::string_view> auto&& PluginIdentifier) const {
 		auto Identifier = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(PluginIdentifier);
 		auto PluginHandle = UniversalContext::API->getPluginById(Utility::ExtractCharPointerFromASCIZFormattedString(Identifier), Handle);
 		auto PluginDescriptor = [&] {
@@ -191,8 +191,8 @@ public:
 		return LoggerController{ .Handle = reinterpret_cast<VSLogHandle*>(LoggerDescriptor) };
 	}
 	auto LogMessage(AnyOf<MessageTypes, VSMessageType> auto MessageType, ExplicitlyConvertibleTo<std::string> auto&& Message) const {
-		auto FormattedMessage = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(Message);
-		UniversalContext::API->logMessage(static_cast<int>(MessageType), Utility::ExtractCharPointerFromASCIZFormattedString(FormattedMessage));
+		auto FormattedMessage = static_cast<std::string>(Forward(Message));
+		UniversalContext::API->logMessage(static_cast<int>(MessageType), FormattedMessage.data());
 	}
 	auto DebugPrint(ExplicitlyConvertibleTo<std::string> auto&& Message) const {
 		LogMessage(MessageTypes::Debug, Message);

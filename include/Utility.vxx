@@ -17,13 +17,13 @@ template<typename UnknownType, typename ReferenceType>
 concept ConstructibleFrom = ExplicitlyConvertibleTo<ReferenceType, std::decay_t<UnknownType>>;
 
 template<typename UnknownType>
-concept NativeArray = std::is_array_v<std::remove_cvref_t<UnknownType>>;
+concept BuiltinArray = std::is_array_v<std::remove_cvref_t<UnknownType>>;
 
 template<typename UnknownType>
 concept Advanceable = requires(UnknownType x) { ++x; };
 
 template<typename UnknownType>
-concept Iterable = NativeArray<UnknownType> || requires(UnknownType x) {
+concept Iterable = BuiltinArray<UnknownType> || requires(UnknownType x) {
 	{ x.begin() }->Advanceable;
 	{ *x.begin() }->AnyBut<void>;
 	{ x.begin() != x.end() }->ExplicitlyConvertibleTo<bool>;
@@ -50,7 +50,7 @@ namespace Utility {
 	auto TypeEraseIterableToTriplet(auto&& Entity) {
 		if constexpr (Iterable<decltype(Entity)>) {
 			auto Buffer = [&] {
-				if constexpr (NativeArray<decltype(Entity)>)
+				if constexpr (BuiltinArray<decltype(Entity)>)
 					return std::vector<std::decay_t<decltype(Entity[0])>>{};
 				else
 					return std::vector<std::decay_t<decltype(*Entity.begin())>>{};

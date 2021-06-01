@@ -50,19 +50,36 @@ public:
 	}
 
 public:
-	auto Exists() const {
-		return Index < size();
-	}
 	auto Type() const {
 		return static_cast<ItemTypes>(UniversalContext::API->propGetType(StorageAccess->Handle, StorageAccess->Key.data()));
+	}
+	auto Apply(auto&& PolymorphicFunction) const {
+		using enum ItemTypes;
+		if (Type() == Int)
+			return PolymorphicFunction(static_cast<std::int64_t>(*this));
+		else if (Type() == Float)
+			return PolymorphicFunction(static_cast<double>(*this));
+		else if (Type() == String)
+			return PolymorphicFunction(static_cast<const char*>(*this));
+		else if (Type() == VideoNode || Type() == AudioNode)
+			return PolymorphicFunction(static_cast<NodeReference>(*this));
+		else if (Type() == VideoFrame || Type() == AudioFrame)
+			return PolymorphicFunction(static_cast<FrameReference>(*this));
+		else if (Type() == Function)
+			return PolymorphicFunction(static_cast<FunctionReference>(*this));
+		else [[unlikely]]
+			throw std::runtime_error{ "Item: An ill-formed instance has been detected." };
+	}
+
+public:
+	auto Exists() const {
+		return Index < size();
 	}
 	auto operator[](IntegralOrEnumerable auto Index) const {
 		auto Replica = *this;
 		Replica.Index = static_cast<std::ptrdiff_t>(Index);
 		return Replica;
 	}
-
-public:
 	auto size() const {
 		return Utility::Max(UniversalContext::API->propNumElements(StorageAccess->Handle, StorageAccess->Key.data()), 0);
 	}
@@ -143,43 +160,6 @@ public:
 	}
 
 private:
-	auto InjectInt(auto Value) const {
-		UniversalContext::API->propSetInt(StorageAccess->Handle, StorageAccess->Key.data(), static_cast<std::int64_t>(Value), VSPropAppendMode::paAppend);
-	}
-	auto InjectFloat(auto Value) const {
-		UniversalContext::API->propSetFloat(StorageAccess->Handle, StorageAccess->Key.data(), Value, VSPropAppendMode::paAppend);
-	}
-	auto InjectString(auto&& Value) const {
-		UniversalContext::API->propSetData(StorageAccess->Handle, StorageAccess->Key.data(), Value.data(), Value.size(), VSPropAppendMode::paAppend);
-	}
-	auto InjectCharArray(auto Value) const {
-		UniversalContext::API->propSetData(StorageAccess->Handle, StorageAccess->Key.data(), Value, -1, VSPropAppendMode::paAppend);
-	}
-	auto InjectNode(auto&& Value) const {
-		UniversalContext::API->propSetNode(StorageAccess->Handle, StorageAccess->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
-	}
-	auto InjectFrame(auto&& Value) const {
-		UniversalContext::API->propSetFrame(StorageAccess->Handle, StorageAccess->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
-	}
-	auto InjectFunction(auto&& Value) const {
-		UniversalContext::API->propSetFunc(StorageAccess->Handle, StorageAccess->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
-	}
-	auto InjectDynamicallyTypedObject(auto&& Object) const {
-		if (Object.Type() == ItemTypes::Int)
-			InjectInt(static_cast<std::int64_t>(Object));
-		else if (Object.Type() == ItemTypes::Float)
-			InjectFloat(static_cast<double>(Object));
-		else if (Object.Type() == ItemTypes::String)
-			InjectString(static_cast<std::string>(Object));
-		else if (Object.Type() == ItemTypes::VideoNode || Object.Type() == ItemTypes::AudioNode)
-			InjectNode(static_cast<NodeReference>(Object));
-		else if (Object.Type() == ItemTypes::VideoFrame || Object.Type() == ItemTypes::AudioFrame)
-			InjectFrame(static_cast<FrameReference>(Object));
-		else if (Object.Type() == ItemTypes::Function)
-			InjectFunction(static_cast<FunctionReference>(Object));
-	}
-
-private:
 	auto Insert(auto&& Entity, auto AppendMode) const {
 		constexpr auto IsIterable = Iterable<decltype(Entity)>;
 		constexpr auto IsCharArray = std::convertible_to<decltype(Entity), const char*>;
@@ -187,19 +167,19 @@ private:
 		auto InjectValue = [this](auto&& Value) {
 			using ValueType = std::decay_t<decltype(Value)>;
 			if constexpr (std::floating_point<ValueType>)
-				InjectFloat(Value);
+				UniversalContext::API->propSetFloat(StorageAccess->Handle, StorageAccess->Key.data(), Value, VSPropAppendMode::paAppend);
 			else if constexpr (IntegralOrEnumerable<ValueType>)
-				InjectInt(Value);
+				UniversalContext::API->propSetInt(StorageAccess->Handle, StorageAccess->Key.data(), static_cast<std::int64_t>(Value), VSPropAppendMode::paAppend);
 			else if constexpr (requires { { Value }->ExplicitlyConvertibleTo<const char*>; })
-				InjectCharArray(static_cast<const char*>(Value));
+				UniversalContext::API->propSetData(StorageAccess->Handle, StorageAccess->Key.data(), static_cast<const char*>(Value), -1, VSPropAppendMode::paAppend);
 			else if constexpr (requires { { Value.size() }->std::integral; { Value.data() }->std::convertible_to<const char*>; })
-				InjectString(Value);
+				UniversalContext::API->propSetData(StorageAccess->Handle, StorageAccess->Key.data(), Value.data(), Value.size(), VSPropAppendMode::paAppend);
 			else if constexpr (SubtypeOf<ValueType, NodeReference>)
-				InjectNode(Value);
+				UniversalContext::API->propSetNode(StorageAccess->Handle, StorageAccess->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
 			else if constexpr (SubtypeOf<ValueType, FrameReference>)
-				InjectFrame(Value);
+				UniversalContext::API->propSetFrame(StorageAccess->Handle, StorageAccess->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
 			else if constexpr (SubtypeOf<ValueType, FunctionReference>)
-				InjectFunction(Value);
+				UniversalContext::API->propSetFunc(StorageAccess->Handle, StorageAccess->Key.data(), Value.Handle, VSPropAppendMode::paAppend);
 			else
 				static_assert(sizeof(Value) == -1, "Item: failed to inject an instance of unrecognized type.");
 		};
@@ -207,7 +187,7 @@ private:
 			Erase();
 		if constexpr (requires { { Entity.Type() }->SubtypeOf<ItemTypes>; })
 			for (auto&& x : Entity)
-				InjectDynamicallyTypedObject(x);
+				x.Apply(InjectValue);
 		else if constexpr (IsIterable && !IsCharArray && !IsCharContainer)
 			for (auto&& x : Entity)
 				InjectValue(x);
@@ -260,6 +240,33 @@ namespace Utility::Map {
 	template<auto Readonly, auto Managed>
 	auto AccessItem(auto MapHandle, auto&& Key) {
 		return Item<Readonly, Managed>{  MapHandle, Forward(Key) };
+	}
+	auto PrintItem(auto MapHandle, auto&& Key)->std::string {
+		auto GenerateStringRepresentation = [](auto&& Value) {
+			auto IndentStructuredRepresentation = [](auto&& RepresentationString) {
+				return std::regex_replace("{\n" + std::move(RepresentationString), std::regex{ "\n" }, "\n    ") + "\n}";
+			};
+			if constexpr (requires { std::to_string(Value); })
+				return std::to_string(Value);
+			else if constexpr (requires { { Value }->std::convertible_to<const char*>; })
+				return "\""s + Value + "\"";
+			else if constexpr (requires { { Value }->SubtypeOf<NodeReference>; })
+				return IndentStructuredRepresentation(static_cast<std::string>(Node{ Value.Leak() }));
+			else if constexpr (requires { { Value }->SubtypeOf<FrameReference>; })
+				return IndentStructuredRepresentation(static_cast<std::string>(Frame{ Value.Leak() }));
+			else if constexpr (requires { { Value }->SubtypeOf<FunctionReference>; })
+				return IndentStructuredRepresentation(static_cast<std::string>(Function{ Value.Leak() }));
+		};
+		if (auto ItemStorage = AccessItem(MapHandle, Forward(Key)); ItemStorage.size() > 1) {
+			auto StringRepresentation = "["s;
+			for (auto&& x : ItemStorage)
+				StringRepresentation += x.Apply(GenerateStringRepresentation) + ", ";
+			return StringRepresentation.erase(StringRepresentation.size() - 2) + "]";
+		}
+		else if (ItemStorage.Exists())
+			return ItemStorage.Apply(GenerateStringRepresentation);
+		else
+			return "nullptr";
 	}
 }
 

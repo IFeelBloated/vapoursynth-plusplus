@@ -133,6 +133,15 @@ public:
 		TargetNode.RequestFunction = this->RequestFunction;
 		return TargetNode;
 	}
+
+public:
+	explicit operator auto() const {
+		//Placeholder for API v4.
+		auto StringRepresentation = std::ostringstream{};
+		StringRepresentation << "Media Type: Video\n" << static_cast<std::string>(QueryVideoInfo()) << "\n";
+		StringRepresentation << "Cache Policy: " << (QueryCachePolicy() == CacheOptions::Automatic ? "Automatic" : "Disabled");
+		return StringRepresentation.str();
+	}
 };
 
 namespace PaddingFunctions::Node {

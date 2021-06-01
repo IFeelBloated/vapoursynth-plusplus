@@ -20,4 +20,12 @@ public:
 			throw std::runtime_error{ ErrorMessage };
 		return Utility::Map::AccessItem<true, false>(ResultMap.Leak(), Utility::Map::DeduceReturnKey(ResultObserver, "val"sv));
 	}
+
+public:
+	explicit operator auto() const {
+		auto StringRepresentation = std::ostringstream{};
+		StringRepresentation << "Mount Point: " << Handle << "\n";
+		StringRepresentation << "Signature: n/a";
+		return StringRepresentation.str();
+	}
 };

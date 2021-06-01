@@ -21,6 +21,14 @@ private:
 				throw std::runtime_error{ ErrorMessage };
 			return ResultItem;
 		}
+
+	public:
+		explicit operator auto() const {
+			auto StringRepresentation = std::ostringstream{};
+			StringRepresentation << "Namespace: " << PluginHandle->Namespace << "\n";
+			StringRepresentation << "Signature: " << Signature;
+			return StringRepresentation.str();
+		}
 	};
 
 public:
@@ -36,5 +44,16 @@ public:
 		for (auto FunctionMap = MapReference{ UniversalContext::API->getFunctions(Handle) }; auto&& x : Utility::Map::ListKeys(FunctionMap.Handle))
 			FunctionNames.push_back(std::string{ x });
 		return FunctionNames;
+	}
+
+public:
+	explicit operator auto() const {
+		auto StringRepresentation = std::ostringstream{};
+		auto& Descriptor = static_cast<const PluginInfo&>(*this);
+		StringRepresentation << static_cast<std::string>(Descriptor) << "\n";
+		StringRepresentation << "File Path: " << FilePath.string() << "\n---- Function List ----";
+		for (auto&& x : ListFunctions())
+			StringRepresentation << "\n" << operator[](x).Signature;
+		return StringRepresentation.str();
 	}
 };

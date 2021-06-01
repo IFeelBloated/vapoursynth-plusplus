@@ -215,9 +215,9 @@ namespace PluginInstantiator {
 					}
 				};
 				OrchestrateMediaTypeDependentActions(ExtendedFilterInstance.release(),
-					[&](auto FatInstanceHandle) { UniversalContext::API->createFilter(AuxiliaryMap.Handle, ResultMap, FilterName, NodeInitializer, FrameGenerator, FilterRecycler, ExecutionPolicyForFrameGenerator, CachePolicy, FatInstanceHandle, Core); },
+					[&](auto FatInstanceHandle) { UniversalContext::API->createFilter(AuxiliaryMap.Handle, ResultMap, FilterName, NodeInitializer, FrameGenerator, FilterRecycler, ExecutionPolicyForFrameGenerator, CachePolicy, FatInstanceHandle, CoreHandle); },
 					[](auto) { /* Placeholder for API v4. */ },
-					[&](auto FatInstanceHandle) { UniversalContext::API->createFilter(AuxiliaryMap.Handle, ResultMap, FilterName, NodeInitializer, FrameGenerator, FilterRecycler, ExecutionPolicyForFrameGenerator, CachePolicy, FatInstanceHandle, Core); },
+					[&](auto FatInstanceHandle) { UniversalContext::API->createFilter(AuxiliaryMap.Handle, ResultMap, FilterName, NodeInitializer, FrameGenerator, FilterRecycler, ExecutionPolicyForFrameGenerator, CachePolicy, FatInstanceHandle, CoreHandle); },
 					[](auto) { /* Placeholder for API v4. */ }
 				);
 			};
@@ -286,10 +286,9 @@ namespace PluginInstantiator {
 		auto FunctionProxy = [](auto ArgumentMap, auto ConsoleHandle, auto ConfigurationPointer, auto CoreHandle, auto...) {
 			auto Arguments = ArgumentList{ .Handle = ArgumentMap };
 			auto Console = ConsoleProxy{ .Handle = ConsoleHandle };
-			auto Core = CoreProxy{ .Handle = CoreHandle };
 			auto& [FunctionName, ReturnKey, RegisteredFunction] = *reinterpret_cast<ConfigurationType*>(ConfigurationPointer);
 			auto FunctionInvoker = [&] {
-				if constexpr (requires { RegisteredFunction(Arguments, Core); })
+				if constexpr (auto Core = CoreProxy{ .Handle = CoreHandle }; requires { RegisteredFunction(Arguments, Core); })
 					return RegisteredFunction(Arguments, Core);
 				else if constexpr (requires { RegisteredFunction(Arguments); })
 					return RegisteredFunction(Arguments);

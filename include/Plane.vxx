@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Utility.vxx"
 
 template<typename PixelType>
@@ -62,6 +62,16 @@ private:
 		auto View(std::integral auto y, std::integral auto x) const {
 			return PlaneView{ .TargetPlane = TargetPlane, .yOffset = yOffset + y, .xOffset = xOffset + x };
 		}
+
+	public:
+		explicit operator auto() const {
+			auto StringRepresentation = std::ostringstream{};
+			StringRepresentation << "Resolution: " << TargetPlane->Width << " × " << TargetPlane->Height << "\n";
+			StringRepresentation << "Absolute Coordinates of the Origin: { y = " << yOffset << ", x = " << xOffset << " }\n";
+			StringRepresentation << "Sample Type: " << (std::integral<PixelType> ? "Int" : "Float") << "\n";
+			StringRepresentation << "Bytes Per Sample: " << sizeof(PixelType);
+			return StringRepresentation.str();
+		}
 	};
 
 public:
@@ -73,6 +83,15 @@ public:
 	}
 	auto View(std::integral auto y, std::integral auto x) const requires EnabledAutomaticPadding {
 		return PlaneView{ .TargetPlane = this, .yOffset = y, .xOffset = x };
+	}
+
+public:
+	explicit operator auto() const {
+		auto StringRepresentation = std::ostringstream{};
+		StringRepresentation << "Resolution: " << this->Width << " × " << this->Height << "\n";
+		StringRepresentation << "Sample Type: " << (std::integral<PixelType> ? "Int" : "Float") << "\n";
+		StringRepresentation << "Bytes Per Sample: " << sizeof(PixelType);
+		return StringRepresentation.str();
 	}
 };
 

@@ -6,7 +6,7 @@ struct CoreProxy {
 	field(Handle, static_cast<VSCore*>(nullptr));
 
 public:
-	auto Query() {
+	auto Query() const {
 		auto CoreInfoBuffer = VSCoreInfo{};
 		UniversalContext::API->getCoreInfo2(Handle, &CoreInfoBuffer);
 		return CoreInfo{
@@ -251,8 +251,14 @@ public:
 		}();
 		return Plugin{ std::move(PluginDescriptor), PluginHandle, PluginPath };
 	}
-	operator auto() const {
-		return Handle;
+
+public:
+	explicit operator auto() const {
+		auto StringRepresentation = std::ostringstream{};
+		StringRepresentation << static_cast<std::string>(Query()) << "\n---- Plugin List ----";
+		for (auto&& [Namespace, Identifier, Description] : ListPlugins())
+			StringRepresentation << "\nNamespace: " << Namespace << " | Identifier: " << Identifier << " | Description: " << Description;
+		return StringRepresentation.str();
 	}
 };
 

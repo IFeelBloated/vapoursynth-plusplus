@@ -208,6 +208,8 @@ namespace Utility::Map {
 	auto DeduceReturnKey(auto, auto);
 	template<auto = true, auto = true>
 	auto AccessItem(auto, auto&&);
+	// GCC bug, fixme
+	auto PrintItem(auto MapHandle, auto&& Key)->std::string;
 }
 
 namespace Utility::PaddingFunctions {

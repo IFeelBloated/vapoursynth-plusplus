@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "ResourceManager.vxx"
 #include "DescriptiveAggregates.vxx"
 
@@ -56,6 +56,18 @@ public:
 		static_assert(Source.Readonly, "Frame: cannot absorb properties from a mutable frame.");
 		for (auto& Self = *this; auto x : Source.ListProperties())
 			Self[x] = Source[x];
+	}
+
+public:
+	explicit operator auto() const {
+		//Placeholder for API v4.
+		auto StringRepresentation = std::ostringstream{};
+		StringRepresentation << "Media Type: Video\n";
+		StringRepresentation << "Format: " << static_cast<std::string>(QueryVideoFormat()) << "\n";
+		StringRepresentation << "Resolution: " << UniversalContext::API->getFrameWidth(Handle, 0) << " × " << UniversalContext::API->getFrameHeight(Handle, 0) << "\n---- Properties ----";
+		for (auto&& x : ListProperties())
+			StringRepresentation << "\n" << x << ": " << Utility::Map::PrintItem(PropertyMap, x);
+		return StringRepresentation.str();
 	}
 };
 

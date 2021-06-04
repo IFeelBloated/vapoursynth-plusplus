@@ -201,13 +201,14 @@ namespace Utility::SignatureParser {
 }
 
 namespace Utility::Map {
+	template<auto = true, auto = true>
+	struct Item;
+
 	auto Create();
 	auto ListKeys(auto);
 	auto Fill(auto, auto&&, auto&&, auto&&...);
 	auto CheckForError(auto);
 	auto DeduceReturnKey(auto, auto);
-	template<auto = true, auto = true>
-	auto AccessItem(auto, auto&&);
 	// GCC bug, fixme
 	auto PrintItem(auto MapHandle, auto&& Key)->std::string;
 }

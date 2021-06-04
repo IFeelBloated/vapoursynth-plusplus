@@ -16,7 +16,7 @@ private:
 			if constexpr (sizeof...(Arguments) != 0)
 				Utility::Map::Fill(ArgumentMap.Handle, Forward(Arguments)...);
 			auto ResultMap = UniversalContext::API->invoke(PluginHandle->Handle, Utility::SignatureParser::DeduceFunctionName(Signature).data(), ArgumentMap.Handle);
-			auto ResultItem = Utility::Map::AccessItem<true, false>(ResultMap, Utility::Map::DeduceReturnKey(ResultMap, "clip"sv));
+			auto ResultItem = Utility::Map::Item<true, false>{ ResultMap, Utility::Map::DeduceReturnKey(ResultMap, "clip"sv) };
 			if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ResultMap); EvaluationFailed)
 				throw std::runtime_error{ ErrorMessage };
 			return ResultItem;
@@ -34,14 +34,14 @@ private:
 public:
 	auto operator[](ExplicitlyConvertibleTo<std::string> auto&& FunctionName) const {
 		auto Name = static_cast<std::string>(Forward(FunctionName));
-		auto ParameterList = static_cast<std::string>(Utility::Map::AccessItem<true, false>(UniversalContext::API->getFunctions(Handle), Name)).erase(0, Name.size() + 1);
+		auto ParameterList = static_cast<std::string>(Utility::Map::Item<true, false>{ UniversalContext::API->getFunctions(Handle), Name }).erase(0, Name.size() + 1);
 		if (ParameterList.size() > 0)
 			ParameterList.pop_back();
 		return Function{ .PluginHandle = this, .Signature = std::move(Name) + "(" + Utility::SignatureParser::Tokenizer::Replace(std::move(ParameterList), ":data", ":string", ":frame", ":vframe", ":clip", ":vnode", ":opt", "?", ";", ", ", ":", ": ", R"(:([^,]+)(?=,[^:]+:\1(?=,|$)))", "", R"((?![, ])([^:]+): ([^,]+))", "[$1]: $2", R"(\[([^\]|,]+)\]: ([^,]+))", "$1: $2") + ")" };
 	}
 	auto ListFunctions() const {
 		auto FunctionNames = std::vector<std::string>{};
-		for (auto FunctionMap = MapReference{ UniversalContext::API->getFunctions(Handle) }; auto&& x : Utility::Map::ListKeys(FunctionMap.Handle))
+		for (auto FunctionMap = Utility::Map::Reference{ UniversalContext::API->getFunctions(Handle) }; auto&& x : Utility::Map::ListKeys(FunctionMap.Handle))
 			FunctionNames.push_back(std::string{ x });
 		return FunctionNames;
 	}

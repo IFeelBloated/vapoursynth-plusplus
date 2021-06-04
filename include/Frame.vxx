@@ -50,10 +50,9 @@ public:
 		return Utility::Map::ListKeys(PropertyMap);
 	}
 	auto operator[](ExplicitlyConvertibleTo<std::string> auto&& Property) const {
-		return Utility::Map::AccessItem<Readonly>(PropertyMap, Forward(Property));
+		return Utility::Map::Item<Readonly>{ PropertyMap, Forward(Property) };
 	}
 	auto AbsorbPropertiesFrom(SubtypeOf<FrameReference> auto&& Source) const requires (Readonly == false) {
-		static_assert(Source.Readonly, "Frame: cannot absorb properties from a mutable frame.");
 		for (auto& Self = *this; auto x : Source.ListProperties())
 			Self[x] = Source[x];
 	}

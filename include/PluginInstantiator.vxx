@@ -243,7 +243,7 @@ namespace PluginInstantiator {
 			auto ImpredicativeFilterInitiator = [=](auto&& ...Arguments) {
 				auto ArgumentMap = Utility::Map::Create();
 				auto ResultMap = Utility::Map::Create();
-				auto ResultItem = Utility::Map::AccessItem(ResultMap.Handle, "clip");
+				auto ResultItem = Utility::Map::Item{ ResultMap.Handle, "clip" };
 				if constexpr (sizeof...(Arguments) != 0)
 					Utility::Map::Fill(ArgumentMap.Handle, Forward(Arguments)...);
 				InitiateFilterInstance(FilterInstantiator(ArgumentList{ .Handle = ArgumentMap.Handle }), ResultMap.Handle);

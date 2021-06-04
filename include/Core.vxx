@@ -149,7 +149,7 @@ public:
 					static_assert(sizeof(MountedFunction) == -1, "Mount: failed to mount the specified object, it is either not callable or has an incompatible signature.");
 			};
 			try {
-				if constexpr (auto ResultItem = Utility::Map::AccessItem<false>(OutputMap, "val"); requires { { FunctionInvoker() }->AnyBut<void>; })
+				if constexpr (auto ResultItem = Utility::Map::Item<false>{ OutputMap, "val" }; requires { { FunctionInvoker() }->AnyBut<void>; })
 					ResultItem += FunctionInvoker();
 				else
 					FunctionInvoker();
@@ -227,8 +227,8 @@ public:
 			auto Description = StringRepresentation.substr(IdentifierSector + 1, StringRepresentation.size() - Namespace.size() - Identifier.size());
 			return PluginInfo{ .Namespace = std::string{ Namespace }, .Identifier = std::string{ Identifier }, .Description = std::string{ Description } };
 		};
-		for (auto PluginMap = MapReference{ UniversalContext::API->getPlugins(Handle) }; auto&& x : Utility::Map::ListKeys(PluginMap.Handle))
-			PluginDescriptors.push_back(ReconstructDescriptorFromStringRepresentation(static_cast<std::string_view>(Utility::Map::AccessItem(PluginMap.Handle, x))));
+		for (auto PluginMap = Utility::Map::Reference{ UniversalContext::API->getPlugins(Handle) }; auto&& x : Utility::Map::ListKeys(PluginMap.Handle))
+			PluginDescriptors.push_back(ReconstructDescriptorFromStringRepresentation(static_cast<std::string_view>(Utility::Map::Item{ PluginMap.Handle, x })));
 		return PluginDescriptors;
 	}
 	auto operator[](ExplicitlyConvertibleTo<std::string> auto&& PluginNamespace) const {

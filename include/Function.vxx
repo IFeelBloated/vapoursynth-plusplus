@@ -18,7 +18,7 @@ public:
 		UniversalContext::API->callFunc(Handle, ArgumentMap.Handle, ResultObserver, nullptr, nullptr);
 		if (auto [EvaluationFailed, ErrorMessage] = Utility::Map::CheckForError(ResultObserver); EvaluationFailed)
 			throw std::runtime_error{ ErrorMessage };
-		return Utility::Map::AccessItem<true, false>(ResultMap.Leak(), Utility::Map::DeduceReturnKey(ResultObserver, "val"sv));
+		return Utility::Map::Item<true, false>{ ResultMap.Leak(), Utility::Map::DeduceReturnKey(ResultObserver, "val"sv) };
 	}
 
 public:

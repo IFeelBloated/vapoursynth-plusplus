@@ -39,6 +39,16 @@ namespace Utility {
 	auto Min(auto x, auto y) {
 		return x < y ? x : y;
 	}
+	auto Distance(auto&& Startpoint, auto&& Endpoint) {
+		if constexpr (requires { { Endpoint - Startpoint }->ExplicitlyConvertibleTo<std::ptrdiff_t>; })
+			return static_cast<std::ptrdiff_t>(Endpoint - Startpoint);
+		else {
+			auto DistanceCounter = 0_ptrdiff;
+			for (auto Cursor = Forward(Startpoint); Cursor != Endpoint; ++Cursor)
+				++DistanceCounter;
+			return DistanceCounter;
+		}
+	}
 	auto Log2(auto x) {
 		auto Exponent = 0;
 		while (x != 1) {

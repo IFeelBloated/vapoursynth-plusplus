@@ -77,7 +77,7 @@ namespace Utility::Map {
 
 	public:
 		auto Exists() const {
-			return Index < size();
+			return Index < QueryStorageSize();
 		}
 		auto operator[](IntegralOrEnumerable auto Index) const {
 			auto Replica = *this;
@@ -85,13 +85,13 @@ namespace Utility::Map {
 			return Replica;
 		}
 		auto size() const {
-			return Utility::Max(UniversalContext::API->propNumElements(StorageAccess->Handle, StorageAccess->Key.data()), 0);
+			return static_cast<std::size_t>(QueryStorageSize() - Index);
 		}
 		auto begin() const {
 			return Iterator{ .TargetItem = this, .Index = Index };
 		}
 		auto end() const {
-			return Iterator{ .TargetItem = this, .Index = size() };
+			return Iterator{ .TargetItem = this, .Index = QueryStorageSize() };
 		}
 
 	public:
@@ -150,13 +150,13 @@ namespace Utility::Map {
 				for (auto&& x : Self)
 					TargetSequence.push_back(static_cast<ElementType>(x));
 			else if constexpr (requires { TargetSequence.push_front(static_cast<ElementType>(Self)); })
-				for (auto x : Range{ size() - 1, -1 })
+				for (auto x : Range{ QueryStorageSize() - 1, Index - 1 })
 					TargetSequence.push_front(static_cast<ElementType>(Self[x]));
 			else if constexpr (requires { TargetSequence.insert(static_cast<ElementType>(Self)); })
 				for (auto&& x : Self)
 					TargetSequence.insert(static_cast<ElementType>(x));
 			else
-				for (auto Cursor = TargetSequence.begin(); auto x : Range{ Utility::Min(size(), std::distance(TargetSequence.begin(), TargetSequence.end())) }) {
+				for (auto Cursor = TargetSequence.begin(); auto x : Range{ Index, Index + Utility::Min(size(), Utility::Distance(TargetSequence.begin(), TargetSequence.end())) }) {
 					*Cursor = static_cast<ElementType>(Self[x]);
 					++Cursor;
 				}
@@ -164,6 +164,9 @@ namespace Utility::Map {
 		}
 
 	private:
+		auto QueryStorageSize() const {
+			return Utility::Max(UniversalContext::API->propNumElements(StorageAccess->Handle, StorageAccess->Key.data()), 0);
+		}
 		auto Insert(auto&& Entity, auto AppendMode) const {
 			constexpr auto IsIterable = Iterable<decltype(Entity)>;
 			constexpr auto IsCharArray = std::convertible_to<decltype(Entity), const char*>;

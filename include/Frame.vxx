@@ -65,7 +65,7 @@ public:
 		StringRepresentation << "Format: " << static_cast<std::string>(QueryVideoFormat()) << "\n";
 		StringRepresentation << "Resolution: " << UniversalContext::API->getFrameWidth(Handle, 0) << " × " << UniversalContext::API->getFrameHeight(Handle, 0) << "\n---- Properties ----";
 		for (auto&& x : ListProperties())
-			StringRepresentation << "\n" << x << ": " << Utility::Map::PrintItem(PropertyMap, x);
+			StringRepresentation << "\n" << x << ": " << Utility::Map::PrintItem(operator[](x));
 		return StringRepresentation.str();
 	}
 };

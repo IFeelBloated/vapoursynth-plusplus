@@ -246,7 +246,7 @@ namespace Utility::Map {
 		else
 			return Fallback;
 	}
-	auto PrintItem(auto MapHandle, auto&& Key)->std::string {
+	auto PrintItem(auto&& ItemInstance)->std::string {
 		auto GenerateStringRepresentation = [](auto&& Value) {
 			auto IndentStructuredRepresentation = [](auto&& RepresentationString) {
 				return std::regex_replace("{\n" + std::move(RepresentationString), std::regex{ "\n" }, "\n    ") + "\n}";
@@ -262,14 +262,14 @@ namespace Utility::Map {
 			else if constexpr (requires { { Value }->SubtypeOf<FunctionReference>; })
 				return IndentStructuredRepresentation(static_cast<std::string>(Function{ Value.Leak() }));
 		};
-		if (auto ItemStorage = Item{ MapHandle, Forward(Key) }; ItemStorage.size() > 1) {
+		if (ItemInstance.size() > 1) {
 			auto StringRepresentation = "["s;
-			for (auto&& x : ItemStorage)
+			for (auto&& x : ItemInstance)
 				StringRepresentation += x.Apply(GenerateStringRepresentation) + ", ";
 			return StringRepresentation.erase(StringRepresentation.size() - 2) + "]";
 		}
-		else if (ItemStorage.Exists())
-			return ItemStorage.Apply(GenerateStringRepresentation);
+		else if (ItemInstance.Exists())
+			return ItemInstance.Apply(GenerateStringRepresentation);
 		else
 			return "nullptr";
 	}
@@ -284,6 +284,14 @@ public:
 	}
 	auto operator[](ExplicitlyConvertibleTo<std::string> auto&& Parameter) const {
 		return Utility::Map::Item{ Handle, Forward(Parameter) };
+	}
+
+public:
+	explicit operator auto() const {
+		auto StringRepresentation = std::ostringstream{};
+		for (auto&& x : ListSpecifiedParameters())
+			StringRepresentation << "\n" << x << ": " << Utility::Map::PrintItem(operator[](x));
+		return StringRepresentation.str().erase(0, 1);
 	}
 };
 

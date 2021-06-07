@@ -220,7 +220,7 @@ namespace Utility::Map {
 	auto CheckForError(auto);
 	auto DeduceReturnKey(auto, auto);
 	// GCC bug, fixme
-	auto PrintItem(auto MapHandle, auto&& Key)->std::string;
+	auto PrintItem(auto&&)->std::string;
 }
 
 namespace Utility::PaddingFunctions {

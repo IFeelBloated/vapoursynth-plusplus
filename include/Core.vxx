@@ -50,16 +50,16 @@ public:
 			else
 				return std::filesystem::path{};
 		}();
-		return Plugin{ PluginDescriptor, PluginHandle, PluginPath };
+		return Plugin{ std::move(PluginDescriptor), PluginHandle, std::move(PluginPath) };
 	}
 
 public:
-	auto AllocateVideoFrame(auto&& FormatDescriptor, std::integral auto Width, std::integral auto Height) const {
+	auto AllocateVideoFrame(auto&& Format, std::integral auto Width, std::integral auto Height) const {
 		auto FormatHandle = [&] {
-			if constexpr (requires { { Query(FormatDescriptor) }->SubtypeOf<VideoFormat>; })
-				return &VideoFormat::AdjustToLegacyLayout(Query(FormatDescriptor));
+			if constexpr (requires { { Query(Format) }->SubtypeOf<VideoFormat>; })
+				return &VideoFormat::AdjustToLegacyLayout(Query(Format));
 			else
-				static_assert(sizeof(FormatDescriptor) == -1, "AllocateVideoFrame: failed to recognize the specified format descriptor.");
+				static_assert(sizeof(Format) == -1, "AllocateVideoFrame: failed to recognize the specified format descriptor.");
 		}();
 		return FrameReference{ UniversalContext::API->newVideoFrame(FormatHandle, Width, Height, nullptr, Handle) };
 	}
@@ -187,8 +187,8 @@ public:
 				static_assert(sizeof(InstalledLogger) == -1, "InstallLogger: failed to install the specified logger, it is either not callable or has an incompatible signature.");
 		};
 		auto LoggerID = UniversalContext::API->addMessageHandler(LoggerProxy, LoggerRecycler, LoggerHandle);
-		auto LoggerDescriptor = static_cast<std::intptr_t>(~LoggerID);
-		return LoggerController{ .Handle = reinterpret_cast<VSLogHandle*>(LoggerDescriptor) };
+		auto VirtualLoggerHandle = static_cast<std::intptr_t>(~LoggerID);
+		return LoggerController{ .Handle = reinterpret_cast<VSLogHandle*>(VirtualLoggerHandle) };
 	}
 	auto LogMessage(AnyOf<MessageTypes, VSMessageType> auto MessageType, ExplicitlyConvertibleTo<std::string> auto&& Message) const {
 		auto FormattedMessage = static_cast<std::string>(Forward(Message));
@@ -249,7 +249,7 @@ public:
 			else
 				return std::filesystem::path{};
 		}();
-		return Plugin{ std::move(PluginDescriptor), PluginHandle, PluginPath };
+		return Plugin{ std::move(PluginDescriptor), PluginHandle, std::move(PluginPath) };
 	}
 
 public:
@@ -264,14 +264,14 @@ public:
 
 struct CoreInstantiator : CoreProxy {
 private:
-	using CoreReference = ExclusiveOwner<VSCore, false>;
+	using CoreReference = ResourceManager::Tracker<VSCore>;
 
 public:
-	field(ResourceManager, std::shared_ptr<CoreReference>{});
+	field(ResourceGuard, std::shared_ptr<CoreReference>{});
 
 public:
 	CoreInstantiator() {
 		this->Handle = UniversalContext::API->createCore(0);
-		this->ResourceManager = std::make_shared<CoreReference>(this->Handle);
+		this->ResourceGuard = std::make_shared<CoreReference>(this->Handle);
 	}
 };

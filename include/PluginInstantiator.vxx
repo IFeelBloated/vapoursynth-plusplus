@@ -2,9 +2,9 @@
 #include "Core.vxx"
 
 namespace PluginInstantiator::Private {
-	auto Initializer = static_cast<VSConfigPlugin>(nullptr);
+	auto Configurator = static_cast<VSConfigPlugin>(nullptr);
 	auto Handle = static_cast<VSPlugin*>(nullptr);
-	auto Recycler = GarbageCollector{};
+	auto Recycler = ResourceManager::GarbageCollector{};
 }
 
 namespace PluginInstantiator {
@@ -312,16 +312,16 @@ namespace PluginInstantiator {
 		Private::Recycler.ClaimOwnership(ConfigurationHandle);
 		UniversalContext::API->registerFunction(std::get<0>(*ConfigurationHandle).data(), Utility::SignatureParser::ExtractParameterList(Signature).data(), FunctionProxy, ConfigurationHandle, Private::Handle);
 	}
-	auto Initialize(SubtypeOf<PluginInfo> auto&& Configurations, AnyOf<WriteProtectOptions, bool> auto WriteProtection) {
-		Private::Initializer(Configurations.Identifier.data(), Configurations.Namespace.data(), Configurations.Description.data(), VAPOURSYNTH_API_VERSION, static_cast<bool>(WriteProtection), Private::Handle);
+	auto SpecifyConfigurations(SubtypeOf<PluginInfo> auto&& Descriptor, AnyOf<WriteProtectOptions, bool> auto WriteProtection) {
+		Private::Configurator(Descriptor.Identifier.data(), Descriptor.Namespace.data(), Descriptor.Description.data(), VAPOURSYNTH_API_VERSION, static_cast<bool>(WriteProtection), Private::Handle);
 	}
-	auto Initialize(SubtypeOf<PluginInfo> auto&& Configurations) {
-		Initialize(Forward(Configurations), WriteProtectOptions::WriteOnce);
+	auto SpecifyConfigurations(SubtypeOf<PluginInfo> auto&& Descriptor) {
+		SpecifyConfigurations(Forward(Descriptor), WriteProtectOptions::WriteOnce);
 	}
 }
 
 #define InstantiatePluginFrom(...) VS_EXTERNAL_API(auto) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction, VSPlugin* plugin) { \
-	PluginInstantiator::Private::Initializer = configFunc; \
+	PluginInstantiator::Private::Configurator = configFunc; \
 	PluginInstantiator::Private::Handle = plugin; \
 	UniversalContext::API = getVapourSynthAPI(VAPOURSYNTH_API_VERSION); \
 	__VA_ARGS__(); \

@@ -1,8 +1,8 @@
 ﻿#pragma once
 #include "ResourceManager.vxx"
-#include "DescriptiveAggregates.vxx"
+#include "Descriptors.vxx"
 
-struct FrameReference : Owner<VSFrameRef> {
+struct FrameReference : ResourceManager::Owner<VSFrameRef> {
 	using Owner::Owner;
 
 public:
@@ -25,7 +25,7 @@ public:
 
 public:
 	FramePrototype() = default;
-	FramePrototype(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) : FrameReference{ Forward(Descriptor) } {
+	FramePrototype(ExplicitlyConvertibleTo<HandleType> auto&& Handle) : FrameReference{ Forward(Handle) } {
 		if constexpr (Readonly)
 			this->PropertyMap = Utility::PointerQualifiers::DropAll(UniversalContext::API->getFramePropsRO(this->Handle));
 		else

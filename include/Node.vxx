@@ -1,7 +1,7 @@
 #pragma once
 #include "Frame.vxx"
 
-using NodeReference = Owner<VSNodeRef>;
+using NodeReference = ResourceManager::Owner<VSNodeRef>;
 
 struct Node : NodeReference {
 	static constexpr auto DefaultRequestFunction = [](auto Index) { return std::vector{ Index }; };
@@ -70,7 +70,7 @@ public:
 
 public:
 	Node() = default;
-	Node(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) : NodeReference{ Forward(Descriptor) } {}
+	Node(ExplicitlyConvertibleTo<HandleType> auto&& Handle) : NodeReference{ Forward(Handle) } {}
 
 public:
 	auto RequestFrameUnchecked(std::integral auto Index, auto FrameContext) const {

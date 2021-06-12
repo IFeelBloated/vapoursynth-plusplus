@@ -2,148 +2,148 @@
 #include "Utility.vxx"
 #include "UniversalContext.vxx"
 
-template<typename ManagedType>
-struct Owner {
-	field(Handle, static_cast<ManagedType*>(nullptr));
+namespace ResourceManager {
+	template<typename ResourceType>
+	struct Owner {
+		field(Handle, static_cast<ResourceType*>(nullptr));
 
-protected:
-	using HandleType = const ManagedType*;
+	protected:
+		using HandleType = const ResourceType*;
 
-public:
-	static constexpr auto NullHandle = static_cast<HandleType>(nullptr);
+	public:
+		static constexpr auto NullHandle = static_cast<HandleType>(nullptr);
 
-public:
-	Owner() = default;
-	Owner(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) {
-		auto ManagedHandle = static_cast<HandleType>(Forward(Descriptor));
-		this->Handle = Utility::PointerQualifiers::DropAll(ManagedHandle);
-	}
-
-public:
-	Owner(const Owner& OtherOwner) {
-		*this = OtherOwner;
-	}
-	Owner(Owner&& OtherOwner) {
-		*this = std::move(OtherOwner);
-	}
-	auto& operator=(const Owner& OtherOwner) {
-		if (this != &OtherOwner) {
-			this->ReleaseHandle();
-			this->Handle = OtherOwner.CloneHandle();
+	public:
+		Owner() = default;
+		Owner(ExplicitlyConvertibleTo<HandleType> auto&& ResourceHandle) {
+			this->Handle = Utility::PointerQualifiers::DropAll(static_cast<HandleType>(Forward(ResourceHandle)));
 		}
-		return *this;
-	}
-	auto& operator=(Owner&& OtherOwner) {
-		if (this != &OtherOwner)
-			std::swap(this->Handle, OtherOwner.Handle);
-		return *this;
-	}
 
-public:
-	~Owner() {
-		this->ReleaseHandle();
-	}
+	public:
+		Owner(const Owner& OtherOwner) {
+			*this = OtherOwner;
+		}
+		Owner(Owner&& OtherOwner) {
+			*this = std::move(OtherOwner);
+		}
+		auto& operator=(const Owner& OtherOwner) {
+			if (this != &OtherOwner) {
+				this->ReleaseHandle();
+				this->Handle = OtherOwner.CloneHandle();
+			}
+			return *this;
+		}
+		auto& operator=(Owner&& OtherOwner) {
+			if (this != &OtherOwner)
+				std::swap(this->Handle, OtherOwner.Handle);
+			return *this;
+		}
 
-public:
-	auto IsEmpty() const {
-		return Handle == NullHandle;
-	}
-	auto Leak() {
-		auto TransferredHandle = Handle;
-		Handle = nullptr;
-		return TransferredHandle;
-	}
-	auto Observe() const {
-		return Handle;
-	}
-
-protected:
-	auto CloneHandle() const {
-		if constexpr (SubtypeOf<HandleType, const VSFrameRef*>)
-			return Utility::PointerQualifiers::DropAll(UniversalContext::API->cloneFrameRef(Handle));
-		if constexpr (SubtypeOf<HandleType, const VSNodeRef*>)
-			return UniversalContext::API->cloneNodeRef(Handle);
-		if constexpr (SubtypeOf<HandleType, const VSFuncRef*>)
-			return UniversalContext::API->cloneFuncRef(Handle);
-	}
-	auto ReleaseHandle() {
-		if constexpr (SubtypeOf<HandleType, const VSFrameRef*>)
-			UniversalContext::API->freeFrame(Handle);
-		if constexpr (SubtypeOf<HandleType, const VSNodeRef*>)
-			UniversalContext::API->freeNode(Handle);
-		if constexpr (SubtypeOf<HandleType, const VSFuncRef*>)
-			UniversalContext::API->freeFunc(Handle);
-	}
-};
-
-template<typename ManagedType, auto Managed>
-struct ExclusiveOwner {
-	field(Handle, static_cast<ManagedType*>(nullptr));
-
-private:
-	using HandleType = const ManagedType*;
-
-public:
-	ExclusiveOwner() = default;
-	ExclusiveOwner(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) {
-		auto ManagedHandle = static_cast<HandleType>(Forward(Descriptor));
-		this->Handle = Utility::PointerQualifiers::DropAll(ManagedHandle);
-	}
-
-public:
-	ExclusiveOwner(const ExclusiveOwner&) = delete;
-	ExclusiveOwner(ExclusiveOwner&&) = delete;
-	auto& operator=(const ExclusiveOwner&) = delete;
-	auto& operator=(ExclusiveOwner&&) = delete;
-
-public:
-	~ExclusiveOwner() requires (Managed == false) {
-		if (this->Handle != nullptr)
+	public:
+		~Owner() {
 			this->ReleaseHandle();
-	}
-	~ExclusiveOwner() = default;
+		}
 
-public:
-	auto Leak() {
-		auto TransferredHandle = Handle;
-		Handle = nullptr;
-		return TransferredHandle;
-	}
+	public:
+		auto IsEmpty() const {
+			return Handle == NullHandle;
+		}
+		auto Leak() {
+			auto TransferredHandle = Handle;
+			Handle = nullptr;
+			return TransferredHandle;
+		}
+		auto Observe() const {
+			return Handle;
+		}
 
-private:
-	auto ReleaseHandle() {
-		if constexpr (SubtypeOf<HandleType, const VSMap*>)
-			UniversalContext::API->freeMap(Handle);
-		if constexpr (SubtypeOf<HandleType, const VSCore*>)
-			UniversalContext::API->freeCore(Handle);
-	}
-};
+	protected:
+		auto CloneHandle() const {
+			if constexpr (SubtypeOf<HandleType, const VSFrameRef*>)
+				return Utility::PointerQualifiers::DropAll(UniversalContext::API->cloneFrameRef(Handle));
+			if constexpr (SubtypeOf<HandleType, const VSNodeRef*>)
+				return UniversalContext::API->cloneNodeRef(Handle);
+			if constexpr (SubtypeOf<HandleType, const VSFuncRef*>)
+				return UniversalContext::API->cloneFuncRef(Handle);
+		}
+		auto ReleaseHandle() {
+			if constexpr (SubtypeOf<HandleType, const VSFrameRef*>)
+				UniversalContext::API->freeFrame(Handle);
+			if constexpr (SubtypeOf<HandleType, const VSNodeRef*>)
+				UniversalContext::API->freeNode(Handle);
+			if constexpr (SubtypeOf<HandleType, const VSFuncRef*>)
+				UniversalContext::API->freeFunc(Handle);
+		}
+	};
 
-struct GarbageCollector {
-	using RecyclerType = auto(*)(void*)->void;
-	using GarbageRecord = std::tuple<RecyclerType, void*>;
+	template<typename ResourceType, auto NonOwning = false>
+	struct Tracker {
+		field(Handle, static_cast<ResourceType*>(nullptr));
 
-public:
-	field(Registry, std::vector<GarbageRecord>{});
+	private:
+		using HandleType = const ResourceType*;
 
-public:
-	GarbageCollector() = default;
+	public:
+		Tracker() = default;
+		Tracker(ExplicitlyConvertibleTo<HandleType> auto&& ResourceHandle) {
+			this->Handle = Utility::PointerQualifiers::DropAll(static_cast<HandleType>(Forward(ResourceHandle)));
+		}
 
-public:
-	GarbageCollector(const GarbageCollector&) = delete;
-	GarbageCollector(GarbageCollector&&) = delete;
-	auto& operator=(const GarbageCollector&) = delete;
-	auto& operator=(GarbageCollector&&) = delete;
+	public:
+		Tracker(const Tracker&) = delete;
+		Tracker(Tracker&&) = delete;
+		auto& operator=(const Tracker&) = delete;
+		auto& operator=(Tracker&&) = delete;
 
-public:
-	~GarbageCollector() {
-		for (auto [Recycler, Garbage] : this->Registry)
-			Recycler(Garbage);
-	}
+	public:
+		~Tracker() requires (NonOwning == false) {
+			if (this->Handle != nullptr)
+				this->ReleaseHandle();
+		}
+		~Tracker() = default;
 
-public:
-	auto ClaimOwnership(auto UnmanagedResourceHandle) {
-		using ResourceType = std::decay_t<decltype(*UnmanagedResourceHandle)>;
-		Registry.push_back({ [](auto ResourcePointer) { delete reinterpret_cast<ResourceType*>(ResourcePointer); }, UnmanagedResourceHandle });
-	}
-};
+	public:
+		auto Leak() {
+			auto TransferredHandle = Handle;
+			Handle = nullptr;
+			return TransferredHandle;
+		}
+
+	private:
+		auto ReleaseHandle() {
+			if constexpr (SubtypeOf<HandleType, const VSMap*>)
+				UniversalContext::API->freeMap(Handle);
+			if constexpr (SubtypeOf<HandleType, const VSCore*>)
+				UniversalContext::API->freeCore(Handle);
+		}
+	};
+
+	struct GarbageCollector {
+		using RecyclerType = auto(*)(void*)->void;
+		using GarbageRecord = std::tuple<RecyclerType, void*>;
+
+	public:
+		field(Registry, std::vector<GarbageRecord>{});
+
+	public:
+		GarbageCollector() = default;
+
+	public:
+		GarbageCollector(const GarbageCollector&) = delete;
+		GarbageCollector(GarbageCollector&&) = delete;
+		auto& operator=(const GarbageCollector&) = delete;
+		auto& operator=(GarbageCollector&&) = delete;
+
+	public:
+		~GarbageCollector() {
+			for (auto [Recycler, Garbage] : this->Registry)
+				Recycler(Garbage);
+		}
+
+	public:
+		auto ClaimOwnership(auto UnmanagedResourceHandle) {
+			using ResourceType = std::decay_t<decltype(*UnmanagedResourceHandle)>;
+			Registry.push_back({ [](auto ResourcePointer) { delete reinterpret_cast<ResourceType*>(ResourcePointer); }, UnmanagedResourceHandle });
+		}
+	};
+}

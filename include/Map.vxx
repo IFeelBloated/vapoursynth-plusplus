@@ -4,20 +4,20 @@
 #include "Function.vxx"
 
 namespace Utility::Map {
-	template<auto Managed = false>
-	using Reference = ExclusiveOwner<VSMap, Managed>;
+	template<auto NonOwning = false>
+	using Reference = ResourceManager::Tracker<VSMap, NonOwning>;
 
-	template<auto Readonly, auto Managed>
+	template<auto Readonly, auto NonOwning>
 	struct Item {
 		field(Index, 0_ptrdiff);
 
 	private:
-		struct SharedState : Reference<Managed> {
+		struct SharedState : Reference<NonOwning> {
 			field(Key, ""s);
 
 		public:
 			SharedState() = default;
-			SharedState(auto&& Descriptor, auto&& Key) : Reference<Managed>{ Forward(Descriptor) } {
+			SharedState(auto&& Handle, auto&& Key) : Reference<NonOwning>{ Forward(Handle) } {
 				this->Key = static_cast<std::string>(Forward(Key));
 			}
 		};
@@ -45,8 +45,8 @@ namespace Utility::Map {
 
 	public:
 		Item() = default;
-		Item(auto&& Descriptor, ExplicitlyConvertibleTo<std::string> auto&& Key) {
-			this->StorageAccess = std::make_shared<SharedState>(Forward(Descriptor), Forward(Key));
+		Item(auto&& Handle, ExplicitlyConvertibleTo<std::string> auto&& Key) {
+			this->StorageAccess = std::make_shared<SharedState>(Forward(Handle), Forward(Key));
 		}
 		Item(const Item&) = default;
 		Item(Item&&) = default;

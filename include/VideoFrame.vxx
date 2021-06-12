@@ -16,7 +16,7 @@ public:
 
 public:
 	VideoFrame() = default;
-	VideoFrame(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) : FramePrototype<PixelType>{ Forward(Descriptor) } {
+	VideoFrame(ExplicitlyConvertibleTo<HandleType> auto&& Handle) : FramePrototype<PixelType>{ Forward(Handle) } {
 		auto ConstructPlane = [this](auto Index) {
 			auto Width = static_cast<std::size_t>(UniversalContext::API->getFrameWidth(this->Handle, Index));
 			auto Height = static_cast<std::size_t>(UniversalContext::API->getFrameHeight(this->Handle, Index));

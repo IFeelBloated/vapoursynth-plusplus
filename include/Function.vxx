@@ -2,11 +2,11 @@
 #include "Utility.vxx"
 #include "ResourceManager.vxx"
 
-using FunctionReference = Owner<VSFuncRef>;
+using FunctionReference = ResourceManager::Owner<VSFuncRef>;
 
 struct Function : FunctionReference {
 	Function() = default;
-	Function(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) : FunctionReference{ Forward(Descriptor) } {}
+	Function(ExplicitlyConvertibleTo<HandleType> auto&& Handle) : FunctionReference{ Forward(Handle) } {}
 
 public:
 	auto operator()(auto&& ...Arguments) const requires (sizeof...(Arguments) % 2 == 0) {

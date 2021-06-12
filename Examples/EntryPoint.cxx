@@ -9,12 +9,12 @@
 #include "Palette.hxx"
 
 auto Main() {
-	auto Configurations = PluginInfo{
+	auto Descriptor = PluginInfo{
 		.Namespace = "test",
 		.Identifier = "com.vsfilterscript.test",
 		.Description = "Test filters for vsFilterScript"
 	};
-	PluginInstantiator::Initialize(Configurations);
+	PluginInstantiator::SpecifyConfigurations(Descriptor);
 	PluginInstantiator::RegisterFilter<GaussBlur>();
 	PluginInstantiator::RegisterFilter<GaussBlurFast>();
 	PluginInstantiator::RegisterFilter<TemporalMedian>();

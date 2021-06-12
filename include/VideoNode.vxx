@@ -7,7 +7,7 @@ struct VideoNode : Node, AlternateRepresentations::Flattened::VideoInfo {
 
 public:
 	VideoNode() = default;
-	VideoNode(ExplicitlyConvertibleTo<HandleType> auto&& Descriptor) : Node{ Forward(Descriptor) } {
+	VideoNode(ExplicitlyConvertibleTo<HandleType> auto&& Handle) : Node{ Forward(Handle) } {
 		auto SynchronizeMetadata = [this] {
 			auto& MetadataInSync = static_cast<VideoInfo&>(*this);
 			auto ReferenceMetadata = this->QueryVideoInfo();

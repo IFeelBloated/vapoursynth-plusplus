@@ -137,7 +137,7 @@ namespace PluginInstantiator {
 				};
 				auto FrameGenerator = [](auto Index, auto ActivationReason, auto FatInstancePointer, auto AttachmentPointer, auto FrameContextHandle, auto CoreHandle, auto...) {
 					auto& [FilterName, FilterInstance] = *reinterpret_cast<ExtendedFilterType*>(*FatInstancePointer);
-					auto FrameContext = FrameContextProxy{ .Handle = FrameContextHandle };
+					auto FrameContext = FrameContextProxy{ .Handle = FrameContextHandle, .GeneratorStatus = ActivationReason };
 					auto InitiateGeneratorRoutine = [&](auto ...GeneratorDependencies) {
 						if constexpr (auto Core = CoreProxy{ .Handle = CoreHandle }; sizeof...(GeneratorDependencies) > 0)
 							if constexpr (auto [AttachmentHandle] = std::tuple{ GeneratorDependencies... }; requires { { FilterInstance.GenerateFrame(Index, FrameContext, *AttachmentHandle, Core) }->SubtypeOf<FrameReference>; })
@@ -155,9 +155,12 @@ namespace PluginInstantiator {
 								static_assert(sizeof(FilterType) == -1, "FilterEngine: GenerateFrame() is either missing or has an incompatible signature.");
 					};
 					auto InitiateFrameGeneratorForSourceFilter = [&] {
-						if (ActivationReason == VSActivationReason::arInitial)
+						try {
 							return Utility::PointerQualifiers::AddConst(InitiateGeneratorRoutine().Leak());
-						return Frame::NullHandle;
+						}
+						catch (FrameContextProxy::ResourceAcquisitionInProgress&) {
+							return Frame::NullHandle;
+						}
 					};
 					auto InitiateFrameGeneratorForStandardFilter = [&](auto& FilterInstance) {
 						using AttachmentType = decltype(FilterInstance.AcquireResourcesForFrameGenerator(Index, FrameContext));

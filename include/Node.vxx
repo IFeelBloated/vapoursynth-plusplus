@@ -41,7 +41,7 @@ private:
 protected:
 	template<typename NodeType>
 	struct PaddingFunctionProxy {
-		using QuantificationBoundForPaddingFunction = auto(const NodeType&, std::ptrdiff_t, FrameContextProxy)->FrameReference;
+		using QuantificationBoundForPaddingFunction = auto(const NodeType&, std::ptrdiff_t, FrameContextProxy)->Frame;
 		using ExistentialTypeForPaddingFunction = std::function<QuantificationBoundForPaddingFunction>;
 
 	public:
@@ -73,11 +73,18 @@ public:
 	Node(ExplicitlyConvertibleTo<HandleType> auto&& Handle) : NodeReference{ Forward(Handle) } {}
 
 public:
-	auto RequestFrameUnchecked(std::integral auto Index, auto FrameContext) const {
+	auto RequestFrame(std::integral auto Index, auto FrameContext) const {
 		UniversalContext::API->requestFrameFilter(Index, Handle, FrameContext);
 	}
-	auto AccessFrameUnchecked(std::integral auto Index, auto FrameContext) const {
-		return FrameReference{ UniversalContext::API->getFrameFilter(Index, Handle, FrameContext) };
+	auto FetchFrame(std::integral auto Index, auto FrameContext) const {
+		return Frame{ UniversalContext::API->getFrameFilter(Index, Handle, FrameContext) };
+	}
+	auto AcquireFrame(std::integral auto Index, auto FrameContext) const {
+		if (FrameContext.GeneratorStatus == VSActivationReason::arAllFramesReady)
+			return FetchFrame(Index, FrameContext);
+		else if (FrameContext.GeneratorStatus == VSActivationReason::arInitial)
+			RequestFrame(Index, FrameContext);
+		throw FrameContextProxy::ResourceAcquisitionInProgress{};
 	}
 	auto operator[](std::integral auto Index) const {
 		auto ErrorMessageBuffer = std::array<char, 1024>{};
@@ -147,11 +154,11 @@ public:
 namespace PaddingFunctions::Node {
 	auto Repeat = [](auto& Clip, auto Index, auto FrameContext) {
 		Index = Utility::Min(Utility::Max(Index, 0), Clip.FrameCount - 1);
-		return Clip.AccessFrameUnchecked(Index, FrameContext);
+		return Clip.FetchFrame(Index, FrameContext);
 	};
 	auto Reflect = [](auto& Clip, auto Index, auto FrameContext) {
 		Index = Utility::PaddingFunctions::ReflectCoordinate(Index, Clip.FrameCount);
-		return Clip.AccessFrameUnchecked(Index, FrameContext);
+		return Clip.FetchFrame(Index, FrameContext);
 	};
 	auto Default = Reflect;
 }

@@ -3,7 +3,7 @@
 
 struct SeparableConvolution {
     field(InputClip, VideoNode{});
-    field(HorizontalKernel, std::array{ 0., 0., 0. });
+    field(Kernel, std::array{ 0., 0., 0. });
 
 public:
     static constexpr auto Signature = "clip: vnode, [h_kernel, v_kernel]: float[]?";
@@ -25,30 +25,27 @@ public:
                 throw std::runtime_error{ "v_kernel must contain 3 scalar values." };
         else
             VerticalKernel = HorizontalKernel;
-        InputClip = Self("clip", InputClip, "h_kernel", HorizontalKernel);
+        InputClip = Self("clip", InputClip, "kernel", HorizontalKernel);
         InputClip = Core["std"]["Transpose"]("clip", InputClip);
-        InputClip = Self("clip", InputClip, "h_kernel", VerticalKernel);
+        InputClip = Self("clip", InputClip, "kernel", VerticalKernel);
         return Core["std"]["Transpose"]("clip", InputClip);
     }
 
 public:
     SeparableConvolution(auto Arguments) {
         InputClip = Arguments["clip"];
-        HorizontalKernel = Arguments["h_kernel"];
+        Kernel = Arguments["kernel"];
     }
     auto SpecifyMetadata() {
         return InputClip.ExtractMetadata();
     }
-    auto AcquireResourcesForFrameGenerator(auto Index, auto FrameContext) {
-        InputClip.RequestFrame(Index, FrameContext);
-    }
     auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
-        auto InputFrame = InputClip.FetchFrame<const float>(Index, FrameContext);
+        auto InputFrame = InputClip.AcquireFrame<const float>(Index, FrameContext);
         auto ProcessedFrame = Core.CreateBlankFrameFrom(InputFrame);
         auto HorizontalConvolution = [this](auto Center) {
-            auto [LeftWeight, CenterWeight, RightWeight] = HorizontalKernel;
-            auto NormalizationFactor = LeftWeight + CenterWeight + RightWeight;
-            auto WeightedSum = LeftWeight * Center[0][-1] + CenterWeight * Center[0][0] + RightWeight * Center[0][1];
+            auto [WeightOfTheLeftNeighbor, WeightOfTheCenter, WeightOfTheRightNeighbor] = Kernel;
+            auto NormalizationFactor = WeightOfTheLeftNeighbor + WeightOfTheCenter + WeightOfTheRightNeighbor;
+            auto WeightedSum = WeightOfTheLeftNeighbor * Center[0][-1] + WeightOfTheCenter * Center[0][0] + WeightOfTheRightNeighbor * Center[0][1];
             return WeightedSum / NormalizationFactor;
         };
         for (auto c : Range{ InputFrame.PlaneCount })

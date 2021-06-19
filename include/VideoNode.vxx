@@ -20,25 +20,21 @@ public:
 public:
 	auto RequestFrame(std::integral auto Index, auto FrameContext) const {
 		if (Index >= 0 && Index < FrameCount)
-			RequestFrameUnchecked(Index, FrameContext);
+			Node::RequestFrame(Index, FrameContext);
 	}
 	auto RequestFrames(std::integral auto Index, auto FrameContext) const {
 		for (auto x : RequestFunction(Index))
 			RequestFrame(x, FrameContext);
 	}
-
-private:
-	auto AccessFrame(auto Index, auto FrameContext) const {
+	auto FetchFrame(std::integral auto Index, auto FrameContext) const {
 		if (Index < 0 || Index >= FrameCount)
 			return PaddingFunction(*this, Index, FrameContext);
 		else
-			return AccessFrameUnchecked(Index, FrameContext);
+			return Node::FetchFrame(Index, FrameContext);
 	}
-
-public:
 	template<typename PixelType, auto DirectAccess = false>
 	auto FetchFrame(std::integral auto Index, auto FrameContext) const {
-		return VideoFrame<PixelType, DirectAccess>{ AccessFrame(Index, FrameContext) };
+		return VideoFrame<PixelType, DirectAccess>{ FetchFrame(Index, FrameContext) };
 	}
 	template<typename PixelType, auto DirectAccess = false>
 	auto FetchFrames(std::integral auto Index, auto FrameContext) const {
@@ -50,6 +46,24 @@ public:
 			FetchedFrames[x - Index] = FetchFrame<PixelType, DirectAccess>(x, FrameContext);
 		return FetchedFrames;
 	}
+	auto AcquireFrame(std::integral auto Index, auto FrameContext) const {
+		if (Index >= 0 && Index < FrameCount)
+			return Node::AcquireFrame(Index, FrameContext);
+		else
+			throw std::runtime_error{ "placeholder for index readdressing" };
+	}
+	template<typename PixelType, auto DirectAccess = false>
+	auto AcquireFrame(std::integral auto Index, auto FrameContext) const {
+		return VideoFrame<PixelType, DirectAccess>{ AcquireFrame(Index, FrameContext) };
+	}
+	template<typename PixelType, auto DirectAccess = false>
+	auto AcquireFrames(std::integral auto Index, auto FrameContext) const {
+		if (FrameContext.GeneratorStatus == VSActivationReason::arAllFramesReady)
+			return FetchFrames<PixelType, DirectAccess>(Index, FrameContext);
+		else if (FrameContext.GeneratorStatus == VSActivationReason::arInitial)
+			RequestFrames(Index, FrameContext);
+		throw FrameContextProxy::ResourceAcquisitionInProgress{};
+	}
 
 public:
 	auto& ExtractMetadata() const {
@@ -58,9 +72,6 @@ public:
 	}
 	auto& ExtractFormat() const {
 		return ExtractMetadata().Format;
-	}
-	auto PeekFrame(std::integral auto Index, auto FrameContext) const {
-		return Frame{ AccessFrame(Index, FrameContext) };
 	}
 };
 

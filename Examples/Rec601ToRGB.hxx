@@ -18,11 +18,8 @@ public:
 		Metadata.Format = Core.Query(VideoFormats::RGBS);
 		return Metadata;
 	}
-	auto AcquireResourcesForFrameGenerator(auto Index, auto FrameContext) {
-		InputClip.RequestFrame(Index, FrameContext);
-	}
 	auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
-		auto InputFrame = InputClip.FetchFrame<const float>(Index, FrameContext);
+		auto InputFrame = InputClip.AcquireFrame<const float>(Index, FrameContext);
 		auto ProcessedFrame = VideoFrame<float>{ Core.AllocateVideoFrame(VideoFormats::RGBS, InputClip.Width, InputClip.Height) };
 		if (InputFrame["_Matrix"].Exists() == false)
 			Core.Alert("_Matrix property not found, assuming Rec601.");
@@ -34,9 +31,7 @@ public:
 			throw std::runtime_error{ "only full range supported!" };
 		for (auto y : Range{ InputClip.Height })
 			for (auto x : Range{ InputClip.Width }) {
-				auto Kr = 0.299;
-				auto Kg = 0.587;
-				auto Kb = 0.114;
+				auto Kr = 0.299, Kg = 0.587, Kb = 0.114;
 				auto Y = InputFrame[0][y][x];
 				auto Cb = 2 * InputFrame[1][y][x];
 				auto Cr = 2 * InputFrame[2][y][x];

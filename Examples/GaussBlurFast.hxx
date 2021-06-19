@@ -16,9 +16,6 @@ public:
 	auto SpecifyMetadata() {
 		return InputClip.ExtractMetadata();
 	}
-	auto AcquireResourcesForFrameGenerator(auto Index, auto FrameContext) {
-		InputClip.RequestFrame(Index, FrameContext);
-	}
 	template<auto ClampAbove = false, auto ClampBelow = false, auto ClampLeft = false, auto ClampRight = false>
 	auto GaussKernel(auto& Channel, auto y, auto x) {
 		auto Above = y - 1;
@@ -39,7 +36,7 @@ public:
 		return WeightedSum / 16;
 	}
 	auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
-		auto InputFrame = InputClip.FetchFrame<const float, true>(Index, FrameContext);
+		auto InputFrame = InputClip.AcquireFrame<const float, true>(Index, FrameContext);
 		auto ProcessedFrame = Core.CreateBlankFrameFrom(InputFrame);
 		for (auto c : Range{ InputFrame.PlaneCount }) {
 			for (auto y : Range{ 1, InputFrame[c].Height - 1 }) {

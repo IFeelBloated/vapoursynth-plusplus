@@ -75,6 +75,10 @@ using WritableFrame = FramePrototype<void>;
 
 struct FrameContextProxy {
 	field(Handle, static_cast<VSFrameContext*>(nullptr));
+	field(GeneratorStatus, 0);
+
+public:
+	using ResourceAcquisitionInProgress = struct {};
 
 public:
 	auto QueryOutputIndex() const {

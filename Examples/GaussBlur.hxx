@@ -16,11 +16,8 @@ public:
 	auto SpecifyMetadata() {
 		return InputClip.ExtractMetadata();
 	}
-	auto AcquireResourcesForFrameGenerator(auto Index, auto FrameContext) {
-		InputClip.RequestFrame(Index, FrameContext);
-	}
 	auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
-		auto InputFrame = InputClip.FetchFrame<const float>(Index, FrameContext);
+		auto InputFrame = InputClip.AcquireFrame<const float>(Index, FrameContext);
 		auto ProcessedFrame = Core.CreateBlankFrameFrom(InputFrame);
 		auto GaussKernel = [](auto Center) {
 			auto WeightedSum = Center[-1][-1] + Center[-1][0] * 2 + Center[-1][1] +

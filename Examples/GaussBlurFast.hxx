@@ -36,23 +36,24 @@ public:
 		return WeightedSum / 16;
 	}
 	auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
-		auto InputFrame = InputClip.AcquireFrame<const float, true>(Index, FrameContext);
+		auto InputFrame = InputClip.AcquireFrame<const float>(Index, FrameContext);
 		auto ProcessedFrame = Core.CreateBlankFrameFrom(InputFrame);
 		for (auto c : Range{ InputFrame.PlaneCount }) {
-			for (auto y : Range{ 1, InputFrame[c].Height - 1 }) {
-				ProcessedFrame[c][y][0] = GaussKernel<false, false, true>(InputFrame[c], y, 0);
-				for (auto x : Range{ 1, InputFrame[c].Width - 1 })
-					ProcessedFrame[c][y][x] = GaussKernel(InputFrame[c], y, x);
-				ProcessedFrame[c][y][InputFrame[c].Width - 1] = GaussKernel<false, false, false, true>(InputFrame[c], y, InputFrame[c].Width - 1);
+			auto& Canvas = InputFrame[c].DirectAccess();
+			for (auto y : Range{ 1, Canvas.Height - 1 }) {
+				ProcessedFrame[c][y][0] = GaussKernel<false, false, true>(Canvas, y, 0);
+				for (auto x : Range{ 1, Canvas.Width - 1 })
+					ProcessedFrame[c][y][x] = GaussKernel(Canvas, y, x);
+				ProcessedFrame[c][y][Canvas.Width - 1] = GaussKernel<false, false, false, true>(Canvas, y, Canvas.Width - 1);
 			}
-			for (auto x : Range{ 1, InputFrame[c].Width - 1 }) {
-				ProcessedFrame[c][0][x] = GaussKernel<true>(InputFrame[c], 0, x);
-				ProcessedFrame[c][InputFrame[c].Height - 1][x] = GaussKernel<false, true>(InputFrame[c], InputFrame[c].Height - 1, x);
+			for (auto x : Range{ 1, Canvas.Width - 1 }) {
+				ProcessedFrame[c][0][x] = GaussKernel<true>(Canvas, 0, x);
+				ProcessedFrame[c][Canvas.Height - 1][x] = GaussKernel<false, true>(Canvas, Canvas.Height - 1, x);
 			}
-			ProcessedFrame[c][0][0] = GaussKernel<true, false, true>(InputFrame[c], 0, 0);
-			ProcessedFrame[c][0][InputFrame[c].Width - 1] = GaussKernel<true, false, false, true>(InputFrame[c], 0, InputFrame[c].Width - 1);
-			ProcessedFrame[c][InputFrame[c].Height - 1][0] = GaussKernel<false, true, true>(InputFrame[c], InputFrame[c].Height - 1, 0);
-			ProcessedFrame[c][InputFrame[c].Height - 1][InputFrame[c].Width - 1] = GaussKernel<false, true, false, true>(InputFrame[c], InputFrame[c].Height - 1, InputFrame[c].Width - 1);
+			ProcessedFrame[c][0][0] = GaussKernel<true, false, true>(Canvas, 0, 0);
+			ProcessedFrame[c][0][Canvas.Width - 1] = GaussKernel<true, false, false, true>(Canvas, 0, Canvas.Width - 1);
+			ProcessedFrame[c][Canvas.Height - 1][0] = GaussKernel<false, true, true>(Canvas, Canvas.Height - 1, 0);
+			ProcessedFrame[c][Canvas.Height - 1][Canvas.Width - 1] = GaussKernel<false, true, false, true>(Canvas, Canvas.Height - 1, Canvas.Width - 1);
 		}
 		return ProcessedFrame;
 	}

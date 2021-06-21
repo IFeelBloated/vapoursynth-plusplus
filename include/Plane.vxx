@@ -6,25 +6,24 @@ struct CanvasProxy {
 	field(Width, 0_size);
 	field(Height, 0_size);
 	field(Stride, 0_ptrdiff);
-	field(Canvas, static_cast<PixelType*>(nullptr));
+	field(Data, static_cast<PixelType*>(nullptr));
 
 public:
 	auto operator[](auto y) const {
-		return Canvas + y * Stride;
+		return Data + y * Stride;
 	}
 };
 
-template<typename PixelType, auto DirectAccess>
+template<typename PixelType>
 struct Plane : CanvasProxy<PixelType> {
 	static constexpr auto Readonly = std::is_const_v<PixelType>;
-	static constexpr auto EnabledAutomaticPadding = Readonly && !DirectAccess;
 
 private:
 	using EmptyType = struct {};
 	using CanvasType = CanvasProxy<PixelType>;
 	using QuantificationBoundForPaddingFunction = auto(const CanvasType&, std::ptrdiff_t, std::ptrdiff_t)->PixelType;
 	using ExistentialTypeForPaddingFunction = std::function<QuantificationBoundForPaddingFunction>;
-	using PaddingFunctionProxy = std::conditional_t<EnabledAutomaticPadding, ExistentialTypeForPaddingFunction, EmptyType>;
+	using PaddingFunctionProxy = std::conditional_t<Readonly, ExistentialTypeForPaddingFunction, EmptyType>;
 
 public:
 	[[no_unique_address]]
@@ -38,11 +37,10 @@ private:
 
 	public:
 		auto operator[](std::integral auto x) const {
-			auto& Canvas = static_cast<const CanvasType&>(*TargetPlane);
-			if (auto xAbsolute = x + xOffset; xAbsolute < 0 || yAbsolute < 0 || xAbsolute >= Canvas.Width || yAbsolute >= Canvas.Height)
-				return TargetPlane->PaddingFunction(Canvas, yAbsolute, xAbsolute);
+			if (auto xAbsolute = x + xOffset; xAbsolute < 0 || yAbsolute < 0 || xAbsolute >= TargetPlane->Width || yAbsolute >= TargetPlane->Height)
+				return TargetPlane->PaddingFunction(TargetPlane->DirectAccess(), yAbsolute, xAbsolute);
 			else [[likely]]
-				return Canvas[yAbsolute][xAbsolute];
+				return TargetPlane->DirectAccess()[yAbsolute][xAbsolute];
 		}
 	};
 
@@ -76,13 +74,16 @@ private:
 
 public:
 	auto operator[](std::integral auto y) const {
-		if constexpr (EnabledAutomaticPadding)
+		if constexpr (Readonly)
 			return PaddedAccess{ .TargetPlane = this, .yAbsolute = y };
 		else
 			return CanvasType::operator[](y);
 	}
-	auto View(std::integral auto y, std::integral auto x) const requires EnabledAutomaticPadding {
+	auto View(std::integral auto y, std::integral auto x) const requires Readonly {
 		return PlaneView{ .TargetPlane = this, .yOffset = y, .xOffset = x };
+	}
+	auto& DirectAccess() const requires Readonly {
+		return static_cast<const CanvasType&>(*this);
 	}
 
 public:

@@ -32,18 +32,17 @@ public:
 		else
 			return Node::FetchFrame(Index, FrameContext);
 	}
-	template<typename PixelType, auto DirectAccess = false>
+	template<typename PixelType>
 	auto FetchFrame(std::integral auto Index, auto FrameContext) const {
-		return VideoFrame<PixelType, DirectAccess>{ FetchFrame(Index, FrameContext) };
+		return VideoFrame<PixelType>{ FetchFrame(Index, FrameContext) };
 	}
-	template<typename PixelType, auto DirectAccess = false>
+	template<typename PixelType>
 	auto FetchFrames(std::integral auto Index, auto FrameContext) const {
-		using FrameType = VideoFrame<PixelType, DirectAccess>;
-		auto FetchedFrames = std::unordered_map<std::ptrdiff_t, FrameType>{};
+		auto FetchedFrames = std::unordered_map<std::ptrdiff_t, VideoFrame<PixelType>>{};
 		auto RequestedIndexes = RequestFunction(Index);
 		FetchedFrames.rehash(RequestedIndexes.size());
 		for (auto x : RequestedIndexes)
-			FetchedFrames[x - Index] = FetchFrame<PixelType, DirectAccess>(x, FrameContext);
+			FetchedFrames[x - Index] = FetchFrame<PixelType>(x, FrameContext);
 		return FetchedFrames;
 	}
 	auto AcquireFrame(std::integral auto Index, auto FrameContext) const {
@@ -52,14 +51,14 @@ public:
 		else
 			throw std::runtime_error{ "placeholder for index readdressing" };
 	}
-	template<typename PixelType, auto DirectAccess = false>
+	template<typename PixelType>
 	auto AcquireFrame(std::integral auto Index, auto FrameContext) const {
-		return VideoFrame<PixelType, DirectAccess>{ AcquireFrame(Index, FrameContext) };
+		return VideoFrame<PixelType>{ AcquireFrame(Index, FrameContext) };
 	}
-	template<typename PixelType, auto DirectAccess = false>
+	template<typename PixelType>
 	auto AcquireFrames(std::integral auto Index, auto FrameContext) const {
 		if (FrameContext.GeneratorStatus == VSActivationReason::arAllFramesReady)
-			return FetchFrames<PixelType, DirectAccess>(Index, FrameContext);
+			return FetchFrames<PixelType>(Index, FrameContext);
 		else if (FrameContext.GeneratorStatus == VSActivationReason::arInitial)
 			RequestFrames(Index, FrameContext);
 		throw FrameContextProxy::ResourceAcquisitionInProgress{};

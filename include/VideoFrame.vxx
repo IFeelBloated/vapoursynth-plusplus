@@ -2,10 +2,10 @@
 #include "Frame.vxx"
 #include "Plane.vxx"
 
-template<typename PixelType, auto DirectAccess = false>
+template<typename PixelType>
 struct VideoFrame : FramePrototype<PixelType>, VideoFormat {
 private:
-	using PlaneType = Plane<PixelType, DirectAccess>;
+	using PlaneType = Plane<PixelType>;
 	using typename FrameReference::HandleType;
 
 public:
@@ -21,16 +21,16 @@ public:
 			auto Width = static_cast<std::size_t>(UniversalContext::API->getFrameWidth(this->Handle, Index));
 			auto Height = static_cast<std::size_t>(UniversalContext::API->getFrameHeight(this->Handle, Index));
 			auto Stride = static_cast<std::ptrdiff_t>(UniversalContext::API->getStride(this->Handle, Index) / sizeof(PixelType));
-			auto Canvas = [&] {
+			auto Data = [&] {
 				if constexpr (Readonly)
 					return reinterpret_cast<PixelType*>(UniversalContext::API->getReadPtr(this->Handle, Index));
 				else
 					return reinterpret_cast<PixelType*>(UniversalContext::API->getWritePtr(this->Handle, Index));
 			}();
-			if constexpr (PlaneType::EnabledAutomaticPadding)
-				return PlaneType{ Width, Height, Stride, Canvas, PaddingFunctions::Plane::Default };
+			if constexpr (Readonly)
+				return PlaneType{ Width, Height, Stride, Data, PaddingFunctions::Plane::Default };
 			else
-				return PlaneType{ Width, Height, Stride, Canvas };
+				return PlaneType{ Width, Height, Stride, Data };
 		};
 		auto SynchronizeFormat = [this] {
 			auto& FormatInSync = static_cast<VideoFormat&>(*this);

@@ -18,8 +18,8 @@ public:
 	VideoFrame() = default;
 	VideoFrame(ExplicitlyConvertibleTo<HandleType> auto&& Handle) : FramePrototype<PixelType>{ Forward(Handle) } {
 		auto ConstructPlane = [this](auto Index) {
-			auto Width = static_cast<std::size_t>(UniversalContext::API->getFrameWidth(this->Handle, Index));
 			auto Height = static_cast<std::size_t>(UniversalContext::API->getFrameHeight(this->Handle, Index));
+			auto Width = static_cast<std::size_t>(UniversalContext::API->getFrameWidth(this->Handle, Index));
 			auto Stride = static_cast<std::ptrdiff_t>(UniversalContext::API->getStride(this->Handle, Index) / sizeof(PixelType));
 			auto Data = [&] {
 				if constexpr (Readonly)
@@ -27,10 +27,7 @@ public:
 				else
 					return reinterpret_cast<PixelType*>(UniversalContext::API->getWritePtr(this->Handle, Index));
 			}();
-			if constexpr (Readonly)
-				return PlaneType{ Width, Height, Stride, Data, PaddingFunctions::Plane::Default };
-			else
-				return PlaneType{ Width, Height, Stride, Data };
+			return PlaneType{ Height, Width, Stride, Data };
 		};
 		auto SynchronizeFormat = [this] {
 			auto& FormatInSync = static_cast<VideoFormat&>(*this);
@@ -43,6 +40,9 @@ public:
 	}
 
 public:
+	auto& operator[](IntegralOrEnumerable auto x) {
+		return Planes[static_cast<std::size_t>(x)];
+	}
 	auto& operator[](IntegralOrEnumerable auto x) const {
 		return Planes[static_cast<std::size_t>(x)];
 	}

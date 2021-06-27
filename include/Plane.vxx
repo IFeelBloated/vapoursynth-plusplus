@@ -1,10 +1,10 @@
 ﻿#pragma once
-#include "Utility.vxx"
+#include "RemappingFunctions.vxx"
 
 template<typename PixelType>
 struct CanvasProxy {
-	field(Width, 0_size);
 	field(Height, 0_size);
+	field(Width, 0_size);
 	field(Stride, 0_ptrdiff);
 	field(Data, static_cast<PixelType*>(nullptr));
 
@@ -16,49 +16,77 @@ public:
 
 template<typename PixelType>
 struct Plane : CanvasProxy<PixelType> {
-	static constexpr auto Readonly = std::is_const_v<PixelType>;
-
 private:
 	using EmptyType = struct {};
-	using CanvasType = CanvasProxy<PixelType>;
-	using QuantificationBoundForPaddingFunction = auto(const CanvasType&, std::ptrdiff_t, std::ptrdiff_t)->PixelType;
-	using ExistentialTypeForPaddingFunction = std::function<QuantificationBoundForPaddingFunction>;
-	using PaddingFunctionProxy = std::conditional_t<Readonly, ExistentialTypeForPaddingFunction, EmptyType>;
+	struct ExistentialTypeForRemappingFunction {
+		using QuantificationBound = auto(std::ptrdiff_t, std::ptrdiff_t, std::size_t, std::size_t)->std::array<std::ptrdiff_t, 2>;
+
+	public:
+		field(HostedFunction, std::function<QuantificationBound>{});
+
+	public:
+		auto& operator=(AnyBut<ExistentialTypeForRemappingFunction> auto&& RemappingFunction) {
+			if constexpr (requires { { RemappingFunction(0_ptrdiff, 0_ptrdiff, 0_size, 0_size) }->std::same_as<std::array<std::ptrdiff_t, 2>>; })
+				HostedFunction = Forward(RemappingFunction);
+			else
+				HostedFunction = [RemappingFunction = Forward(RemappingFunction)](auto y, auto x, auto Height, auto Width) {
+					if constexpr (requires { { RemappingFunction(y, Height) }->std::same_as<std::ptrdiff_t>; })
+						return std::array{ RemappingFunction(y, Height), RemappingFunction(x, Width) };
+					else
+						static_assert(sizeof(RemappingFunction) == -1, "Plane: specified remapping function has an incompatible signature.");
+				};
+			return *this;
+		}
+		auto operator()(auto y, auto x, auto Height, auto Width) const {
+			return HostedFunction(y, x, Height, Width);
+		}
+	};
+
+public:
+	static constexpr auto Readonly = std::is_const_v<PixelType>;
+	static inline auto DefaultRemappingFunction = [] {
+		if constexpr (auto PolymorphicRemappingFunction = ExistentialTypeForRemappingFunction{}; Readonly)
+			return PolymorphicRemappingFunction = RemappingFunctions::Reflect;
+		else
+			return EmptyType{};
+	}();
 
 public:
 	[[no_unique_address]]
-	field(PaddingFunction, PaddingFunctionProxy{});
+	field(OutOfBoundsRemapping, DefaultRemappingFunction);
 
 private:
-	struct PaddedAccess {
+	struct RemappedAccess {
 		field(TargetPlane, static_cast<const Plane*>(nullptr));
 		field(yAbsolute, 0_ptrdiff);
 		field(xOffset, 0_ptrdiff);
 
 	public:
 		auto operator[](std::integral auto x) const {
-			if (auto xAbsolute = x + xOffset; xAbsolute < 0 || yAbsolute < 0 || xAbsolute >= TargetPlane->Width || yAbsolute >= TargetPlane->Height)
-				return TargetPlane->PaddingFunction(TargetPlane->DirectAccess(), yAbsolute, xAbsolute);
+			if (auto xAbsolute = x + xOffset; xAbsolute < 0 || yAbsolute < 0 || xAbsolute >= TargetPlane->Width || yAbsolute >= TargetPlane->Height) {
+				auto [yRemapped, xRemapped] = TargetPlane->OutOfBoundsRemapping(yAbsolute, xAbsolute, TargetPlane->Height, TargetPlane->Width);
+				return TargetPlane->DirectAccess()[yRemapped][xRemapped];
+			}
 			else [[likely]]
 				return TargetPlane->DirectAccess()[yAbsolute][xAbsolute];
 		}
 	};
 
 private:
-	struct PlaneView {
+	struct OffsetView {
 		field(TargetPlane, static_cast<const Plane*>(nullptr));
 		field(yOffset, 0_ptrdiff);
 		field(xOffset, 0_ptrdiff);
 
 	public:
 		auto operator[](std::integral auto y) const {
-			return PaddedAccess{ .TargetPlane = TargetPlane, .yAbsolute = y + yOffset, .xOffset = xOffset };
+			return RemappedAccess{ .TargetPlane = TargetPlane, .yAbsolute = y + yOffset, .xOffset = xOffset };
 		}
 		auto GetCoordinates() const {
 			return std::array{ yOffset, xOffset };
 		}
 		auto View(std::integral auto y, std::integral auto x) const {
-			return PlaneView{ .TargetPlane = TargetPlane, .yOffset = yOffset + y, .xOffset = xOffset + x };
+			return OffsetView{ .TargetPlane = TargetPlane, .yOffset = yOffset + y, .xOffset = xOffset + x };
 		}
 
 	public:
@@ -75,15 +103,15 @@ private:
 public:
 	auto operator[](std::integral auto y) const {
 		if constexpr (Readonly)
-			return PaddedAccess{ .TargetPlane = this, .yAbsolute = y };
+			return RemappedAccess{ .TargetPlane = this, .yAbsolute = y };
 		else
-			return CanvasType::operator[](y);
+			return CanvasProxy<PixelType>::operator[](y);
 	}
 	auto View(std::integral auto y, std::integral auto x) const requires Readonly {
-		return PlaneView{ .TargetPlane = this, .yOffset = y, .xOffset = x };
+		return OffsetView{ .TargetPlane = this, .yOffset = y, .xOffset = x };
 	}
 	auto& DirectAccess() const requires Readonly {
-		return static_cast<const CanvasType&>(*this);
+		return static_cast<const CanvasProxy<PixelType>&>(*this);
 	}
 
 public:
@@ -95,24 +123,3 @@ public:
 		return StringRepresentation.str();
 	}
 };
-
-namespace PaddingFunctions::Plane {
-	auto Constant(auto Value) {
-		return [=](auto& Canvas, auto y, auto x) {
-			using PixelType = std::decay_t<decltype(Canvas[0][0])>;
-			return static_cast<PixelType>(Value);
-		};
-	}
-	auto Repeat = [](auto& Canvas, auto y, auto x) {
-		x = Utility::Min(Utility::Max(x, 0), Canvas.Width - 1);
-		y = Utility::Min(Utility::Max(y, 0), Canvas.Height - 1);
-		return Canvas[y][x];
-	};
-	auto Reflect = [](auto& Canvas, auto y, auto x) {
-		x = Utility::PaddingFunctions::ReflectCoordinate(x, Canvas.Width);
-		y = Utility::PaddingFunctions::ReflectCoordinate(y, Canvas.Height);
-		return Canvas[y][x];
-	};
-	auto Zero = Constant(0);
-	auto Default = Reflect;
-}

@@ -1,0 +1,18 @@
+#pragma once
+#include "Utility.vxx"
+
+namespace RemappingFunctions {
+	auto Replicate = [](auto x, auto Bound) {
+		x = Utility::Min(Utility::Max(x, 0), Bound - 1);
+		return x;
+	};
+	auto Reflect = [](auto x, auto Bound) {
+		while (x < 0 || x >= Bound) {
+			x = std::abs(x);
+			x -= Bound - 1;
+			x = -std::abs(x);
+			x += Bound - 1;
+		}
+		return x;
+	};
+}

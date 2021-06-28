@@ -3,34 +3,29 @@
 #include "Node.vxx"
 
 struct VideoNode : Node, AlternateRepresentations::Flattened::VideoInfo {
-	field(PaddingFunction, PaddingFunctionProxy<VideoNode>{});
-
-public:
 	VideoNode() = default;
 	VideoNode(ExplicitlyConvertibleTo<HandleType> auto&& Handle) : Node{ Forward(Handle) } {
-		auto SynchronizeMetadata = [this] {
-			auto& MetadataInSync = static_cast<VideoInfo&>(*this);
-			auto ReferenceMetadata = this->QueryVideoInfo();
-			MetadataInSync = reinterpret_cast<VideoInfo&>(ReferenceMetadata);
-		};
-		SynchronizeMetadata();
-		this->PaddingFunction = PaddingFunctions::Node::Default;
+		auto& MetadataInSync = static_cast<VideoInfo&>(*this);
+		auto ReferenceMetadata = this->QueryVideoInfo();
+		MetadataInSync = reinterpret_cast<VideoInfo&>(ReferenceMetadata);
 	}
 
 public:
 	auto RequestFrame(std::integral auto Index, auto FrameContext) const {
 		if (Index >= 0 && Index < FrameCount)
 			Node::RequestFrame(Index, FrameContext);
+		else [[unlikely]]
+			Node::RequestFrame(OutOfBoundsRemapping(Index, FrameCount), FrameContext);
 	}
 	auto RequestFrames(std::integral auto Index, auto FrameContext) const {
-		for (auto x : RequestFunction(Index))
+		for (auto x : FrameRequestor(Index))
 			RequestFrame(x, FrameContext);
 	}
 	auto FetchFrame(std::integral auto Index, auto FrameContext) const {
-		if (Index < 0 || Index >= FrameCount)
-			return PaddingFunction(*this, Index, FrameContext);
-		else
+		if (Index >= 0 && Index < FrameCount)
 			return Node::FetchFrame(Index, FrameContext);
+		else [[unlikely]]
+			return Node::FetchFrame(OutOfBoundsRemapping(Index, FrameCount), FrameContext);
 	}
 	template<typename PixelType>
 	auto FetchFrame(std::integral auto Index, auto FrameContext) const {
@@ -39,7 +34,7 @@ public:
 	template<typename PixelType>
 	auto FetchFrames(std::integral auto Index, auto FrameContext) const {
 		auto FetchedFrames = std::unordered_map<std::ptrdiff_t, VideoFrame<PixelType>>{};
-		auto RequestedIndexes = RequestFunction(Index);
+		auto RequestedIndexes = FrameRequestor(Index);
 		FetchedFrames.rehash(RequestedIndexes.size());
 		for (auto x : RequestedIndexes)
 			FetchedFrames[x - Index] = FetchFrame<PixelType>(x, FrameContext);
@@ -48,8 +43,8 @@ public:
 	auto AcquireFrame(std::integral auto Index, auto FrameContext) const {
 		if (Index >= 0 && Index < FrameCount)
 			return Node::AcquireFrame(Index, FrameContext);
-		else
-			throw std::runtime_error{ "placeholder for index readdressing" };
+		else [[unlikely]]
+			return Node::AcquireFrame(OutOfBoundsRemapping(Index, FrameCount), FrameContext);
 	}
 	template<typename PixelType>
 	auto AcquireFrame(std::integral auto Index, auto FrameContext) const {
@@ -73,35 +68,3 @@ public:
 		return ExtractMetadata().Format;
 	}
 };
-
-namespace PaddingFunctions::VideoNode {
-	auto Constant(auto&& Values, auto Core) {
-		return [Values = Utility::TypeEraseIterableToTriplet(Forward(Values)), Core](auto& Clip, auto Index) {
-			if (!Clip.WithConstantFormat() || !Clip.WithConstantDimensions())
-				throw std::runtime_error{ "PaddingFunctions::VideoNode::Constant: only clips with constant format and dimensions supported." };
-			auto AllocatedFrame = Core.AllocateVideoFrame(Clip.ExtractFormat(), Clip.Width, Clip.Height);
-			auto FillWithColor = [&](auto&& BlankFrame) {
-				using PixelType = std::decay_t<decltype(BlankFrame[0][0][0])>;
-				for (auto c : Range{ BlankFrame.PlaneCount })
-					for (auto y : Range{ BlankFrame[c].Height })
-						for (auto x : Range{ BlankFrame[c].Width })
-							BlankFrame[c][y][x] = static_cast<PixelType>(Values[c]);
-				return BlankFrame.Transfer();
-			};
-			if (Clip.IsSinglePrecision())
-				return FillWithColor(VideoFrame<float>{ AllocatedFrame.Leak() });
-			else if (Clip.BitsPerSample > 8)
-				return FillWithColor(VideoFrame<std::uint16_t>{ AllocatedFrame.Leak() });
-			else
-				return FillWithColor(VideoFrame<std::uint8_t>{ AllocatedFrame.Leak() });
-		};
-	}
-	auto Zero(auto Core) {
-		return [=](auto& Clip, auto Index) {
-			if (Clip.IsRGB() || Clip.IsGray() || Clip.IsSinglePrecision())
-				return Constant(0, Core)(Clip, Index);
-			else
-				return Constant(std::array{ 0, 1 << (Clip.BitsPerSample - 1) }, Core)(Clip, Index);
-		};
-	}
-}

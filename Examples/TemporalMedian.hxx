@@ -13,7 +13,7 @@ public:
 		InputClip = Arguments["clip"];
 		if (Arguments["radius"].Exists())
 			Radius = Arguments["radius"];
-		InputClip.RequestFunction = [this](auto Index) { return Range{ Index - Radius, Index + Radius + 1 }; };
+		InputClip.FrameRequestor = [this](auto Index) { return Range{ Index - Radius, Index + Radius + 1 }; };
 		if (!InputClip.WithConstantFormat() || !InputClip.WithConstantDimensions() || !InputClip.IsSinglePrecision())
 			throw std::runtime_error{ "only single precision floating point clips with constant format and dimensions supported." };
 		if (Radius < 0)

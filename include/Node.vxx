@@ -4,18 +4,16 @@
 using NodeReference = ResourceManager::Owner<VSNodeRef>;
 
 struct Node : NodeReference {
-	static constexpr auto DefaultRequestFunction = [](auto Index) { return std::vector{ Index }; };
-
 private:
-	struct RequestFunctionProxy {
-		using QuantificationBoundForRequestFunction = auto(std::ptrdiff_t)->std::vector<std::ptrdiff_t>;
-		using ExistentialTypeForRequestFunction = std::function<QuantificationBoundForRequestFunction>;
+	using ExistentialTypeForRemappingFunction = std::function<auto(std::ptrdiff_t, std::size_t)->std::ptrdiff_t>;
+	struct ExistentialTypeForRequestFunction {
+		using QuantificationBound = auto(std::ptrdiff_t)->std::vector<std::ptrdiff_t>;
 
 	public:
-		field(HostedFunction, ExistentialTypeForRequestFunction{});
+		field(HostedFunction, std::function<QuantificationBound>{});
 
 	public:
-		auto& operator=(AnyBut<RequestFunctionProxy> auto&& RequestFunction) {
+		auto& operator=(AnyBut<ExistentialTypeForRequestFunction> auto&& RequestFunction) {
 			if constexpr (requires { { RequestFunction(0_ptrdiff) }->std::same_as<std::vector<std::ptrdiff_t>>; })
 				HostedFunction = Forward(RequestFunction);
 			else
@@ -28,7 +26,7 @@ private:
 							else
 								static_assert(sizeof(RequestFunction) == -1, "Node: frame index must be an integer.");
 					else
-						static_assert(sizeof(RequestFunction) == -1, "Node: RequestFunction must return an iterable container.");
+						static_assert(sizeof(RequestFunction) == -1, "Node: request function must return an iterable container.");
 					return TypeErasedContainer;
 				};
 			return *this;
@@ -38,35 +36,13 @@ private:
 		}
 	};
 
-protected:
-	template<typename NodeType>
-	struct PaddingFunctionProxy {
-		using QuantificationBoundForPaddingFunction = auto(const NodeType&, std::ptrdiff_t, FrameContextProxy)->Frame;
-		using ExistentialTypeForPaddingFunction = std::function<QuantificationBoundForPaddingFunction>;
-
-	public:
-		field(HostedFunction, ExistentialTypeForPaddingFunction{});
-
-	public:
-		auto& operator=(AnyBut<PaddingFunctionProxy> auto&& PaddingFunction) {
-			[[maybe_unused]] auto& PlaceholderNode = *static_cast<const NodeType*>(nullptr);
-			if constexpr (requires { { PaddingFunction(PlaceholderNode, 0_ptrdiff, FrameContextProxy{}) }->SubtypeOf<FrameReference>; })
-				HostedFunction = Forward(PaddingFunction);
-			else if constexpr (requires { { PaddingFunction(PlaceholderNode, 0_ptrdiff) }->SubtypeOf<FrameReference>; })
-				HostedFunction = [PaddingFunction = Forward(PaddingFunction)](auto& Clip, auto Index, auto...) {
-					return PaddingFunction(Clip, Index);
-				};
-			else
-				static_assert(sizeof(PaddingFunction) == -1, "Node: specified padding function has an incompatible signature.");
-			return *this;
-		}
-		auto operator()(auto& Clip, auto Index, auto FrameContext) const {
-			return HostedFunction(Clip, Index, FrameContext);
-		}
-	};
+public:
+	static inline auto DefaultRequestFunction = ExistentialTypeForRequestFunction{ [](auto Index) { return std::vector{ Index }; } };
+	static inline auto DefaultRemappingFunction = ExistentialTypeForRemappingFunction{ RemappingFunctions::Reflect };
 
 public:
-	field(RequestFunction, RequestFunctionProxy{ DefaultRequestFunction });
+	field(FrameRequestor, DefaultRequestFunction);
+	field(OutOfBoundsRemapping, DefaultRemappingFunction);
 
 public:
 	Node() = default;
@@ -131,13 +107,15 @@ public:
 	template<SubtypeOf<Node> NodeType>
 	operator NodeType() && {
 		auto TargetNode = NodeType{ this->Leak() };
-		TargetNode.RequestFunction = std::move(this->RequestFunction);
+		TargetNode.FrameRequestor = std::move(this->FrameRequestor);
+		TargetNode.OutOfBoundsRemapping = std::move(this->OutOfBoundsRemapping);
 		return TargetNode;
 	}
 	template<SubtypeOf<Node> NodeType>
 	operator NodeType() const & {
 		auto TargetNode = NodeType{ this->CloneHandle() };
-		TargetNode.RequestFunction = this->RequestFunction;
+		TargetNode.FrameRequestor = this->FrameRequestor;
+		TargetNode.OutOfBoundsRemapping = this->OutOfBoundsRemapping;
 		return TargetNode;
 	}
 
@@ -150,15 +128,3 @@ public:
 		return StringRepresentation.str();
 	}
 };
-
-namespace PaddingFunctions::Node {
-	auto Repeat = [](auto& Clip, auto Index, auto FrameContext) {
-		Index = Utility::Min(Utility::Max(Index, 0), Clip.FrameCount - 1);
-		return Clip.FetchFrame(Index, FrameContext);
-	};
-	auto Reflect = [](auto& Clip, auto Index, auto FrameContext) {
-		Index = Utility::PaddingFunctions::ReflectCoordinate(Index, Clip.FrameCount);
-		return Clip.FetchFrame(Index, FrameContext);
-	};
-	auto Default = Reflect;
-}

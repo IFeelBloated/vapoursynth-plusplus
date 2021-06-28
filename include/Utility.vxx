@@ -222,15 +222,3 @@ namespace Utility::Map {
 	// GCC bug, fixme
 	auto PrintItem(auto&&)->std::string;
 }
-
-namespace Utility::PaddingFunctions {
-	auto ReflectCoordinate(auto x, auto Bound) {
-		while (x < 0 || x >= Bound) {
-			x = std::abs(x);
-			x -= Bound - 1;
-			x = -std::abs(x);
-			x += Bound - 1;
-		}
-		return x;
-	}
-}

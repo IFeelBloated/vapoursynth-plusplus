@@ -19,8 +19,8 @@ public:
 	auto SpecifyMetadata() {
 		return InputClip.ExtractMetadata();
 	}
-	auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
-		auto InputFrame = InputClip.AcquireFrame(Index, FrameContext);
+	auto GenerateFrame(auto Index, auto GeneratorContext, auto Core) {
+		auto InputFrame = InputClip.AcquireFrame(Index, GeneratorContext);
 		return static_cast<FrameReference>(Evaluator("src", InputFrame));
 	}
 };

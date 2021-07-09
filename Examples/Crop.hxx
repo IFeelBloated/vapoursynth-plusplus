@@ -38,7 +38,7 @@ public:
 		Metadata.Height = CroppedHeight;
 		return Metadata;
 	}
-	auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
+	auto GenerateFrame(auto Index, auto GeneratorContext, auto Core) {
 		auto DrawGenericFrame = [&](auto&& InputFrame) {
 			using PixelType = std::decay_t<decltype(InputFrame[0][0][0])>;
 			auto ProcessedFrame = VideoFrame<PixelType>{ Core.AllocateVideoFrame(InputFrame.ExtractFormat(), CroppedWidth, CroppedHeight) };
@@ -50,10 +50,10 @@ public:
 			return ProcessedFrame.Transfer();
 		};
 		if (InputClip.IsSinglePrecision())
-			return DrawGenericFrame(InputClip.AcquireFrame<const float>(Index, FrameContext));
+			return DrawGenericFrame(InputClip.AcquireFrame<const float>(Index, GeneratorContext));
 		else if (InputClip.BitsPerSample > 8)
-			return DrawGenericFrame(InputClip.AcquireFrame<const std::uint16_t>(Index, FrameContext));
+			return DrawGenericFrame(InputClip.AcquireFrame<const std::uint16_t>(Index, GeneratorContext));
 		else
-			return DrawGenericFrame(InputClip.AcquireFrame<const std::uint8_t>(Index, FrameContext));
+			return DrawGenericFrame(InputClip.AcquireFrame<const std::uint8_t>(Index, GeneratorContext));
 	}
 };

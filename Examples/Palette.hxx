@@ -28,11 +28,11 @@ public:
 		};
 		return std::vector{ Shades.size(), Metadata };
 	}
-	auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
+	auto GenerateFrame(auto Index, auto GeneratorContext, auto Core) {
 		auto ProcessedFrame = VideoFrame<float>{ Core.AllocateVideoFrame(VideoFormats::GrayS, Width, Height) };
 		for (auto y : Range{ Height })
 			for (auto x : Range{ Width })
-				ProcessedFrame[0][y][x] = Shades[FrameContext.QueryOutputIndex()];
+				ProcessedFrame[0][y][x] = Shades[GeneratorContext.QueryOutputIndex()];
 		return ProcessedFrame;
 	}
 };

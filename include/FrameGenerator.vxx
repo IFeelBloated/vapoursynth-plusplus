@@ -1,0 +1,25 @@
+#pragma once
+#include "VapourSynth.h"
+#include "Utility.vxx"
+
+namespace FrameGenerator {
+	using ResourceAcquisitionInProgress = struct {};
+
+	struct ContextProxy {
+		field(Handle, static_cast<VSFrameContext*>(nullptr));
+		field(Status, 0);
+
+	public:
+		auto QueryOutputIndex() const {
+			return UniversalContext::API->getOutputIndex(Handle);
+		}
+		auto RaiseError(ExplicitlyConvertibleTo<std::string> auto&& FormattedErrorMessage) const {
+			auto ErrorMessage = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(FormattedErrorMessage);
+			UniversalContext::API->setFilterError(Utility::ExtractCharPointerFromASCIZFormattedString(ErrorMessage), Handle);
+			return Frame::NullHandle;
+		}
+		operator auto() const {
+			return Handle;
+		}
+	};
+}

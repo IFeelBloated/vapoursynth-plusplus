@@ -82,7 +82,7 @@ private:
 		auto operator[](std::integral auto y) const {
 			return RemappedAccess{ .TargetPlane = TargetPlane, .yAbsolute = y + yOffset, .xOffset = xOffset };
 		}
-		auto GetCoordinates() const {
+		auto QueryCoordinates() const {
 			return std::array{ yOffset, xOffset };
 		}
 		auto View(std::integral auto y, std::integral auto x) const {

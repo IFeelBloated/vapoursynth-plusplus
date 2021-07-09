@@ -18,8 +18,8 @@ public:
 		Metadata.Format = Core.Query(VideoFormats::RGBS);
 		return Metadata;
 	}
-	auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
-		auto InputFrame = InputClip.AcquireFrame<const float>(Index, FrameContext);
+	auto GenerateFrame(auto Index, auto GeneratorContext, auto Core) {
+		auto InputFrame = InputClip.AcquireFrame<const float>(Index, GeneratorContext);
 		auto ProcessedFrame = VideoFrame<float>{ Core.AllocateVideoFrame(VideoFormats::RGBS, InputClip.Width, InputClip.Height) };
 		if (InputFrame["_Matrix"].Exists() == false)
 			Core.Alert("_Matrix property not found, assuming Rec601.");

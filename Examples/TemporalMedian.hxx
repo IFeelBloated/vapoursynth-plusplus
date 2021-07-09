@@ -22,8 +22,8 @@ public:
 	auto SpecifyMetadata() {
 		return InputClip.ExtractMetadata();
 	}
-	auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
-		auto InputFrames = InputClip.AcquireFrames<const float>(Index, FrameContext);
+	auto GenerateFrame(auto Index, auto GeneratorContext, auto Core) {
+		auto InputFrames = InputClip.AcquireFrames<const float>(Index, GeneratorContext);
 		auto ProcessedFrame = Core.CreateBlankFrameFrom(InputFrames[0]);
 		auto Samples = std::vector<float>{};
 		Samples.resize(2 * Radius + 1);

@@ -72,24 +72,3 @@ public:
 
 using Frame = FramePrototype<const void>;
 using WritableFrame = FramePrototype<void>;
-
-struct FrameContextProxy {
-	field(Handle, static_cast<VSFrameContext*>(nullptr));
-	field(GeneratorStatus, 0);
-
-public:
-	using ResourceAcquisitionInProgress = struct {};
-
-public:
-	auto QueryOutputIndex() const {
-		return UniversalContext::API->getOutputIndex(Handle);
-	}
-	auto RaiseError(ExplicitlyConvertibleTo<std::string> auto&& FormattedErrorMessage) const {
-		auto ErrorMessage = Utility::ExposeCharPointerIfASCIZCompatibleOrDeepCopyIfNot(FormattedErrorMessage);
-		UniversalContext::API->setFilterError(Utility::ExtractCharPointerFromASCIZFormattedString(ErrorMessage), Handle);
-		return Frame::NullHandle;
-	}
-	operator auto() const {
-		return Handle;
-	}
-};

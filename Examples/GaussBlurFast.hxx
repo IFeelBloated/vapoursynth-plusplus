@@ -35,8 +35,8 @@ public:
 			Channel[Below][Left] + Channel[Below][x] * 2 + Channel[Below][Right];
 		return WeightedSum / 16;
 	}
-	auto GenerateFrame(auto Index, auto FrameContext, auto Core) {
-		auto InputFrame = InputClip.AcquireFrame<const float>(Index, FrameContext);
+	auto GenerateFrame(auto Index, auto GeneratorContext, auto Core) {
+		auto InputFrame = InputClip.AcquireFrame<const float>(Index, GeneratorContext);
 		auto ProcessedFrame = Core.CreateBlankFrameFrom(InputFrame);
 		for (auto c : Range{ InputFrame.PlaneCount }) {
 			auto& Canvas = InputFrame[c].DirectAccess();

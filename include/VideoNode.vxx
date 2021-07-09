@@ -11,52 +11,51 @@ struct VideoNode : Node, AlternateRepresentations::Flattened::VideoInfo {
 	}
 
 public:
-	auto RequestFrame(std::integral auto Index, auto FrameContext) const {
+	auto RequestFrame(std::integral auto Index, auto GeneratorContext) const {
 		if (Index >= 0 && Index < FrameCount)
-			Node::RequestFrame(Index, FrameContext);
+			Node::RequestFrame(Index, GeneratorContext);
 		else [[unlikely]]
-			Node::RequestFrame(OutOfBoundsRemapping(Index, FrameCount), FrameContext);
+			Node::RequestFrame(OutOfBoundsRemapping(Index, FrameCount), GeneratorContext);
 	}
-	auto RequestFrames(std::integral auto Index, auto FrameContext) const {
+	auto RequestFrames(std::integral auto Index, auto GeneratorContext) const {
 		for (auto x : FrameRequestor(Index))
-			RequestFrame(x, FrameContext);
+			RequestFrame(x, GeneratorContext);
 	}
-	auto FetchFrame(std::integral auto Index, auto FrameContext) const {
+	auto FetchFrame(std::integral auto Index, auto GeneratorContext) const {
 		if (Index >= 0 && Index < FrameCount)
-			return Node::FetchFrame(Index, FrameContext);
+			return Node::FetchFrame(Index, GeneratorContext);
 		else [[unlikely]]
-			return Node::FetchFrame(OutOfBoundsRemapping(Index, FrameCount), FrameContext);
+			return Node::FetchFrame(OutOfBoundsRemapping(Index, FrameCount), GeneratorContext);
 	}
 	template<typename PixelType>
-	auto FetchFrame(std::integral auto Index, auto FrameContext) const {
-		return VideoFrame<PixelType>{ FetchFrame(Index, FrameContext) };
+	auto FetchFrame(std::integral auto Index, auto GeneratorContext) const {
+		return VideoFrame<PixelType>{ FetchFrame(Index, GeneratorContext) };
 	}
 	template<typename PixelType>
-	auto FetchFrames(std::integral auto Index, auto FrameContext) const {
+	auto FetchFrames(std::integral auto Index, auto GeneratorContext) const {
 		auto FetchedFrames = std::unordered_map<std::ptrdiff_t, VideoFrame<PixelType>>{};
 		auto RequestedIndexes = FrameRequestor(Index);
 		FetchedFrames.rehash(RequestedIndexes.size());
 		for (auto x : RequestedIndexes)
-			FetchedFrames[x - Index] = FetchFrame<PixelType>(x, FrameContext);
+			FetchedFrames[x - Index] = FetchFrame<PixelType>(x, GeneratorContext);
 		return FetchedFrames;
 	}
-	auto AcquireFrame(std::integral auto Index, auto FrameContext) const {
+	auto AcquireFrame(std::integral auto Index, auto GeneratorContext) const {
 		if (Index >= 0 && Index < FrameCount)
-			return Node::AcquireFrame(Index, FrameContext);
+			return Node::AcquireFrame(Index, GeneratorContext);
 		else [[unlikely]]
-			return Node::AcquireFrame(OutOfBoundsRemapping(Index, FrameCount), FrameContext);
+			return Node::AcquireFrame(OutOfBoundsRemapping(Index, FrameCount), GeneratorContext);
 	}
 	template<typename PixelType>
-	auto AcquireFrame(std::integral auto Index, auto FrameContext) const {
-		return VideoFrame<PixelType>{ AcquireFrame(Index, FrameContext) };
+	auto AcquireFrame(std::integral auto Index, auto GeneratorContext) const {
+		return VideoFrame<PixelType>{ AcquireFrame(Index, GeneratorContext) };
 	}
 	template<typename PixelType>
-	auto AcquireFrames(std::integral auto Index, auto FrameContext) const {
-		if (FrameContext.GeneratorStatus == VSActivationReason::arAllFramesReady)
-			return FetchFrames<PixelType>(Index, FrameContext);
-		else if (FrameContext.GeneratorStatus == VSActivationReason::arInitial)
-			RequestFrames(Index, FrameContext);
-		throw FrameContextProxy::ResourceAcquisitionInProgress{};
+	auto AcquireFrames(std::integral auto Index, auto GeneratorContext) const {
+		return InitiateTwoPhaseFrameAcquisitionViaEscapeContinuation(GeneratorContext.Status,
+			[&] { RequestFrames(Index, GeneratorContext); },
+			[&] { return FetchFrames<PixelType>(Index, GeneratorContext); }
+		);
 	}
 
 public:

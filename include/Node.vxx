@@ -1,5 +1,6 @@
 #pragma once
 #include "Frame.vxx"
+#include "FrameGenerator.vxx"
 
 using NodeReference = ResourceManager::Owner<VSNodeRef>;
 
@@ -48,19 +49,27 @@ public:
 	Node() = default;
 	Node(ExplicitlyConvertibleTo<HandleType> auto&& Handle) : NodeReference{ Forward(Handle) } {}
 
+protected:
+	static auto InitiateTwoPhaseFrameAcquisitionViaEscapeContinuation(auto GeneratorStatus, auto&& FrameRequestingPhase, auto&& FrameFetchingPhase) {
+		if (GeneratorStatus == VSActivationReason::arAllFramesReady)
+			return FrameFetchingPhase();
+		else if (GeneratorStatus == VSActivationReason::arInitial)
+			FrameRequestingPhase();
+		throw FrameGenerator::ResourceAcquisitionInProgress{};
+	}
+
 public:
-	auto RequestFrame(std::integral auto Index, auto FrameContext) const {
-		UniversalContext::API->requestFrameFilter(Index, Handle, FrameContext);
+	auto RequestFrame(std::integral auto Index, auto GeneratorContext) const {
+		UniversalContext::API->requestFrameFilter(Index, Handle, GeneratorContext);
 	}
-	auto FetchFrame(std::integral auto Index, auto FrameContext) const {
-		return Frame{ UniversalContext::API->getFrameFilter(Index, Handle, FrameContext) };
+	auto FetchFrame(std::integral auto Index, auto GeneratorContext) const {
+		return Frame{ UniversalContext::API->getFrameFilter(Index, Handle, GeneratorContext) };
 	}
-	auto AcquireFrame(std::integral auto Index, auto FrameContext) const {
-		if (FrameContext.GeneratorStatus == VSActivationReason::arAllFramesReady)
-			return FetchFrame(Index, FrameContext);
-		else if (FrameContext.GeneratorStatus == VSActivationReason::arInitial)
-			RequestFrame(Index, FrameContext);
-		throw FrameContextProxy::ResourceAcquisitionInProgress{};
+	auto AcquireFrame(std::integral auto Index, auto GeneratorContext) const {
+		return InitiateTwoPhaseFrameAcquisitionViaEscapeContinuation(GeneratorContext.Status,
+			[&] { RequestFrame(Index, GeneratorContext); },
+			[&] { return FetchFrame(Index, GeneratorContext); }
+		);
 	}
 	auto operator[](std::integral auto Index) const {
 		auto ErrorMessageBuffer = std::array<char, 1024>{};

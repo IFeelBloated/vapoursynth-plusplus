@@ -2,14 +2,14 @@
 #include "Infrastructure.vxx"
 
 struct Range {
-	field(Startpoint, 0_ptrdiff);
-	field(Endpoint, 0_ptrdiff);
-	field(Step, 1_ptrdiff);
+	field(Startpoint, 0z);
+	field(Endpoint, 0z);
+	field(Step, 1z);
 
 private:
 	struct Iterator {
-		field(Cursor, 0_ptrdiff);
-		field(Step, 0_ptrdiff);
+		field(Cursor, 0z);
+		field(Step, 0z);
 
 	public:
 		constexpr auto operator*() const {

@@ -37,7 +37,7 @@ public:
 		auto PluginHandle = UniversalContext::API->getPluginById(Utility::ExtractCharPointerFromASCIZFormattedString(Identifier), Handle);
 		auto PluginDescriptor = [&] {
 			auto PluginDescriptors = ListPlugins();
-			for (auto PluginIndex = 0_size; auto&& [_, LocatedIdentifier, __] : PluginDescriptors)
+			for (auto PluginIndex = 0uz; auto&& [_, LocatedIdentifier, __] : PluginDescriptors)
 				if (LocatedIdentifier == Identifier)
 					return std::move(PluginDescriptors[PluginIndex]);
 				else
@@ -236,7 +236,7 @@ public:
 		auto PluginHandle = UniversalContext::API->getPluginByNs(Utility::ExtractCharPointerFromASCIZFormattedString(Namespace), Handle);
 		auto PluginDescriptor = [&] {
 			auto PluginDescriptors = ListPlugins();
-			for (auto PluginIndex = 0_size; auto&& [LocatedNamespace, _, __] : PluginDescriptors)
+			for (auto PluginIndex = 0uz; auto&& [LocatedNamespace, _, __] : PluginDescriptors)
 				if (LocatedNamespace == Namespace)
 					return std::move(PluginDescriptors[PluginIndex]);
 				else

@@ -7,6 +7,7 @@
 #include "SeparableConvolution.hxx"
 #include "ModifyFrame.hxx"
 #include "Palette.hxx"
+#include "MaskedMerge.hxx"
 
 auto Main() {
 	auto Descriptor = PluginInfo{
@@ -23,6 +24,7 @@ auto Main() {
 	PluginInstantiator::RegisterFilter<SeparableConvolution>();
 	PluginInstantiator::RegisterFilter<ModifyFrame>();
 	PluginInstantiator::RegisterFilter<Palette>();
+	PluginInstantiator::RegisterFilter<MaskedMerge>();
 }
 
 InstantiatePluginFrom(Main);

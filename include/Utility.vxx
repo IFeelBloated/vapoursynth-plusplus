@@ -43,7 +43,7 @@ namespace Utility {
 		if constexpr (requires { { Endpoint - Startpoint }->ExplicitlyConvertibleTo<std::ptrdiff_t>; })
 			return static_cast<std::ptrdiff_t>(Endpoint - Startpoint);
 		else {
-			auto DistanceCounter = 0_ptrdiff;
+			auto DistanceCounter = 0z;
 			for (auto Cursor = Forward(Startpoint); Cursor != Endpoint; ++Cursor)
 				++DistanceCounter;
 			return DistanceCounter;

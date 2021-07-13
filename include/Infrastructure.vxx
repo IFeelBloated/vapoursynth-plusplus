@@ -31,14 +31,6 @@
 
 using namespace std::literals;
 
-constexpr auto operator""_size(unsigned long long Value) {
-	return static_cast<std::size_t>(Value);
-}
-
-constexpr auto operator""_ptrdiff(unsigned long long Value) {
-	return static_cast<std::ptrdiff_t>(Value);
-}
-
 constexpr auto operator""_u64(unsigned long long Value) {
 	return static_cast<std::uint64_t>(Value);
 }

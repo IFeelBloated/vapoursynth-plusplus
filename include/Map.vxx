@@ -9,7 +9,7 @@ namespace Utility::Map {
 
 	template<auto Readonly, auto NonOwning>
 	struct Item {
-		field(Index, 0_ptrdiff);
+		field(Index, 0z);
 
 	private:
 		struct SharedState : Reference<NonOwning> {
@@ -25,7 +25,7 @@ namespace Utility::Map {
 	private:
 		struct Iterator {
 			field(TargetItem, static_cast<const Item*>(nullptr));
-			field(Index, 0_ptrdiff);
+			field(Index, 0z);
 
 		public:
 			auto operator*() const {

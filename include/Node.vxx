@@ -15,7 +15,7 @@ private:
 
 	public:
 		auto& operator=(AnyBut<ExistentialTypeForRequestFunction> auto&& RequestFunction) {
-			if constexpr (requires { { RequestFunction(0_ptrdiff) }->std::same_as<std::vector<std::ptrdiff_t>>; })
+			if constexpr (requires { { RequestFunction(0z) }->std::same_as<std::vector<std::ptrdiff_t>>; })
 				HostedFunction = Forward(RequestFunction);
 			else
 				HostedFunction = [RequestFunction = Forward(RequestFunction)](auto Index) {
@@ -34,6 +34,48 @@ private:
 		}
 		auto operator()(auto Index) const {
 			return HostedFunction(Index);
+		}
+	};
+
+private:
+	struct ImplicitArgumentsForFrameAcquisitor {
+		field(Index, 0z);
+		field(GeneratorContext, FrameGenerator::ContextProxy{});
+	};
+	template<typename ...SampleTypes>
+	struct AcquisitorForTheCurrentlyRequestedFrame : ImplicitArgumentsForFrameAcquisitor {
+		auto From(SubtypeOf<Node> auto&& ...SourceNodes) const requires (sizeof...(SampleTypes) == 0) {
+			return Node::InitiateTwoPhaseFrameAcquisitionViaEscapeContinuation(GeneratorContext.Status,
+				[&] { (SourceNodes.RequestFrame(Index, GeneratorContext), ...); },
+				[&] { return std::array{ SourceNodes.FetchFrame(Index, GeneratorContext)... }; }
+			);
+		}
+		auto From(SubtypeOf<Node> auto&& ...SourceNodes) const requires (sizeof...(SampleTypes) == 1) {
+			return Node::InitiateTwoPhaseFrameAcquisitionViaEscapeContinuation(GeneratorContext.Status,
+				[&] { (SourceNodes.RequestFrame(Index, GeneratorContext), ...); },
+				[&] { return std::array{ SourceNodes.template FetchFrame<SampleTypes...>(Index, GeneratorContext)... }; }
+			);
+		}
+		auto From(SubtypeOf<Node> auto&& ...SourceNodes) const requires (sizeof...(SampleTypes) > 1 && sizeof...(SampleTypes) == sizeof...(SourceNodes)) {
+			return Node::InitiateTwoPhaseFrameAcquisitionViaEscapeContinuation(GeneratorContext.Status,
+				[&] { (SourceNodes.RequestFrame(Index, GeneratorContext), ...); },
+				[&] { return std::tuple{ SourceNodes.template FetchFrame<SampleTypes>(Index, GeneratorContext)... }; }
+			);
+		}
+	};
+	template<typename ...SampleTypes>
+	struct AcquisitorForMultipleRequestedFrames : ImplicitArgumentsForFrameAcquisitor {
+		auto From(SubtypeOf<Node> auto&& ...SourceNodes) const requires (sizeof...(SampleTypes) == 1) {
+			return Node::InitiateTwoPhaseFrameAcquisitionViaEscapeContinuation(GeneratorContext.Status,
+				[&] { (SourceNodes.RequestFrames(Index, GeneratorContext), ...); },
+				[&] { return std::array{ SourceNodes.template FetchFrames<SampleTypes...>(Index, GeneratorContext)... }; }
+			);
+		}
+		auto From(SubtypeOf<Node> auto&& ...SourceNodes) const requires (sizeof...(SampleTypes) > 1 && sizeof...(SampleTypes) == sizeof...(SourceNodes)) {
+			return Node::InitiateTwoPhaseFrameAcquisitionViaEscapeContinuation(GeneratorContext.Status,
+				[&] { (SourceNodes.RequestFrames(Index, GeneratorContext), ...); },
+				[&] { return std::tuple{ SourceNodes.template FetchFrames<SampleTypes>(Index, GeneratorContext)... }; }
+			);
 		}
 	};
 
@@ -91,6 +133,16 @@ public:
 		UniversalContext::API->getFrameAsync(Index, Handle, Materialize, Expectation);
 		return Expectation->get_future();
 	}
+	template<typename ...SampleTypes>
+	static auto AcquireFrameGiven(std::integral auto Index, auto GeneratorContext) {
+		return AcquisitorForTheCurrentlyRequestedFrame<SampleTypes...>{ Index, GeneratorContext };
+	}
+	template<typename ...SampleTypes>
+	static auto AcquireFramesGiven(std::integral auto Index, auto GeneratorContext) {
+		return AcquisitorForMultipleRequestedFrames<SampleTypes...>{ Index, GeneratorContext };
+	}
+
+public:
 	auto QueryMediaType() const {
 		//Placeholder for API v4.
 	}

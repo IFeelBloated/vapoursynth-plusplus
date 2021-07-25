@@ -84,7 +84,7 @@ public:
 		auto ValidateInputs = [&](auto& PrimaryFrame, auto PlaneIndex, auto& SubsidiaryPlane1, auto& SubsidiaryPlane2) {
 			static_assert(SubtypeOf<decltype(PrimaryFrame), FrameReference>, "ShufflePlanes: you must specify a frame or any iterable frame container.");
 			static_assert(requires { { PrimaryFrame.ExtractFormat() }->SubtypeOf<VideoFormat>; }, "ShufflePlanes: specified frames must be video frames.");
-			static_assert(IntegralOrEnumerable<decltype(PlaneIndex)>, "ShufflePlanes: plane index must be an integer.");
+			static_assert(Countable<decltype(PlaneIndex)>, "ShufflePlanes: plane index must be an integer.");
 			if (SubsidiaryPlane1.Width != SubsidiaryPlane2.Width || SubsidiaryPlane1.Height != SubsidiaryPlane2.Height)
 				throw std::runtime_error{ "ShufflePlanes: subsidiary planes have inconsistent dimensions." };
 		};
@@ -92,7 +92,7 @@ public:
 			auto Format = VideoFormat{
 				.ColorFamily = static_cast<ColorFamilies>(ColorFamily),
 				.SampleType = ReferenceFormat.SampleType, .BitsPerSample = ReferenceFormat.BitsPerSample,
-				.HorizontalSubsamplingFactor = Utility::Log2(PrimaryPlane.Width / SubsidiaryPlane.Width), .VerticalSubsamplingFactor = Utility::Log2(PrimaryPlane.Height / SubsidiaryPlane.Height)
+				.HorizontalSubsamplingFactor = Utility::Arithmetic::Log2(PrimaryPlane.Width / SubsidiaryPlane.Width), .VerticalSubsamplingFactor = Utility::Arithmetic::Log2(PrimaryPlane.Height / SubsidiaryPlane.Height)
 			};
 			if (SubsidiaryPlane.Width << Format.HorizontalSubsamplingFactor != PrimaryPlane.Width || SubsidiaryPlane.Height << Format.VerticalSubsamplingFactor != PrimaryPlane.Height)
 				throw std::runtime_error{ "ShufflePlanes: assembling specified planes leads to invalid subsampling factor." };

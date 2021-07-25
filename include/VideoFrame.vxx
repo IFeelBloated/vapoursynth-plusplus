@@ -40,10 +40,10 @@ public:
 	}
 
 public:
-	auto& operator[](IntegralOrEnumerable auto x) {
+	auto& operator[](Countable auto x) {
 		return Planes[static_cast<std::size_t>(x)];
 	}
-	auto& operator[](IntegralOrEnumerable auto x) const {
+	auto& operator[](Countable auto x) const {
 		return Planes[static_cast<std::size_t>(x)];
 	}
 	auto& ExtractFormat() const {

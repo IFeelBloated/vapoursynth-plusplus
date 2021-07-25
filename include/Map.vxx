@@ -79,7 +79,7 @@ namespace Utility::Map {
 		auto Exists() const {
 			return Index < QueryStorageSize();
 		}
-		auto operator[](IntegralOrEnumerable auto Index) const {
+		auto operator[](Countable auto Index) const {
 			auto Replica = *this;
 			Replica.Index = static_cast<std::ptrdiff_t>(Index);
 			return Replica;
@@ -101,7 +101,7 @@ namespace Utility::Map {
 		}
 
 	public:
-		template<IntegralOrEnumerable TargetType>
+		template<Countable TargetType>
 		operator TargetType() const {
 			return static_cast<TargetType>(UniversalContext::API->propGetInt(StorageAccess->Handle, StorageAccess->Key.data(), Index, nullptr));
 		}
@@ -137,35 +137,17 @@ namespace Utility::Map {
 			requires (requires { { x }->ConstructibleFrom<const char*>; } == false);
 			requires (requires { { x.Type() }->SubtypeOf<ItemTypes>; } == false);
 		} {
-			auto TargetSequence = TargetType{};
-			using ElementType = std::decay_t<decltype(*TargetSequence.begin())>;
-			auto ValidateElementType = [] {
-				constexpr auto IsNumber = std::floating_point<ElementType> || IntegralOrEnumerable<ElementType>;
-				constexpr auto IsString = ConstructibleFrom<ElementType, const char*>;
-				constexpr auto IsIntrinsicObject = AnyOf<ElementType, NodeReference, FrameReference, FunctionReference>;
-				static_assert(IsNumber || IsString || IsIntrinsicObject, "Item: cannot convert an item to a container of unrecognized type.");
-			};
-			ValidateElementType();
-			if constexpr (auto& Self = *this; requires { TargetSequence.push_back(static_cast<ElementType>(Self)); })
-				for (auto&& x : Self)
-					TargetSequence.push_back(static_cast<ElementType>(x));
-			else if constexpr (requires { TargetSequence.push_front(static_cast<ElementType>(Self)); })
-				for (auto x : Range{ QueryStorageSize() - 1, Index - 1 })
-					TargetSequence.push_front(static_cast<ElementType>(Self[x]));
-			else if constexpr (requires { TargetSequence.insert(static_cast<ElementType>(Self)); })
-				for (auto&& x : Self)
-					TargetSequence.insert(static_cast<ElementType>(x));
-			else
-				for (auto Cursor = TargetSequence.begin(); auto x : Range{ Index, Index + Utility::Min(size(), Utility::Distance(TargetSequence.begin(), TargetSequence.end())) }) {
-					*Cursor = static_cast<ElementType>(Self[x]);
-					++Cursor;
-				}
-			return TargetSequence;
+			using ElementType = std::decay_t<decltype(*TargetType{}.begin()) > ;
+			constexpr auto IsNumber = std::floating_point<ElementType> || Countable<ElementType>;
+			constexpr auto IsString = ConstructibleFrom<ElementType, const char*>;
+			constexpr auto IsIntrinsicObject = AnyOf<ElementType, NodeReference, FrameReference, FunctionReference>;
+			static_assert(IsNumber || IsString || IsIntrinsicObject, "Item: cannot convert an item to a container of unrecognized type.");
+			return Utility::ContainerManipulators::MapWithNaturalTransformation<TargetType>([](auto&& x) { return static_cast<ElementType>(x); }, *this);
 		}
 
 	private:
 		auto QueryStorageSize() const {
-			return Utility::Max(UniversalContext::API->propNumElements(StorageAccess->Handle, StorageAccess->Key.data()), 0);
+			return Utility::Arithmetic::Max(UniversalContext::API->propNumElements(StorageAccess->Handle, StorageAccess->Key.data()), 0);
 		}
 		auto Insert(auto&& Entity, auto AppendMode) const {
 			constexpr auto IsIterable = Iterable<decltype(Entity)>;
@@ -175,7 +157,7 @@ namespace Utility::Map {
 				using ValueType = std::decay_t<decltype(Value)>;
 				if constexpr (std::floating_point<ValueType>)
 					UniversalContext::API->propSetFloat(StorageAccess->Handle, StorageAccess->Key.data(), Value, VSPropAppendMode::paAppend);
-				else if constexpr (IntegralOrEnumerable<ValueType>)
+				else if constexpr (Countable<ValueType>)
 					UniversalContext::API->propSetInt(StorageAccess->Handle, StorageAccess->Key.data(), static_cast<std::int64_t>(Value), VSPropAppendMode::paAppend);
 				else if constexpr (requires { { Value }->ExplicitlyConvertibleTo<const char*>; })
 					UniversalContext::API->propSetData(StorageAccess->Handle, StorageAccess->Key.data(), static_cast<const char*>(Value), -1, VSPropAppendMode::paAppend);

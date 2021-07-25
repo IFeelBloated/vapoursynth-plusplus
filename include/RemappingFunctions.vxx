@@ -3,7 +3,7 @@
 
 namespace RemappingFunctions {
 	auto Replicate = [](auto x, auto Bound) {
-		x = Utility::Min(Utility::Max(x, 0), Bound - 1);
+		x = Utility::Arithmetic::Min(Utility::Arithmetic::Max(x, 0), Bound - 1);
 		return x;
 	};
 	auto Reflect = [](auto x, auto Bound) {

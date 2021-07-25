@@ -30,24 +30,14 @@ concept Iterable = BuiltinArray<UnknownType> || requires(UnknownType x) {
 };
 
 template<typename UnknownType>
-concept IntegralOrEnumerable = std::integral<UnknownType> || std::is_enum_v<UnknownType>;
+concept Countable = std::integral<std::decay_t<UnknownType>> || std::is_enum_v<std::decay_t<UnknownType>>;
 
-namespace Utility {
+namespace Utility::Arithmetic {
 	auto Max(auto x, auto y) {
 		return x > y ? x : y;
 	}
 	auto Min(auto x, auto y) {
 		return x < y ? x : y;
-	}
-	auto Distance(auto&& Startpoint, auto&& Endpoint) {
-		if constexpr (requires { { Endpoint - Startpoint }->ExplicitlyConvertibleTo<std::ptrdiff_t>; })
-			return static_cast<std::ptrdiff_t>(Endpoint - Startpoint);
-		else {
-			auto DistanceCounter = 0z;
-			for (auto Cursor = Forward(Startpoint); Cursor != Endpoint; ++Cursor)
-				++DistanceCounter;
-			return DistanceCounter;
-		}
 	}
 	auto Log2(auto x) {
 		auto Exponent = 0;
@@ -57,6 +47,9 @@ namespace Utility {
 		}
 		return Exponent;
 	}
+}
+
+namespace Utility {
 	auto TypeEraseIterableToTriplet(auto&& Entity) {
 		if constexpr (Iterable<decltype(Entity)>) {
 			auto Buffer = [&] {
@@ -141,6 +134,79 @@ namespace Utility::Reflection {
 	}
 	template<typename ReferenceContainerType, typename TargetElementType>
 	using ContainerReplaceElementType = Private::ContainerReplaceTypeArgument<std::decay_t<ReferenceContainerType>, TargetElementType>::ReassembledType;
+}
+
+namespace Utility::ContainerManipulators {
+	auto Distance(auto&& Startpoint, auto&& Endpoint) {
+		if constexpr (requires { { Endpoint - Startpoint }->ExplicitlyConvertibleTo<std::ptrdiff_t>; })
+			return static_cast<std::ptrdiff_t>(Endpoint - Startpoint);
+		else {
+			auto DistanceCounter = 0z;
+			for (auto Cursor = Forward(Startpoint); Cursor != Endpoint; ++Cursor)
+				++DistanceCounter;
+			return DistanceCounter;
+		}
+	}
+	template<typename TargetContainerType>
+	auto MapWithNaturalTransformation(auto&& TransformationForEachElement, auto&& SourceContainer) {
+		constexpr auto SourceIsMovable = std::is_rvalue_reference_v<decltype(SourceContainer)>;
+		auto TargetContainer = TargetContainerType{};
+		auto ApplyElementWiseTransformation = [&](auto&& Value) {
+			if constexpr (SourceIsMovable)
+				return TransformationForEachElement(std::move(Value));
+			else
+				return TransformationForEachElement(Value);
+		};
+		auto ConstructPlaceholderForTransformedElement = [&] {
+			if constexpr (requires { { SourceContainer }->BuiltinArray; })
+				return ApplyElementWiseTransformation(SourceContainer[0]);
+			else
+				return ApplyElementWiseTransformation(*SourceContainer.begin());
+		};
+		auto EstimateSourceContainerSize = [&] {
+			if constexpr (requires { { SourceContainer }->BuiltinArray; })
+				return sizeof(SourceContainer) / sizeof(SourceContainer[0]);
+			else if constexpr (requires { { SourceContainer.size() }->std::integral; })
+				return SourceContainer.size();
+			else
+				return Distance(SourceContainer.begin(), SourceContainer.end());
+		};
+		auto CacheTransformedElements = [&] {
+			using TransformedElementType = std::decay_t<decltype(ConstructPlaceholderForTransformedElement())>;
+			auto CachedElements = std::vector<TransformedElementType>{};
+			CachedElements.reserve(EstimateSourceContainerSize());
+			for (auto&& x : SourceContainer)
+				CachedElements.push_back(ApplyElementWiseTransformation(x));
+			return CachedElements;
+		};
+		auto ExtractCursors = [&] {
+			if constexpr (requires { { SourceContainer }->BuiltinArray; })
+				return std::tuple{ TargetContainer.begin(), SourceContainer };
+			else
+				return std::tuple{ TargetContainer.begin(), SourceContainer.begin() };
+		};
+		if constexpr (requires { TargetContainer.push_back(ConstructPlaceholderForTransformedElement()); })
+			for (auto&& x : SourceContainer)
+				TargetContainer.push_back(ApplyElementWiseTransformation(x));
+		else if constexpr (requires { TargetContainer.insert(ConstructPlaceholderForTransformedElement()); })
+			for (auto&& x : SourceContainer)
+				TargetContainer.insert(ApplyElementWiseTransformation(x));
+		else if constexpr (requires { TargetContainer.push_front(ConstructPlaceholderForTransformedElement()); })
+			for (auto CachedElements = CacheTransformedElements(); CachedElements.empty() == false; CachedElements.pop_back())
+				TargetContainer.push_front(std::move(CachedElements.back()));
+		else
+			for (auto [TargetContainerCursor, SourceContainerCursor] = ExtractCursors(); auto _ : Range{ Arithmetic::Min(EstimateSourceContainerSize(), Distance(TargetContainer.begin(), TargetContainer.end())) }) {
+				*TargetContainerCursor = ApplyElementWiseTransformation(*SourceContainerCursor);
+				++TargetContainerCursor;
+				++SourceContainerCursor;
+			}
+		return TargetContainer;
+	}
+	auto fMap(auto&& TransformationForEachElement, auto&& SourceContainer) {
+		using TransformedElementType = decltype(TransformationForEachElement(*SourceContainer.begin()));
+		using TargetContainerType = Reflection::ContainerReplaceElementType<decltype(SourceContainer), TransformedElementType>;
+		return MapWithNaturalTransformation<TargetContainerType>(Forward(TransformationForEachElement), Forward(SourceContainer));
+	}
 }
 
 namespace Utility::SignatureParser::Tokenizer {

@@ -38,44 +38,84 @@ private:
 	};
 
 private:
-	struct ImplicitArgumentsForFrameAcquisitor {
+	template<typename AcquisitorType>
+	struct FrameAcquisitor {};
+	template<template<typename...> typename AcquisitorTypeConstructor, typename ...SampleTypes>
+	struct FrameAcquisitor<AcquisitorTypeConstructor<SampleTypes...>> {
 		field(Index, 0z);
 		field(GeneratorContext, FrameGenerator::ContextProxy{});
+
+	private:
+		using AcquisitorType = AcquisitorTypeConstructor<SampleTypes...>;
+
+	private:
+		template<typename ...OptionallySpecifiedSampleType>
+		auto FetchFromEachOf(auto&& NodeSource) const {
+			if constexpr (requires { { NodeSource }->Iterable; })
+				return Utility::ContainerManipulators::fMap([this](auto&& x) { return static_cast<const AcquisitorType*>(this)->template FetchFrom<OptionallySpecifiedSampleType...>(x); }, NodeSource);
+			else
+				return static_cast<const AcquisitorType*>(this)->template FetchFrom<OptionallySpecifiedSampleType...>(NodeSource);
+		}
+
+	public:
+		auto From(auto&& ...NodeSequence) const requires (sizeof...(NodeSequence) > 0) {
+			return Node::InitiateTwoPhaseFrameAcquisitionViaEscapeContinuation(GeneratorContext.Status,
+				[&] {
+					auto RequestFromEachOf = [this](auto&& NodeSource) {
+						if constexpr (requires { { NodeSource }->Iterable; })
+							for (auto&& x : NodeSource)
+								if constexpr (requires { { x }->SubtypeOf<Node>; })
+									static_cast<const AcquisitorType*>(this)->RequestFrom(x);
+								else
+									static_assert(sizeof...(NodeSequence) == -1, "FrameAcquisitor: placeholder error message.");
+						else
+							if constexpr (requires { { NodeSource }->SubtypeOf<Node>; })
+								static_cast<const AcquisitorType*>(this)->RequestFrom(NodeSource);
+							else
+								static_assert(sizeof...(NodeSequence) == -1, "FrameAcquisitor: placeholder error message.");
+					};
+					(RequestFromEachOf(NodeSequence), ...);
+				},
+				[&] {
+					if constexpr (sizeof...(SampleTypes) <= 1)
+						if constexpr (sizeof...(NodeSequence) == 1)
+							return FetchFromEachOf<SampleTypes...>(NodeSequence...);
+						else if constexpr (requires { std::array{ FetchFromEachOf<SampleTypes...>(NodeSequence)... }; })
+							return std::array{ FetchFromEachOf<SampleTypes...>(NodeSequence)... };
+						else
+							return std::tuple{ FetchFromEachOf<SampleTypes...>(NodeSequence)... };
+					else if constexpr (sizeof...(SampleTypes) > 1 && sizeof...(SampleTypes) == sizeof...(NodeSequence))
+						if constexpr (requires { std::array{ FetchFromEachOf<SampleTypes>(NodeSequence)... }; })
+							return std::array{ FetchFromEachOf<SampleTypes>(NodeSequence)... };
+						else
+							return std::tuple{ FetchFromEachOf<SampleTypes>(NodeSequence)... };
+					else
+						static_assert(sizeof...(NodeSequence) == -1, "FrameAcquisitor: placeholder error message.");
+				}
+			);
+		}
 	};
 	template<typename ...SampleTypes>
-	struct AcquisitorForTheCurrentlyRequestedFrame : ImplicitArgumentsForFrameAcquisitor {
-		auto From(SubtypeOf<Node> auto&& ...SourceNodes) const requires (sizeof...(SampleTypes) == 0) {
-			return Node::InitiateTwoPhaseFrameAcquisitionViaEscapeContinuation(GeneratorContext.Status,
-				[&] { (SourceNodes.RequestFrame(Index, GeneratorContext), ...); },
-				[&] { return std::array{ SourceNodes.FetchFrame(Index, GeneratorContext)... }; }
-			);
+	struct SingleFrameAcquisitor : FrameAcquisitor<SingleFrameAcquisitor<SampleTypes...>> {
+		auto RequestFrom(auto&& SourceNode) const {
+			SourceNode.RequestFrame(this->Index, this->GeneratorContext);
 		}
-		auto From(SubtypeOf<Node> auto&& ...SourceNodes) const requires (sizeof...(SampleTypes) == 1) {
-			return Node::InitiateTwoPhaseFrameAcquisitionViaEscapeContinuation(GeneratorContext.Status,
-				[&] { (SourceNodes.RequestFrame(Index, GeneratorContext), ...); },
-				[&] { return std::array{ SourceNodes.template FetchFrame<SampleTypes...>(Index, GeneratorContext)... }; }
-			);
-		}
-		auto From(SubtypeOf<Node> auto&& ...SourceNodes) const requires (sizeof...(SampleTypes) > 1 && sizeof...(SampleTypes) == sizeof...(SourceNodes)) {
-			return Node::InitiateTwoPhaseFrameAcquisitionViaEscapeContinuation(GeneratorContext.Status,
-				[&] { (SourceNodes.RequestFrame(Index, GeneratorContext), ...); },
-				[&] { return std::tuple{ SourceNodes.template FetchFrame<SampleTypes>(Index, GeneratorContext)... }; }
-			);
+		template<typename ...OptionallySpecifiedSampleType>
+		auto FetchFrom(auto&& SourceNode) const {
+			if constexpr (sizeof...(OptionallySpecifiedSampleType) == 0)
+				return SourceNode.FetchFrame(this->Index, this->GeneratorContext);
+			else
+				return SourceNode.template FetchFrame<OptionallySpecifiedSampleType...>(this->Index, this->GeneratorContext);
 		}
 	};
 	template<typename ...SampleTypes>
-	struct AcquisitorForMultipleRequestedFrames : ImplicitArgumentsForFrameAcquisitor {
-		auto From(SubtypeOf<Node> auto&& ...SourceNodes) const requires (sizeof...(SampleTypes) == 1) {
-			return Node::InitiateTwoPhaseFrameAcquisitionViaEscapeContinuation(GeneratorContext.Status,
-				[&] { (SourceNodes.RequestFrames(Index, GeneratorContext), ...); },
-				[&] { return std::array{ SourceNodes.template FetchFrames<SampleTypes...>(Index, GeneratorContext)... }; }
-			);
+	struct MultipleFrameAcquisitor : FrameAcquisitor<MultipleFrameAcquisitor<SampleTypes...>> {
+		auto RequestFrom(auto&& SourceNode) const {
+			SourceNode.RequestFrames(this->Index, this->GeneratorContext);
 		}
-		auto From(SubtypeOf<Node> auto&& ...SourceNodes) const requires (sizeof...(SampleTypes) > 1 && sizeof...(SampleTypes) == sizeof...(SourceNodes)) {
-			return Node::InitiateTwoPhaseFrameAcquisitionViaEscapeContinuation(GeneratorContext.Status,
-				[&] { (SourceNodes.RequestFrames(Index, GeneratorContext), ...); },
-				[&] { return std::tuple{ SourceNodes.template FetchFrames<SampleTypes>(Index, GeneratorContext)... }; }
-			);
+		template<typename SampleType>
+		auto FetchFrom(auto&& SourceNode) const {
+			return SourceNode.template FetchFrames<SampleType>(this->Index, this->GeneratorContext);
 		}
 	};
 
@@ -135,11 +175,11 @@ public:
 	}
 	template<typename ...SampleTypes>
 	static auto AcquireFrameGiven(std::integral auto Index, auto GeneratorContext) {
-		return AcquisitorForTheCurrentlyRequestedFrame<SampleTypes...>{ Index, GeneratorContext };
+		return SingleFrameAcquisitor<SampleTypes...>{ Index, GeneratorContext };
 	}
 	template<typename ...SampleTypes>
 	static auto AcquireFramesGiven(std::integral auto Index, auto GeneratorContext) {
-		return AcquisitorForMultipleRequestedFrames<SampleTypes...>{ Index, GeneratorContext };
+		return MultipleFrameAcquisitor<SampleTypes...>{ Index, GeneratorContext };
 	}
 
 public:

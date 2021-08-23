@@ -67,12 +67,12 @@ private:
 								if constexpr (requires { { x }->SubtypeOf<Node>; })
 									static_cast<const AcquisitorType*>(this)->RequestFrom(x);
 								else
-									static_assert(sizeof...(NodeSequence) == -1, "FrameAcquisitor: placeholder error message.");
+									static_assert(sizeof...(NodeSequence) == -1, "FrameAcquisitor: an iterable node source must be a node container.");
 						else
 							if constexpr (requires { { NodeSource }->SubtypeOf<Node>; })
 								static_cast<const AcquisitorType*>(this)->RequestFrom(NodeSource);
 							else
-								static_assert(sizeof...(NodeSequence) == -1, "FrameAcquisitor: placeholder error message.");
+								static_assert(sizeof...(NodeSequence) == -1, "FrameAcquisitor: a node source must be of node type.");
 					};
 					(RequestFromEachOf(NodeSequence), ...);
 				},
@@ -90,7 +90,7 @@ private:
 						else
 							return std::tuple{ FetchFromEachOf<SampleTypes>(NodeSequence)... };
 					else
-						static_assert(sizeof...(NodeSequence) == -1, "FrameAcquisitor: placeholder error message.");
+						static_assert(sizeof...(NodeSequence) == -1, "FrameAcquisitor: the list of specified sample types does not match with the list of node sources.");
 				}
 			);
 		}

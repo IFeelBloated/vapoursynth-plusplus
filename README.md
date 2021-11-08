@@ -4,11 +4,11 @@ Vaporsynth C++ API
 ## Compilation
 requires a C++20 compiler (GCC11 or the latest version of MSVC)
 
-### Linux
+### Linux and macOS
 
 ```
 $ meson build
-$ ninja -C build
+$ ninja -C build install
 ```
 
 ### Manual
